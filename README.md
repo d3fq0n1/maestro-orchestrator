@@ -28,7 +28,7 @@ Rather than collapse reality into consensus, Maestro allows synthetic intelligen
 
 > _“If you believe truth should be plural, if you think disagreement is a resource — Maestro is yours.”_
 
-📄 [Read Full Whitepaper (Markdown)](./maestro-whitepaper-complete.md)  
+📄 [Read Full Whitepaper (Markdown)](./maestro-whitepaper.md)  
 📕 [Read Full Whitepaper (PDF)](./maestro-whitepaper-complete.pdf)  
 📰 [Substack Article](https://defqon1.substack.com/p/maestro-a-framework-for-coherent)
 
