@@ -1,22 +1,59 @@
 # Maestro: Pluralising Synthetic Intelligence
 
-*By Defcon*
+**Author**: [Defcon](https://defqon1.substack.com)  
+**License**: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)  
+**Status**: Early-stage framework proposal and philosophical scaffolding
 
 ---
 
-## License
+## 🧠 What is Maestro?
 
-This work is licensed under the Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0). You are free to share and adapt the material for any purpose, even commercially, under the following terms:
+Maestro is a civic-minded orchestration framework for coordinating multiple large language models (LLMs) through pluralism, dissent-preserving synthesis, and analog verification.
 
-- **Attribution** — You must give appropriate credit to the author (Defcon), provide a link to the license, and indicate if changes were made.
-- **ShareAlike** — If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.
+It is not another model. It is a **meta-architecture**: a process layer that routes prompts, preserves disagreement, and iteratively refines outputs based on real-world grounding.
 
-Full license text: https://creativecommons.org/licenses/by-sa/4.0/
+Rather than collapse reality into consensus, Maestro allows synthetic intelligence to evolve through structured contradiction and verification.
 
 ---
 
-## Abstract
+## 🔧 Core Principles
 
-As foundation models proliferate, the artificial intelligence landscape grows increasingly fragmented — a cacophony of systems, each powerful, each partial. *Maestro: Pluralising Synthetic Intelligence* proposes a meta-orchestration architecture to unify, harmonize, and evolve these disparate intelligences into a coherent, self-improving ensemble. Rather than centralizing authority or enforcing uniformity, Maestro embraces **pluralism** — treating each model as a unique contributor to a shared, reflective generative process.
+- **Pluralism**: Prompts route through many models; synthesis respects disagreement.
+- **Verification**: Synthetic claims escalate to Analog Verification Agents (AVAs) when grounded truth is required.
+- **Self-Refinement**: Orchestration logic evolves based on which dissenting outputs perform better over time.
 
-[...]
+---
+
+## 📘 Read the Whitepaper
+
+> _“If you believe truth should be plural, if you think disagreement is a resource — Maestro is yours.”_
+
+📄 [Read Full Whitepaper (Markdown)](./maestro-whitepaper-complete.md)  
+📕 [Read Full Whitepaper (PDF)](./maestro-whitepaper-complete.pdf)  
+📰 [Substack Article](https://defqon1.substack.com/p/maestro-a-framework-for-coherent)
+
+---
+
+## 🧪 What You Can Do
+
+- Fork the whitepaper and propose your own orchestration variations.
+- Prototype a routing engine or critic injector in your preferred language.
+- Design public visualizations of dissent.
+- Join discussions on epistemic plurality in AI.
+
+---
+
+## 🤝 Call to Collaboration
+
+This is an invitation to **technologists, critics, civic actors, and skeptics**: Maestro needs your tension, your arguments, and your edge cases.
+
+📬 Pull requests, critiques, forks, and counter-manifestos are encouraged.
+
+---
+
+## 🛡 License
+
+Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0)  
+Feel free to use, remix, translate, or rewrite — just share it back.
+
+---
