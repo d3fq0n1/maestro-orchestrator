@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 
 # Maestro Orchestrator
@@ -43,3 +44,19 @@ See `CONTRIBUTING.md` for details.
 ## License
 See `license.md`
 
+=======
+# Maestro-Orchestrator PoC: Three Wisemen
+
+This proof-of-concept demonstrates a multi-agent AI orchestration system that combines the responses of multiple language models to produce a unified answer. Inspired by the wisdom of consensus, it highlights how distributed AI reasoning can outperform any individual agent.
+
+## Features
+- Multiple agent interfaces (mock, OpenAI, Claude)
+- Aggregation strategies (voting, scoring)
+- CLI interface for running queries
+
+## Getting Started
+To run the demo:
+```bash
+python scripts/run_maestro.py
+```
+>>>>>>> 83d4449 (Initial commit of Maestro-Orchestrator PoC)
