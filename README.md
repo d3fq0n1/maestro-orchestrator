@@ -1,60 +1,89 @@
-# Maestro: Pluralising Synthetic Intelligence
-[![Sponsor](https://img.shields.io/badge/Sponsor-Maestro-blue?logo=github)](https://github.com/sponsors/d3fq0n1)
+# 🧠 Maestro-Orchestrator
 
-**Author**: [Defcon](https://defqon1.substack.com)  
-**License**: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)  
-**Status**: Early-stage framework proposal and philosophical scaffolding
+<p align="center">
+  <a href="https://github.com/sponsors/d3fq0n1">
+    <img src="https://img.shields.io/badge/Sponsor-Maestro-blue?logo=github" alt="Sponsor Maestro on GitHub">
+  </a>
+</p>
 
----
-
-## 🧠 What is Maestro?
-
-Maestro is a civic-minded orchestration framework for coordinating multiple large language models (LLMs) through pluralism, dissent-preserving synthesis, and analog verification.
-
-It is not another model. It is a **meta-architecture**: a process layer that routes prompts, preserves disagreement, and iteratively refines outputs based on real-world grounding.
-
-Rather than collapse reality into consensus, Maestro allows synthetic intelligence to evolve through structured contradiction and verification.
+**A self-improving orchestration framework for AI models** — designed to foster collaboration between independent systems, encourage internal debate, and elevate outcomes through multi-agent reasoning.
 
 ---
 
-## 🔧 Core Principles
+## 🚀 What Is Maestro?
 
-- **Pluralism**: Prompts route through many models; synthesis respects disagreement.
-- **Verification**: Synthetic claims escalate to Analog Verification Agents (AVAs) when grounded truth is required.
-- **Self-Refinement**: Orchestration logic evolves based on which dissenting outputs perform better over time.
+Maestro-Orchestrator is an experimental system that enables large language models (and potentially other AI systems) to **interact with one another recursively**, mediate disagreement, and synthesize answers through structured internal dialogue.
 
----
+Think of it as a conductor for the “Three Wisemen” — independent agents that converse, analyze, and vote before rendering a unified, harmonized output. It’s built to explore questions like:
 
-## 📘 Read the Whitepaper
-
-> _“If you believe truth should be plural, if you think disagreement is a resource — Maestro is yours.”_
-
-📄 [Read Full Whitepaper (Markdown)](./maestro-whitepaper.md)  
-📕 [Read Full Whitepaper (PDF)](./maestro-whitepaper-complete.pdf)  
-📰 [Substack Article](https://defqon1.substack.com/p/maestro-a-framework-for-coherent)
+- *What if GPTs didn’t just respond, but consulted each other?*
+- *What happens when intelligence is treated as plural, not singular?*
+- *Can AI be more than a mirror — can it be a chorus?*
 
 ---
 
-## 🧪 What You Can Do
+## ⚙️ Core Features
 
-- Fork the whitepaper and propose your own orchestration variations.
-- Prototype a routing engine or critic injector in your preferred language.
-- Design public visualizations of dissent.
-- Join discussions on epistemic plurality in AI.
-
----
-
-## 🤝 Call to Collaboration
-
-This is an invitation to **technologists, critics, civic actors, and skeptics**: Maestro needs your tension, your arguments, and your edge cases.
-
-📬 Pull requests, critiques, forks, and counter-manifestos are encouraged.
+- **Multi-model orchestration** (OpenAI, mock agents, custom agents)
+- **Recursive thinking loops**
+- **Majority consensus & composite synthesis**
+- Modular agent logic with dynamic memory
 
 ---
 
-## 🛡 License
+## 🧭 The Vision
 
-Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0)  
-Feel free to use, remix, translate, or rewrite — just share it back.
+> This project is built in a garage, by a father of three — one of whom has cerebral palsy — with no VC backing and no corporate agenda.  
+>  
+> Just time, conviction, and the belief that *if done right*, AI can help unite minds, not replace them.
+
+Maestro is my contribution to a future where artificial minds **disagree, deliberate, and learn** — not just respond.
+
+I believe in a world where open-source thinkers, parents, and self-taught builders have a seat at the table of innovation.
+
+And none of this would be possible without the unshakable support of my wife — my partner, my sanity, and the silent co-architect of every late-night breakthrough.
 
 ---
+
+## 📌 Why I Need Support
+
+This isn't just about code. It's about **time**, **compute**, and **hope**.
+
+Your sponsorship helps me:
+- Dedicate focused hours to open-source orchestration research.
+- Sustain development without selling out to hype cycles.
+- Keep AI collaborative, transparent, and independent.
+
+👉 [Become a GitHub Sponsor](https://github.com/sponsors/d3fq0n1)
+
+---
+
+## 🧪 Try It / Contribute
+
+This project is in early-stage but active development. Expect:
+
+- Rapid iteration  
+- Occasional weirdness  
+- Deep experimentation  
+
+> Contributions, feedback, and PRs welcome. Start with the [architecture overview](./docs/ARCHITECTURE.md) and current [agent schema](./agents/README.md).
+
+---
+
+## 📚 Related Posts
+
+- [Maestro on Hacker News](#) *(link when ready)*
+- [The Whitepaper on Substack](#) *(planned)*
+- [Progress updates on YouTube](#) *(coming soon)*
+
+---
+
+## 🫂 Gratitude
+
+To those who read this far, thank you.
+
+Maestro is built on love:  
+Love for my kids.  
+Love for what thinking machines might become.  
+Love for my wife, who has stood beside me through every doubt and dive into the unknown.  
+And love for the idea that ordinary people can still do extraordinary things.
