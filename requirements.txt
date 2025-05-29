@@ -1,2 +1,13 @@
-openai
-anthropic
+# Core dependencies
+openai>=1.0.0
+anthropic>=0.3.0
+
+# Development and testing
+pytest>=7.0.0
+python-dotenv>=1.0.0
+
+# Note:
+# If using older OpenAI client interfaces, you may need:
+# openai==0.28 (deprecated)
+
+# Run tests using: pytest tests/
