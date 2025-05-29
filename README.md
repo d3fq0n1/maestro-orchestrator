@@ -72,7 +72,6 @@ This project is in early-stage but active development. Expect:
 
 ## 📚 Related Posts
 
-- [Maestro on Hacker News](#) *(link when ready)*
 - [The Whitepaper on Substack](#) *(planned)*
 - [Progress updates on YouTube](#) *(coming soon)*
 
