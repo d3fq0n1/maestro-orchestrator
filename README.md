@@ -66,7 +66,7 @@ This project is in early-stage but active development. Expect:
 - Occasional weirdness  
 - Deep experimentation  
 
-> Contributions, feedback, and PRs welcome. Start with the [architecture overview](./docs/ARCHITECTURE.md) and current [agent schema](./agents/README.md).
+> 📄 **Documentation coming soon!** In the meantime, explore the source files and feel free to open issues or discussions.
 
 ---
 
