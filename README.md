@@ -1,4 +1,5 @@
 # Maestro: Pluralising Synthetic Intelligence
+[![Sponsor](https://img.shields.io/badge/Sponsor-Maestro-blue?logo=github)](https://github.com/sponsors/d3fq0n1)
 
 **Author**: [Defcon](https://defqon1.substack.com)  
 **License**: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)  
