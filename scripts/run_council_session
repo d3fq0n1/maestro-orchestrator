@@ -1,0 +1,51 @@
+# run_council_session.py
+
+import asyncio
+import sys
+from model_adapters import get_council_adapter
+from datetime import datetime
+import json
+
+# Format output
+
+def summarize_responses(question: str, responses: dict) -> dict:
+    timestamp = datetime.utcnow().isoformat()
+    return {
+        "timestamp": timestamp,
+        "question": question,
+        "responses": [
+            {
+                "model": model,
+                "reply": reply
+            } for model, reply in responses.items()
+        ]
+    }
+
+# Save to JSON log file
+
+def save_to_file(summary: dict, filename: Optional[str] = None):
+    if not filename:
+        filename = f"council_summary_{datetime.utcnow().strftime('%Y%m%dT%H%M%S')}.json"
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+    print(f"Session saved to {filename}")
+
+# Main execution
+
+async def run_session(question: str):
+    print(f"\n[Maestro Council Initiated]\nQuestion: {question}\n")
+    adapter = get_council_adapter()
+    responses = await adapter(question)
+
+    for model, reply in responses.items():
+        print(f"[{model}] → {reply}")
+
+    summary = summarize_responses(question, responses)
+    save_to_file(summary)
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python run_council_session.py \"Your question here\"")
+        sys.exit(1)
+    question_input = sys.argv[1]
+    asyncio.run(run_session(question_input))
