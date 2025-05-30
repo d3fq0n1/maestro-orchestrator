@@ -1,71 +1,52 @@
-import os
-from dotenv import load_dotenv
+# model_adapters.py
 
-# Load API keys from .env file
-load_dotenv()
+import asyncio
+import random
+from typing import Optional
 
-OPENAI_KEY = os.getenv("OPENAI_API_KEY")
-ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
-GOOGLE_KEY = os.getenv("GOOGLE_API_KEY")
+# Simulated delay and mock responses for fallback
+MOCK_RESPONSES = {
+    "Sol": "The meaning of life is to create meaning.",
+    "Axion": "There is no inherent meaning, only what we make of it.",
+    "Aria": "Life is a narrative shaped by connection and purpose.",
+    "Prism": "Meaning emerges from complexity and reflection.",
+    "Axiom": "Meaning is a logical structure derived from experience."
+}
 
-USE_REAL_MODELS = True
-
-def query_openai(prompt: str) -> str:
-    if not USE_REAL_MODELS:
-        return "[MOCK OPENAI RESPONSE]"
-
-    import openai
-    openai.api_key = OPENAI_KEY
-
+# Simulated real API call (to be replaced with actual API integration)
+async def query_model(model_name: str, question: str) -> str:
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=800
-        )
-        return response['choices'][0]['message']['content']
+        # TODO: Replace with real API logic per model
+        await asyncio.sleep(random.uniform(0.2, 1.2))
+        if random.random() < 0.15:
+            raise TimeoutError("Simulated API timeout")
+        return f"{model_name} says: '{MOCK_RESPONSES.get(model_name, 'Unknown response')}'"
     except Exception as e:
-        return f"[ERROR: OpenAI API failed: {e}]"
+        print(f"[WARN] {model_name} failed, using fallback: {e}")
+        return f"{model_name} fallback: '{MOCK_RESPONSES.get(model_name, 'No response available')}'"
 
-def query_anthropic(prompt: str) -> str:
-    if not USE_REAL_MODELS:
-        return "[MOCK CLAUDE/ANTHROPIC RESPONSE]"
+# Dispatcher to handle parallel model execution
+def get_council_adapter():
+    async def ask_council(question: str) -> dict:
+        tasks = []
+        council_names = ["Sol", "Axion", "Aria", "Prism", "Axiom"]
+        for name in council_names:
+            tasks.append(query_model(name, question))
 
-    import anthropic
-    client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+        responses = await asyncio.gather(*tasks)
+        return {name: response for name, response in zip(council_names, responses)}
 
-    try:
-        response = client.messages.create(
-            model="claude-3-opus-20240229",
-            max_tokens=800,
-            temperature=0.7,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return response.content[0].text
-    except Exception as e:
-        return f"[ERROR: Anthropic API failed: {e}]"
+    return ask_council
 
-def query_gemini(prompt: str) -> str:
-    if not USE_REAL_MODELS:
-        return "[MOCK GOOGLE GEMINI RESPONSE]"
+# Test runner
+if __name__ == "__main__":
+    import sys
 
-    import google.generativeai as genai
-    genai.configure(api_key=GOOGLE_KEY)
-
-    try:
-        model = genai.GenerativeModel("gemini-pro")
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        return f"[ERROR: Google Gemini API failed: {e}]"
-
-# Optionally add future placeholders for Axiom (Copilot/Azure) and Axion (Grok)
-
-def query_axiom(prompt: str) -> str:
-    return "[MOCK MICROSOFT COPILOT RESPONSE]"
-
-def query_axion(prompt: str) -> str:
-    return "[MOCK GROK/XAI RESPONSE - No Public API Yet]"
+    if len(sys.argv) < 2:
+        print("Usage: python model_adapters.py \"Your question here\"")
+    else:
+        question = sys.argv[1]
+        adapter = get_council_adapter()
+        results = asyncio.run(adapter(question))
+        for model, reply in results.items():
+            print(f"[{model}] {reply}")
