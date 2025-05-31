@@ -1,0 +1,47 @@
+[
+  {
+    "model": "Sol",
+    "claim": "Sol's synthesized claim for: What is the meaning of Life?",
+    "evidence": "Supporting reasoning from Sol on: What is the meaning of Life?",
+    "confidence": 0.8,
+    "timestamp": "2025-05-30T10:26:35.673294",
+    "question": "What is the meaning of Life?",
+    "consensus": false
+  },
+  {
+    "model": "Axion",
+    "claim": "Axion's synthesized claim for: What is the meaning of Life?",
+    "evidence": "Supporting reasoning from Axion on: What is the meaning of Life?",
+    "confidence": 0.8,
+    "timestamp": "2025-05-30T10:26:35.673294",
+    "question": "What is the meaning of Life?",
+    "consensus": true
+  },
+  {
+    "model": "Aria",
+    "claim": "Aria's synthesized claim for: What is the meaning of Life?",
+    "evidence": "Supporting reasoning from Aria on: What is the meaning of Life?",
+    "confidence": 0.9,
+    "timestamp": "2025-05-30T10:26:35.673294",
+    "question": "What is the meaning of Life?",
+    "consensus": false
+  },
+  {
+    "model": "Prism",
+    "claim": "Prism's synthesized claim for: What is the meaning of Life?",
+    "evidence": "Supporting reasoning from Prism on: What is the meaning of Life?",
+    "confidence": 0.8,
+    "timestamp": "2025-05-30T10:26:35.673294",
+    "question": "What is the meaning of Life?",
+    "consensus": false
+  },
+  {
+    "model": "Axiom",
+    "claim": "Axiom's synthesized claim for: What is the meaning of Life?",
+    "evidence": "Supporting reasoning from Axiom on: What is the meaning of Life?",
+    "confidence": 0.9500000000000001,
+    "timestamp": "2025-05-30T10:26:35.673294",
+    "question": "What is the meaning of Life?",
+    "consensus": false
+  }
+]
