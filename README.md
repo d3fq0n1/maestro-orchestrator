@@ -43,3 +43,32 @@ See `CONTRIBUTING.md` for details.
 ## License
 See `license.md`
 
+
+
+## 🎛️ CLI Showcase (Mock Orchestrator)
+
+The `maestro_cli.py` script provides a mock simulation of quorum-based decision-making among named agents.
+
+### Features:
+- Multi-round orchestration
+- Rotating agent roles (scribe, dissenter, strategist, analyst, arbiter)
+- Structured dissent + quorum enforcement (66% default)
+- JSON log output + persistent session history
+- Ready for future LLM integration (uncommentable stubs)
+
+### Usage:
+
+```bash
+# Run default 3-round session with verbose output
+python maestro_cli.py --verbose --rounds 3
+
+# Save session logs
+python maestro_cli.py --rounds 5 --save-log
+
+# Specify custom agents
+python maestro_cli.py --agents Alpha Beta Gamma --rounds 2
+```
+
+### Output:
+- Logs saved to `scripts/council_session/logs/`
+- Persistent history stored in `history/session_log.jsonl`
