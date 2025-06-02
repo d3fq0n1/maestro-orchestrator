@@ -1,0 +1,16 @@
+# Secrets
+.env
+*.env
+.env.*
+!env.example
+
+# Logs and outputs
+*.jsonl
+logs/
+history_log.jsonl
+session_log.jsonl
+node_modules
+.env
+dist
+.vite
+.DS_Store
