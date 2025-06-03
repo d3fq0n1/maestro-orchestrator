@@ -1,102 +1,109 @@
-# 🏗️ Architecture: Maestro-Orchestrator
+# Architecture: Maestro-Orchestrator
 
 ## System Overview
 
-Maestro-Orchestrator is designed as a modular, agent-based framework for conducting multi-model conversations and synthesizing responses through structured quorum logic.
-
-### 🎯 Core Principles
-
-* **Agent Independence:** Each AI agent responds in isolation, unaware of the others’ output.
-* **Quorum Consensus:** The orchestrator uses configurable quorum thresholds (default: 2/3) to determine agreement.
-* **Structured Dissent:** Minority opinions are preserved alongside majority answers for transparency.
+Maestro-Orchestrator is a modular, multi-agent orchestration system. It coordinates independent large language models (LLMs) to generate structured responses and reach consensus using quorum logic. The system emphasizes transparency, dissent preservation, and extensibility.
 
 ---
 
-## 🔧 Backend Components
+## Core Principles
+
+- **Agent Independence**  
+  Each agent responds to a prompt independently, without access to others’ outputs.
+
+- **Quorum Consensus**  
+  The orchestrator uses a configurable threshold (default: 2/3) to identify agreement among agents.
+
+- **Structured Dissent**  
+  Non-matching responses are preserved and returned to the user alongside the consensus.
+
+---
+
+## Backend Components
 
 ### `main.py`
-
-* FastAPI app
-* Exposes `POST /api/ask` for client queries
-* Loads API keys from `.env`
-* Calls orchestration engine with prompt
+- FastAPI application
+- Exposes `POST /api/ask`
+- Loads environment variables from `.env`
+- Sends prompt to orchestrator and returns structured results
 
 ### `orchestrator_foundry.py`
+- Core orchestration logic
+- Initializes agents (`Sol`, `Aria`, `Prism`, `TempAgent`)
+- Sends prompts asynchronously
+- Gathers responses and determines quorum + dissent
 
-* Initializes all agents (Sol, Aria, Prism, TempAgent)
-* Dispatches the prompt in parallel (async)
-* Aggregates agent responses
-* Computes quorum consensus + dissent
-* Returns a structured payload with all outputs
+### `orchestration_livefire.py`
+- CLI-compatible orchestrator
+- Enables local sessions and session history
+- Uses same quorum and agent logic as the web backend
 
 ---
 
-## 🧠 Agent Model
+## Agent Model
 
 Each agent has:
+- A unique name and API backend (OpenAI, Claude, Gemini, OpenRouter)
+- An assigned emoji for frontend display
+- A shared schema for prompt input and structured output
 
-* A distinct identity and source (e.g., OpenAI, Anthropic)
-* An assigned emoji (for UI display)
-* A shared schema for input/output handling
-
-> All agents respond to the same prompt with no knowledge of peer outputs.
+Agents operate in parallel and are blind to each other’s outputs.
 
 ---
 
-## 🖥️ Frontend Components
+## Frontend Components
 
 ### `ui/index.html`
-
-* HTML shell for Vite app
+- Entry point for Vite-based React app
 
 ### `ui/src/maestroUI.tsx`
-
-* React root with TailwindCSS styling
-* Submits prompt to `/api/ask`
-* Displays each agent's response with emoji
-* Renders consensus and dissent states
-
----
-
-## 🧪 Data Flow
-
-```
-[User Prompt] → /api/ask → [Orchestrator] → [All Agents]
-                                        ↓
-                                  [Responses]
-                                        ↓
-                            [Consensus + Dissent]
-                                        ↓
-                                 [Frontend Render]
-```
+- React interface using TailwindCSS
+- Sends prompt to `/api/ask`
+- Displays each agent's response with emoji
+- Renders quorum consensus and structured dissent
 
 ---
 
-## 🔒 Quorum Calculation Logic
+## Data Flow
+
+```
+[User Input]
+      ↓
+ /api/ask (FastAPI)
+      ↓
+[Orchestrator Foundry]
+      ↓
+[Agents → Responses]
+      ↓
+[Quorum + Dissent Calculation]
+      ↓
+[Frontend Rendering]
+```
+
+---
+
+## Quorum Logic (Simplified)
 
 ```python
-# Pseudocode
 if matching_responses >= quorum_threshold:
-    result = "Consensus"
+    return "Consensus"
 else:
-    result = "No consensus"
-    preserve all responses for user
+    return "No consensus" and preserve all responses
 ```
 
 ---
 
-## ⚙️ Config
+## Configuration
 
-* `.env` file for API keys (template provided)
-* CORS enabled in FastAPI
+- Environment managed via `.env` (see `.env.template`)
+- CORS fully enabled for local and container development
+- Docker builds support full-stack orchestration
 
 ---
 
-## 📈 Extensibility
+## Extensibility (Planned for v0.3)
 
-Future modules (v0.3+) include:
-
-* R2 Engine: Enforce response scoring and reinforcement
-* Snapshot Ledger: Immutable history anchoring
-* MAGI Loop: Meta-agent audits for drift detection and ethics monitoring
-* CLI ↔ UI shared session history
+- **R2 Engine**: Score, reinforce, and learn from consensus patterns
+- **Snapshot Ledger**: Immutable logging of decisions and outcomes
+- **MAGI Loop**: Meta-agent layer for audit, drift detection, and ethical flags
+- **Unified Session Layer**: CLI and UI share common history and analysis
