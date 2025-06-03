@@ -1,19 +1,23 @@
 # Secrets
 .env
 *.env
-.env.*
-!env.example
+.env.*.local
+!.env.template
 
 # Logs and outputs
 *.jsonl
 logs/
 history_log.jsonl
 session_log.jsonl
-node_modules
-.env
-dist
-.vite
-.DS_Store
-.pyc
+
+# Node + frontend
+node_modules/
+dist/
+.vite/
+
+# Python cache
 __pycache__/
 *.pyc
+
+# MacOS trash
+.DS_Store
