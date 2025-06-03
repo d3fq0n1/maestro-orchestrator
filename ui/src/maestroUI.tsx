@@ -1,5 +1,5 @@
 // src/maestroUI.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 interface AgentResponses {
   [agent: string]: string;
@@ -41,9 +41,11 @@ export default function MaestroUI() {
 
       const data = await res.json();
       setHistory((prev) => [...prev, { prompt, ...data }]);
+      setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100);
     } catch (err) {
       console.error("API call failed:", err);
-      setHistory((prev) => [...prev, { prompt, error: "API call failed." }]);
+      setHistory((prev) => [...prev, { prompt, error: "❌ API call failed or server unavailable." }]);
+      setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100);
     } finally {
       setPrompt("");
       setLoading(false);
@@ -90,11 +92,14 @@ export default function MaestroUI() {
           <div key={idx} className="p-4 border border-zinc-700 rounded bg-zinc-800">
             <p className="text-sm text-zinc-400 mb-2">📝 {entry.prompt}</p>
             {entry.responses ? (
-              Object.entries(entry.responses).map(([agent, response]) => (
-                <div key={agent} className="mb-1">
-                  <strong>{agentEmojis[agent] || agent}: {agent}</strong> {response}
-                </div>
-              ))
+              Object.entries(entry.responses).map(([agent, response]) => {
+                const display = response?.trim() ? response : "⚠️ No response received.";
+                return (
+                  <div key={agent} className="mb-1">
+                    <strong>{agentEmojis[agent] || agent}: {agent}</strong> {display}
+                  </div>
+                );
+              })
             ) : (
               <p className="text-red-500 text-sm">{entry.error}</p>
             )}
