@@ -1,3 +1,104 @@
+# 🐳 Release Notes — Maestro-Orchestrator v0.2-webui
+
+**Release Date:** June 2025
+**Version:** v0.2-webui
+**Codename:** unified-container-release
+
+---
+
+## 🚀 Summary
+
+This release introduces a fully Dockerized, full-stack implementation of the Maestro-Orchestrator system:
+
+* 🧠 Multi-agent orchestration via FastAPI backend
+* 🌐 Integrated frontend (React + Vite) served via FastAPI static mount
+* 🧪 Container-ready `.env` setup with API key injection
+* ⚙️ Functional agent layer for Sol (GPT-4), Aria (Claude), Prism (Gemini), TempAgent (Mistral)
+
+---
+
+## ✨ Features
+
+* `/api/ask` endpoint accepts prompts and returns consensus+responses
+* `orchestrator_foundry.py` supports structured quorum logic
+* Frontend UI supports dark mode, emoji-mapped agents, and live history
+* Minimal React components with TailwindCSS for clean UI
+* Statically mounted Vite build with no external dependencies
+
+---
+
+## 🐳 Docker Workflow
+
+```bash
+# Build container
+$ docker build -t maestro-webui .
+
+# Run with environment
+$ docker run -d -p 8000:8000 --env-file .env maestro-webui
+```
+
+---
+
+## 🧱 File Highlights
+
+```
+├── main.py
+├── orchestrator_foundry.py
+├── agents/
+├── ui/                   # Vite+React frontend
+├── Dockerfile
+├── docker-compose.yml
+├── .env.template
+```
+
+---
+
+## 🔐 API Keys Expected
+
+* `OPENAI_API_KEY`
+* `ANTHROPIC_API_KEY`
+* `GOOGLE_API_KEY`
+* `OPENROUTER_API_KEY`
+
+Use `.env.template` to construct your own `.env` file.
+
+---
+
+## 🔄 Notable Changes Since v0.1
+
+* Containerization of entire stack
+* Removal of Flask remnants
+* Unified endpoint `/api/ask`
+* Vite JSX build errors fixed via tsconfig.json
+
+---
+
+## 📎 Notes
+
+* `tsconfig.json` has `noUnusedLocals` commented out during build phase
+* All agent errors are gracefully caught
+* Quorum vote logic remains modular for upgrade in v0.3
+
+---
+
+## 🏁 Next: v0.3 Plans
+
+* R2 engine (reinforcement + behavior indexing)
+* MAGI audit subsystem
+* Consensus snapshot ledger
+* CLI and UI alignment
+
+---
+
+Built with care by defcon. This is the first complete self-contained public-ready capsule.
+
+
+
+
+
+
+
+
 # Maestro-Orchestrator Release Notes
 
 ## 🧱 Project: Maestro-Orchestrator
