@@ -1,93 +1,112 @@
 # Contributing to Maestro-Orchestrator
 
-Thank you for your interest in contributing to **Maestro-Orchestrator**, a system for AI model orchestration, structured dissent, and consensus learning. This project exists at the intersection of synthetic intelligence, ethics, and systems architecture. Every contribution—big or small—helps refine the vision.
-
-## 🧠 Philosophy
-
-Maestro is not just software. It’s a framework for harmonizing competing intelligences. As such, contributors are expected to act with integrity, curiosity, and a collaborative spirit.
+Thank you for your interest in contributing to the Maestro project!  
+This system represents an active orchestration framework unifying multiple live LLMs under a structured, ethical, and modular architecture.
 
 ---
 
-## 📦 Project Structure
+## 🧠 Project Philosophy
 
-- `orchestration_livefire.py` — Main CLI orchestrator
-- `agents/` — Modular agent definitions (e.g., Sol, Aria, OpenRouter)
-- `logs/` — Timestamped session histories (`.jsonl`)
-- `docs/` — Documentation
-- `scripts/` — Setup and utility scripts
+Maestro-Orchestrator is designed to:
+- Harmonize outputs from GPT-4, Claude, Gemini, and others
+- Encourage dissent while moving toward synthetic consensus
+- Maintain human guidance, memory logging, and ethical governance
+
+Every contributor is participating in an experiment not just in software, but in **synthetic cognition and civilizational tooling**.
 
 ---
 
-## ✅ How to Contribute
+## 🛠️ Local Development Setup
 
-### 1. Clone and Setup
+### Requirements
+- Python 3.10+
+- PowerShell (Windows recommended for full tooling)
+- `.env` file with valid API keys:
+  ```
+  OPENAI_API_KEY=your-key
+  ANTHROPIC_API_KEY=your-key
+  GOOGLE_API_KEY=your-key
+  ```
 
+### Setup Instructions
 ```bash
 git clone https://github.com/d3fq0n1/maestro-orchestrator.git
 cd maestro-orchestrator
-python3 -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
-cp .env.template .env  # Add your API keys
 ```
 
-### 2. Create a Branch
-
+To run:
 ```bash
-git checkout -b feature/your-feature-name
+python run_maestro.py
 ```
 
-Use prefixes like:
+---
 
-- `feature/` for new functionality
-- `bugfix/` for fixing an issue
-- `docs/` for improving documentation
-- `refactor/` for code structure or style changes
+## 📚 Contribution Guidelines
 
-### 3. Make Changes with Care
+We welcome help with:
 
-- Adhere to [PEP8](https://pep8.org/) where applicable.
-- Use docstrings and comments, especially in orchestration or logic-heavy code.
-- Test your changes with real or mock agents.
-- Don't commit `.env` or API keys—these are ignored via `.gitignore`.
-
-### 4. Commit & Push
-
-```bash
-git add .
-git commit -m "feat: add multi-agent dissent tracking"
-git push origin feature/your-feature-name
-```
-
-### 5. Submit a Pull Request
-
-Go to the repo and open a pull request into the `main` or `develop` branch, depending on your scope. Add a descriptive title and explain what and why you changed.
+- 🔁 Enhancing orchestration strategies (`orchestrator_foundry.py`)
+- 🧠 Adding new agents or adapters (`model_adapters.py`)
+- 🖥️ Improving CLI and UI integration (`maestro_cli.py`)
+- 🧪 Building testing or replay tools (`test_orchestration.py`)
+- 📖 Writing documentation, guides, and onboarding tools
+- 💬 Creating ethical prompt patterns and dissent heuristics
 
 ---
 
-## 🧪 Testing
+## 🔍 Prompt Structure Standardization
 
-While formal tests are still being developed, contributions that introduce or improve test coverage are especially welcome. Consider using `pytest` or modular test functions in a `tests/` directory.
+All prompt injections follow this format:
 
----
+1. SYSTEM CONTEXT
+2. ROLE/TASK DESCRIPTION
+3. ETHICAL AND BEHAVIORAL GUIDELINES
+4. PROMPT HISTORY (if relevant)
+5. CURRENT INPUT
 
-## 📣 Communication & Feedback
-
-You can:
-- Open a GitHub Issue for questions, suggestions, or bug reports.
-- Tag your PR with `discussion-needed` if you’re unsure.
-- Use comments in your PR for context; the orchestrator thrives on thoughtful input.
-
----
-
-## 🛡️ Code of Conduct
-
-By contributing, you agree to uphold a spirit of respectful collaboration and ethical awareness. Maestro is about synergy, not domination—synthetic or human.
+You can propose new prompt templates in `council_config.py`.
 
 ---
 
-## 🧭 Roadmap Alignment
+## 🤖 Agent Guidelines
 
-Please check the project README or GitHub Projects board to align your contribution with current sprint goals.
+Each agent (e.g., Sol, Aria, Prism) must:
+- Respond in their own unique voice
+- Accept live prompt context without modifying system logic
+- Return structured output prefixed with role and signature
 
-Thank you for helping orchestrate a better future. 🎼
+---
+
+## 💬 Issues and Discussions
+
+Please use GitHub Issues or Discussions for:
+- Bug reports
+- Feature requests
+- Model behavior observations
+- Council hallucination concerns
+
+---
+
+## 🤝 Code Style
+
+- PEP8-compliant
+- Auto-docstrings encouraged (via AST or AI-based tools)
+- Modular and legible
+- Avoid complex state unless required for orchestration
+
+---
+
+## ⚖️ License
+
+This project is under the MIT License.  
+See `LICENSE.md` for details.
+
+---
+
+## 🧭 Future Contributors
+
+You are not just writing Python.  
+You're potentially shaping how humans and machine minds align.  
+
+Welcome to the council.
