@@ -3,13 +3,18 @@ import asyncio
 import httpx
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env from the same directory as this script
+dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(dotenv_path=dotenv_path)
 
 # === API KEYS from .env ===
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")  # For Gemini
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+# === Debug Print ===
+print("[Debug] .env path:", dotenv_path)
 
 # === Headers for each provider ===
 HEADERS = {

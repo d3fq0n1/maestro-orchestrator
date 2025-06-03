@@ -31,7 +31,8 @@ export default function MaestroUI() {
     if (!prompt.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/ask", {
+      const res = await fetch("http://localhost:8000/run_orchestration", {
+      
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
