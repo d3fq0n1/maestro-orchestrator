@@ -1,37 +1,42 @@
-# 📜 Changelog — Maestro-Orchestrator
+## [Unreleased]
 
-All notable changes to this project will be documented in this file.
+### Planned for 0.3.0
+
+- R2 Engine for scoring and consensus reinforcement
+- Immutable Snapshot Ledger
+- MAGI loop for meta-agent audits and drift detection
+- Unified session layer between CLI and UI
+- Capsule history anchoring and meta-analysis
 
 ---
 
-## \[v0.2-webui] — 2025-06-03
+## [0.2.0] - 2025-06
 
 ### Added
 
-* Fullstack Docker container (FastAPI + Vite React UI)
-* `/api/ask` endpoint for orchestration prompts
-* Static frontend mount via FastAPI with CORS
-* Agent emoji rendering and error handling in UI
-* `.env.template` support and Docker runtime injection
+- FastAPI backend with `/api/ask` POST route
+- Core orchestration engine modularized as `orchestrator_foundry.py`
+- Multi-agent architecture: Sol (OpenAI), Aria (Claude), Prism (Gemini), TempAgent (OpenRouter)
+- Vite + React + Tailwind frontend with live quorum rendering
+- Emoji mapping for agent identity in frontend
+- `.env.template` with API key structure and variable examples
 
 ### Fixed
 
-* TypeScript JSX build issues (`--jsx` flag added)
-* Request model mismatch between frontend and backend
-* Broken API call path from `run_orchestration` → `/api/ask`
+- CORS issues during local development
+- Basic frontend error handling for API failures
+
+### Changed
+
+- Improved backend modularity for orchestration logic
+- Consolidated usage and launch instructions in `README.md`
 
 ---
 
-## \[v0.1] — 2025-05-30
+## [0.1.0] - 2025-05
 
 ### Added
 
-* Initial orchestration agent logic
-* `orchestrator_foundry.py` with placeholder agents
-* CLI: `orchestration_livefire.py`
-* `.env` parsing and key loading
-* Manual session loop for debug use
-
----
-
-> This project follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and semantic versioning.
+- Initial proof-of-concept orchestrator script
+- Manual prompt input and round-robin agent polling
+- CLI-only prototype with JSON log output
