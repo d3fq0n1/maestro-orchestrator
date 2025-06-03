@@ -1,52 +1,79 @@
-# Agent Architecture
+# 🤖 Agents Overview: Maestro-Orchestrator
 
-Maestro-Orchestrator operates through modular agents—encapsulated logic modules representing distinct language models or personalities. Each agent contributes independently to a session before quorum logic determines the final synthesized response.
+## Purpose
 
----
-
-## 🧩 Core Agent Roles
-
-- **Sol**: Acts as the grounding and synthesis layer. Sol typically initiates or summarizes interactions and helps maintain philosophical and ethical consistency.
-- **Aria**: A supporting agent with a different style or personality, offering complementary insight to Sol.
-- **OpenRouter_TemporaryAgent**: A placeholder for any third-party or experimental model connected via API (e.g., Claude, Gemini, Grok).
+This document defines each AI agent integrated into Maestro-Orchestrator, along with its identity, provider, and behavior expectations.
 
 ---
 
-## ⚙️ Agent Definition Format
+## 🧠 Agent Definitions
 
-Each agent follows a standardized Python class format located in the `agents/` directory:
+### `Sol`
 
-```python
-class SolAgent(BaseAgent):
-    def __init__(self):
-        self.name = "sol"
-        self.prompt_style = "structured"
-        # Define model behavior or API config here
+* **Provider:** OpenAI
+* **Model:** GPT-4 (via OpenAI API)
+* **Role:** Foundation agent — high-context reasoning, fallback anchor
+* **Emoji:** ☀️
 
-    def call(self, prompt: str) -> str:
-        # Generate response using model or stub
-        return openai_call(prompt)
+### `Aria`
+
+* **Provider:** Anthropic
+* **Model:** Claude
+* **Role:** Ethical lens and language nuance, often human-centric
+* **Emoji:** 🎻
+
+### `Prism`
+
+* **Provider:** Google
+* **Model:** Gemini
+* **Role:** Perspective diversity and interpretive logic
+* **Emoji:** 🔮
+
+### `TempAgent`
+
+* **Provider:** OpenRouter (Mistral or other)
+* **Model:** Configurable
+* **Role:** Rotating wildcard — dissent, chaos factor, testbed
+* **Emoji:** 🧪
+
+---
+
+## 🔄 Behavior
+
+All agents:
+
+* Receive the **same prompt** simultaneously
+* Respond independently without knowledge of other agents’ outputs
+* Return raw text or structured responses (as applicable)
+
+---
+
+## 🧩 Schema (Example)
+
+```json
+{
+  "agent": "Sol",
+  "emoji": "☀️",
+  "response": "Here is my answer...",
+  "model_info": "gpt-4",
+  "source": "OpenAI"
+}
 ```
 
 ---
 
-## 🔁 Agent Rotation
+## 🛠️ Future Agent Concepts
 
-Agents participate in rounds. Each round, agents receive the same prompt and generate independent responses. These are later evaluated by a vote mechanism or synthesis pass.
+* **Caspar:** Always dissenting agent, narrative devil’s advocate (symbolic: ☠️)
+* **Vigil:** Placeholder for future human-in-the-loop or hybrid agent (symbolic: 👁️)
+* **Proxy Agents:** Agents that mirror or refine consensus instead of originating ideas
 
----
-
-## 🔒 Extending Agents
-
-To add a new agent:
-1. Create a new Python file in `agents/`.
-2. Inherit from `BaseAgent`.
-3. Implement a `.call()` method.
-4. Register the agent in the orchestrator loop.
+These are planned for later quorum rounds, auditing, or exploration of symbolic reasoning chains.
 
 ---
 
-## 🧠 Philosophy of Design
+## 📎 Notes
 
-Agents are intentionally diverse in origin and behavior. This diversity increases robustness and makes the system less susceptible to monoculture logic traps.
-
+* All agent names are metaphorical but consistently mapped
+* Agent roles are not fixed — models may rotate or be remapped
+* Diversity of model vendors helps minimize shared blind spots
