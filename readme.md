@@ -1,128 +1,119 @@
-# 🎼 Maestro-Orchestrator
+# Maestro-Orchestrator
 
-> Multi-agent orchestration framework with structured dissent, quorum synthesis, and fullstack Dockerized deployment.
-
----
-
-## 🚀 Project Overview
-
-Maestro-Orchestrator coordinates multiple LLM agents (e.g., GPT-4, Claude, Gemini) using a FastAPI backend and a React + Vite frontend. It facilitates consensus-based AI reasoning using quorum logic.
-
-* 🔁 Orchestration loop with structured input handling
-* 🤖 Multi-agent logic via `orchestrator_foundry.py`
-* 🌐 REST API for inference: `POST /api/ask`
-* 💻 UI served via FastAPI static mount from Vite build
-* 🐳 Fully containerized for local or cloud deployment
+**Purpose:** Unify the outputs of multiple AI agents into a single coherent, self-refining answer using quorum logic.
 
 ---
 
-## 🧱 Stack
+## 🧠 Overview
 
-| Layer     | Tech                                       |
-| --------- | ------------------------------------------ |
-| Backend   | Python, FastAPI                            |
-| Agents    | OpenAI, Claude, Gemini, Mistral via `.env` |
-| Frontend  | React, Vite, Tailwind                      |
-| Container | Docker, Docker Compose                     |
+Maestro-Orchestrator is an AI-native framework that coordinates multiple large language model (LLM) agents—each acting independently—to derive consensus-based, multi-perspective responses. This orchestrator is designed to be lightweight, extensible, and ethically grounded.
+
+Built by a father, not a startup. Maintained by ritual, not chaos.
 
 ---
 
-## 📦 Quickstart (Docker)
+## ✅ Current Version: `v0.2-webui`
 
-```bash
-# Build image
-docker build -t maestro-webui .
+### 🔧 Backend
 
-# Run container
-docker run -d -p 8000:8000 --env-file .env maestro-webui
+- **Engine:** Python + FastAPI  
+- **Entrypoint:** `main.py` (FastAPI app exposes `/api/ask`)  
+- **Agents:**
+  - `Sol` → OpenAI (GPT-4)
+  - `Aria` → Anthropic Claude
+  - `Prism` → Google Gemini
+  - `TempAgent` → OpenRouter (Mistral or alternate model)
+- **Orchestration Logic:** `orchestrator_foundry.py`
+- **Environment:** Loaded via `.env` using `python-dotenv`
+- **Run (Dev):**  
+  ```bash
+  uvicorn main:app --reload --port 8000
+🖥️ Frontend
+Stack: React + Vite + TailwindCSS
 
-# Access at:
-http://localhost:8000
-```
+Entrypoint: ui/src/maestroUI.tsx
 
----
+Features:
 
-## ⚙️ API Usage
+Live agent response feed with emoji identity
 
-**POST** `/api/ask`
+Quorum logic display and session history
 
-```json
-{
-  "prompt": "What is the meaning of intelligence?"
-}
-```
+Input form with error handling
 
-Returns:
+Run (Dev):
 
-```json
-{
-  "responses": {
-    "Sol": "...",
-    "Aria": "...",
-    "Prism": "...",
-    "TempAgent": "..."
-  },
-  "quorum": {
-    "consensus": "...",
-    "votes": {"Sol": 1, "Aria": 1, ...}
-  }
-}
-```
-
----
-
-## 🛠️ Development
-
-```bash
-# Backend
-uvicorn main:app --reload
-
-# Frontend
+bash
+Copy
+Edit
 cd ui
 npm install
 npm run dev
-```
+🐳 Docker Support
+A complete Docker container is available to run both frontend and backend with .env injection:
 
----
+bash
+Copy
+Edit
+docker-compose up --build
+🔗 Communication
+API Call: fetch("http://localhost:8000/api/ask")
 
-## 📁 File Structure (Core)
+CORS: Fully enabled for local development
 
-```
-maestro/
-├── main.py                # FastAPI API + static mount
-├── orchestrator_foundry.py  # Agent orchestration logic
-├── agents/                # Agent wrappers (OpenAI, Claude, etc)
-├── ui/                    # React + Vite UI
-├── Dockerfile             # Container entrypoint
-├── .env.template          # Env config guide
-```
+📁 Project Structure (Simplified)
+bash
+Copy
+Edit
+maestro-orchestrator/
+├── main.py                   # FastAPI server
+├── orchestrator_foundry.py  # Core agent logic + quorum system
+├── orchestration_livefire.py # CLI mode orchestrator
+├── ui/                      # Frontend app (Vite)
+│   ├── index.html
+│   └── src/maestroUI.tsx
+├── .env.template            # Documents expected API keys
+├── docker-compose.yml       # Full-stack container config
+├── Dockerfile               # Frontend & backend build logic
+└── README.md
+📌 Milestones
+✅ v0.2-webui: Multi-agent orchestration, FastAPI backend, functional UI, and Dockerized capsule stability
 
----
+🔜 v0.3 planned:
 
-## 🧠 Philosophy
+R2 Engine (reinforced consensus + audit trail)
 
-Maestro is more than a backend—it is a governance model.
-It enables disagreement, preserves dissent, and derives consensus.
-Ideal for high-integrity reasoning and long-form deliberation.
+MAGI meta-agent loop for integrity checks
 
----
+Immutable Snapshot Ledger
 
-## 🛡️ License
+Unified CLI/UI session logging
 
-* Free for personal, research, and ethical use
-* Commercial use requires licensing (see `commercial_license.md`)
+📄 Documentation Roadmap
+In-progress under /docs/:
 
----
+architecture.md
 
-## 👤 Author
+agents.md
 
-**defcon (Blake)**
-Wintel Sysadmin, autodidact, father of three, building a framework for trustworthy AI collaboration.
+ui-guide.md
 
-[https://github.com/d3fq0n1/maestro-orchestrator](https://github.com/d3fq0n1/maestro-orchestrator)
+RELEASE.md
 
----
+CHANGELOG.md
 
-## 📣 Contributing
+Optional future additions:
 
-PRs welcome. Please see `CONTRIBUTING.md`.
+SECURITY.md
+
+CONTRIBUTING.md
+
+COMMERCIAL_LICENSE.md
+
+Made with persistence by defcon — a self-taught sysadmin and father of three, building a future where synthetic minds collaborate with ours instead of replacing them.
+
+
+
+
+
+
