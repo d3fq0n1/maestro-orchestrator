@@ -1,3 +1,79 @@
+# Maestro-Orchestrator Release Notes
+
+## 🧱 Project: Maestro-Orchestrator
+
+A lightweight, AI-native orchestration engine enabling quorum-based collective reasoning across multiple language models. Built to stabilize synthetic conversation, preserve dissent, and render unified outputs through structured orchestration.
+
+---
+
+## 📦 Release: `v0.2-webui`
+
+**Release Date:** June 2025  
+**Status:** ✅ Stable
+
+---
+
+### 🔧 Backend
+
+- FastAPI server (`main.py`) with `/api/ask` POST route
+- Core orchestration logic in `orchestrator_foundry.py`
+- CLI orchestration available via `orchestration_livefire.py`
+- Agent framework includes:
+  - `Sol` → OpenAI (GPT-4)
+  - `Aria` → Claude (Anthropic)
+  - `Prism` → Gemini (Google)
+  - `TempAgent` → OpenRouter (e.g., Mistral)
+- Environment variables handled via `.env` and `python-dotenv`
+
+---
+
+### 🖥️ Frontend
+
+- React (Vite) + TailwindCSS stack
+- Real-time display of agent responses with emoji identities
+- Live quorum rendering and session history
+- Input form with error handling
+- Fully CORS-enabled for development
+
+---
+
+### 🐳 Containerization
+
+- Dockerfile supports two-stage build: frontend + backend
+- `docker-compose.yml` orchestrates full stack with `.env` passthrough
+- Successful build and test of full containerized environment
+
+---
+
+### 🧪 Testing & Validation
+
+- Verified roundtrip I/O from frontend to backend
+- Multi-agent responses rendered successfully in UI
+- CLI orchestrator verified in local test mode
+- Environment injection and Docker pathing confirmed functional
+
+---
+
+## ⏭️ On Deck for `v0.3`
+
+- **R2 Engine** – scoring, reinforcement, and quorum memory
+- **Snapshot Ledger** – cryptographic anchoring of session consensus
+- **MAGI loop** – meta-agents for drift detection and audit integrity
+- **Unified session store** – shared memory layer across CLI and UI
+
+---
+
+## 🪪 Author
+
+**defcon (Blake)** — Self-taught sysadmin and father of three.  
+Builder of ethics-aware systems. Not VC-funded. Not polished. Just focused.
+
+---
+
+📬 For updates, reflections, and philosophical rants:  
+[https://substack.com/@defqon1](https://substack.com/@defqon1)
+
+
 # 🐳 Release Notes — Maestro-Orchestrator v0.2-webui
 
 **Release Date:** June 2025
