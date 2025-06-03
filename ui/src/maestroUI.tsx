@@ -31,8 +31,7 @@ export default function MaestroUI() {
     if (!prompt.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/run_orchestration", {
-      
+      const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
@@ -91,7 +90,7 @@ export default function MaestroUI() {
       <div className="space-y-4">
         {history.map((entry, idx) => (
           <div key={idx} className="p-4 border border-zinc-700 rounded bg-zinc-800">
-            <p className="text-sm text-zinc-400 mb-2">📝 {entry.prompt}</p>
+            <p className="text-sm text-zinc-400 mb-2">🗒️ {entry.prompt}</p>
             {entry.responses ? (
               Object.entries(entry.responses).map(([agent, response]) => {
                 const display = response?.trim() ? response : "⚠️ No response received.";

@@ -42,3 +42,14 @@ async def ask(prompt: Prompt):
                 "votes": {}
             }
         }
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+# Serve the Vite-built UI from /ui/dist
+app.mount("/", StaticFiles(directory="ui/dist", html=True), name="static")
+
+# Optional: direct index.html fallback
+@app.get("/")
+async def serve_index():
+    return FileResponse("ui/dist/index.html")
