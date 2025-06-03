@@ -1,55 +1,57 @@
-# Maestro-Orchestrator Commercial Licensing Terms
+# 📄 Commercial License — Maestro-Orchestrator
 
-Copyright (C) 2025  
-Author: Blake (pseudonym: defcon)
-
----
-
-## 📜 Summary
-
-Maestro-Orchestrator is licensed under the GNU AGPL-3.0 for open-source use.  
-However, **if you wish to use this framework in a proprietary, commercial, or closed-source context**, you must obtain a commercial license.
-
-This ensures fair compensation and ethical oversight for the use of a powerful system designed for transparency, collaboration, and synthetic deliberation.
+**Project Name:** Maestro-Orchestrator
+**Author:** defcon (Blake)
+**Version:** v0.2-foundry-webui
+**Date:** June 2025
 
 ---
 
-## 💼 Commercial Use Includes (But Is Not Limited To):
+## 📜 License Summary
 
-- Integration into any **closed-source platform or product**
-- Use of Maestro-derived systems as part of a **paid subscription service**
-- Deployment within any **SaaS** or **enterprise AI offering**
-- Use in **corporate**, **government**, or **military contexts**
-- Development of **derivative works** for internal-only use without AGPL compliance
+Maestro-Orchestrator is dual-licensed:
 
----
-
-## 🤝 How to License Commercially
-
-To discuss commercial licensing terms:
-
-**Contact:**  
-📧 Email: `defqon1@protonmail.com`  
-🔗 GitHub: [github.com/d3fq0n1](https://github.com/d3fq0n1)  
-🧠 Substack: [substack.com/@defqon1](https://substack.com/@defqon1)
-
-Licensing can include:
-- Ongoing support
-- Architectural consulting
-- Ethical deployment auditing
-- White-label permission with attribution
+* **Non-commercial use:** Permitted under a custom permissive license for personal, educational, or non-profit use.
+* **Commercial use:** Requires written approval or paid licensing from the author.
 
 ---
 
-## 🚫 Unlicensed Commercial Use Is Prohibited
+## ✅ Permitted (Free, Non-Commercial)
 
-The author reserves the right to pursue legal and public recourse for violations.  
-Unlicensed use violates not only copyright law, but the ethical foundation of this project.
+* Personal experiments
+* Educational demos or research
+* Internal organizational prototyping (not sold or offered as a service)
+* Contributions or forks that preserve license notice
 
 ---
 
-## ⚖️ Why This Matters
+## ❌ Not Permitted Without License
 
-Maestro is not a toy. It is a framework for real-time AI governance and consensus engineering.  
-Use it right, or don't use it at all.
+* Integrating Maestro-Orchestrator into a paid SaaS or enterprise tool
+* Selling access to Maestro-powered products
+* Claiming exclusive derivative ownership of the orchestration logic
+* Redistributing under a different license
 
+---
+
+## 📝 Licensing for Commercial Use
+
+To obtain a commercial license:
+
+1. Contact the author via [GitHub](https://github.com/d3fq0n1) or Substack at [defqon1](https://substack.com/@defqon1)
+2. Outline intended use and scale
+3. Discuss ethical commitments and auditability standards
+
+Custom licenses may include:
+
+* Attribution requirements
+* API call caps or rate transparency
+* Co-governance agreements for forked systems
+
+---
+
+## ⚖️ Legal Disclaimer
+
+This software is provided *as is*, without warranty of any kind. The author is not liable for damages, misuse, or misrepresentation caused by improper usage of this orchestration framework.
+
+Use of this project constitutes acceptance of these terms.
