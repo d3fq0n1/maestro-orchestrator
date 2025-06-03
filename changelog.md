@@ -1,38 +1,37 @@
-[0.2.0] - 2025-06
+# 📜 Changelog — Maestro-Orchestrator
 
-Added
+All notable changes to this project will be documented in this file.
 
-FastAPI backend with /api/ask POST route
+---
 
-Core orchestration engine refactored into orchestrator_foundry.py
+## \[v0.2-webui] — 2025-06-03
 
-Multi-agent architecture: Sol (OpenAI), Aria (Claude), Prism (Gemini), TempAgent (OpenRouter)
+### Added
 
-Vite + React + Tailwind frontend with live quorum rendering
+* Fullstack Docker container (FastAPI + Vite React UI)
+* `/api/ask` endpoint for orchestration prompts
+* Static frontend mount via FastAPI with CORS
+* Agent emoji rendering and error handling in UI
+* `.env.template` support and Docker runtime injection
 
-Emoji mapping for agent identity
+### Fixed
 
-.env.template with config variable examples
+* TypeScript JSX build issues (`--jsx` flag added)
+* Request model mismatch between frontend and backend
+* Broken API call path from `run_orchestration` → `/api/ask`
 
-Fixed
+---
 
-CORS issues during local development
+## \[v0.1] — 2025-05-30
 
-Basic frontend error handling for API failures
+### Added
 
-Changed
+* Initial orchestration agent logic
+* `orchestrator_foundry.py` with placeholder agents
+* CLI: `orchestration_livefire.py`
+* `.env` parsing and key loading
+* Manual session loop for debug use
 
-Improved modularity in backend orchestration
+---
 
-Consolidated launch instructions in README
-
-[0.1.0] - 2025-05
-
-Added
-
-Proof-of-concept orchestrator script
-
-Manual prompt input and round-robin agent polling
-
-CLI-only prototype with local logging
-
+> This project follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and semantic versioning.
