@@ -1,23 +1,38 @@
-# Secrets
+## 🔐 Secrets
 .env
 *.env
 .env.*.local
 !.env.template
 
-# Logs and outputs
+## 🧾 Logs and Runtime Outputs
 *.jsonl
+*.log
 logs/
 history_log.jsonl
 session_log.jsonl
 
-# Node + frontend
+## 📦 Node / Frontend Artifacts
 node_modules/
 dist/
 .vite/
 
-# Python cache
+## 🐍 Python Cache and Build
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.egg-info/
+build/
+.eggs/
+.env.bak
 
-# MacOS trash
+## 🧪 Testing and Coverage
+.coverage
+coverage/
+.pytest_cache/
+
+## 🍎 macOS System Files
 .DS_Store
+# Python virtual environments
+venv/
+.venv/
