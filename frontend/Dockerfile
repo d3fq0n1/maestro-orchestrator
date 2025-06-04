@@ -1,11 +1,10 @@
-FROM node:20
+# Dockerfile (frontend) - Build React app to /dist
+FROM node:20-alpine as builder
 
 WORKDIR /app
 
-COPY package*.json ./
-
+COPY package.json package-lock.json ./
 RUN npm install
 
 COPY . .
-
-CMD ["npm", "run", "dev"]
+RUN npm run build

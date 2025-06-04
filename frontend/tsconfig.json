@@ -15,9 +15,7 @@
 
     /* Linting */
     "strict": true,
-    // "noUnusedLocals": true, // ⚠️ Temporarily disabled to suppress JSX import warnings during build
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 
