@@ -1,6 +1,6 @@
 # Maestro-Orchestrator
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
+[![License](https://img.shields.io/badge/license-Custom--Open--Use-blue.svg)](LICENSE.md)
 
 Maestro-Orchestrator is a lightweight, container-ready orchestration system for synthetic intelligence. It enables multiple AI agents (like ChatGPT, Claude, Gemini, and others) to collaborate, disagree, and reach consensus using quorum-based logic. Built for rapid prototyping and ethical AI governance, Maestro-Orchestrator is designed for both solo developers and research collectives.
 
@@ -119,7 +119,12 @@ To get started:
 
 ## 📜 License
 
-This project is licensed under the MIT License. See [LICENSE.md](LICENSE.md) for details.
+This project is released under a **custom open-use license**.
+
+- See [`LICENSE.md`](LICENSE.md) for open-source terms.
+- Commercial use requires a separate license — see [`commercial_license.md`](commercial_license.md).
+
+Unauthorized monetization, redistribution, or deployment of this system without an approved commercial license is prohibited.
 
 ---
 
