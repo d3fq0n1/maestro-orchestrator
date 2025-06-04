@@ -1,50 +1,62 @@
-# Maestro-Orchestrator Roadmap
+# 🧭 Maestro-Orchestrator Roadmap
 
-This roadmap outlines key development goals for Maestro-Orchestrator as it evolves from a proof-of-concept into a modular, open AI coordination framework.
-
----
-
-## ✅ Current Milestone: v0.1 - "Livefire"
-
-- [x] Interactive CLI orchestrator
-- [x] Modular agent structure (Sol, Aria, OpenRouter)
-- [x] Quorum logic with 66% threshold
-- [x] `.jsonl` session logging
-- [x] `.env` API management
+**Maintainer:** defcon (Blake)  
+**Current Version:** `v0.2-webui`  
+**Last Capsule:** ✅ Manual run validated  
+**Public Status:** Substack live, repo open  
+**Financial Target:** $2,200 (roof repair)
 
 ---
 
-## 🚧 In Progress: v0.2
+## ✅ Current Milestone: `v0.2-webui` (COMPLETE)
 
-- [ ] Refactor CLI for agent flexibility
-- [ ] Robust error handling per agent
-- [ ] Add persistent replay mode from logs
-- [ ] Modular quorum tuning
-- [ ] Front-end web UI (React)
-- [ ] Begin MAGI meta-agent stub
+**Goal:** Achieve stable cross-stack orchestration with minimal dependencies
 
----
-
-## 🧠 Visionary Goals (v0.3+)
-
-- Web UI with live visualization of agent outputs and quorum convergence
-- Self-updating MAGI agents with replay-fed insight
-- Real-time anomaly detection via R2 Engine
-- Snapshot-based consensus ledger (immutable insight graph)
-- Integration of locally hosted LLMs for offline/hybrid use
-- Public participation system for human-in-the-loop reinforcement
+**Highlights:**
+- FastAPI backend @ `/api/ask`
+- React/Vite UI with agent rendering + quorum display
+- CLI logic validated (`orchestration_livefire.py`)
+- Drift-checks passed (agents.md, quorum.py stable)
+- Manual verification script: `manual_verification.py`
+- Substack signal deployed with real voice + fundraising CTA
 
 ---
 
-## 🛡️ Governance Goals
+## 🔭 Next Milestone: `v0.3-magi`
 
-- Introduce protocol for dissent weight balancing
-- Ethics module to cap agent dominance or skew
-- Open ledger for all consensus outcomes and dissent traces
+**Goal:** Introduce orchestration oversight + simulation tooling
+
+**Tasks:**
+- [ ] 🐳 **Docker Deployment**: Full-stack container test
+- [ ] 🧠 **MAGI Meta-Agent Stub**: Behavior indexing + drift alerts
+- [ ] 📚 **Docs Polish**: `install.md`, `index.md`, UI walkthrough
+- [ ] ⏱ **Quickstart Timer (optional)**: Real-time quorum simulation
+- [ ] 💾 **Exportable Capsule**: Snapshot + transport capsule format
+- [ ] 🌐 **GitHub Pages/Web UI**: Optional lightweight hosting
 
 ---
 
-## 🌍 Long-Term Goal
+## 🧱 Planned Milestone: `v0.4-multimodel`
 
-A fully transparent, ethically governed platform for synthetic consensus learning—enabling communities, researchers, and systems to collaborate on truth generation without monopolistic control.
+**Goal:** Real multi-model orchestration with live APIs
 
+**Scope:**
+- Claude (Aria), Gemini (Prism), OpenRouter agent integration
+- Live quorum logic with session memory
+- Public-facing interactive POC
+- Model slot rotation + structured dissent enforcement
+- Data persistence layer for transcript + output logging
+
+---
+
+## 🌎 Long-Term Vision
+
+| Goal              | Description |
+|-------------------|-------------|
+| 🤖 MAGI Cluster    | Self-auditing meta-agents to detect drift, flag inconsistencies, and reinforce epistemic integrity |
+| 🧬 R2 Engine       | Rapid Reinforcement indexer that prioritizes trust-weighted answers from multi-agent consensus |
+| 📜 Consensus Ledger | Encrypted immutable records of settled outputs + dissent snapshots (anti-drift ledger) |
+| 🔐 Privacy Capsule | Personal orchestrator instance for private use, audit-safe and offline-capable |
+| 🎓 Ethical Schooling | Human-guided quorum training on ethics, memory, and consensus through simulated feedback loops |
+
+---
