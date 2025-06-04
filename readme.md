@@ -1,119 +1,126 @@
 # Maestro-Orchestrator
 
-**Purpose:** Unify the outputs of multiple AI agents into a single coherent, self-refining answer using quorum logic.
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
+
+Maestro-Orchestrator is a lightweight, container-ready orchestration system for synthetic intelligence. It enables multiple AI agents (like ChatGPT, Claude, Gemini, and others) to collaborate, disagree, and reach consensus using quorum-based logic. Built for rapid prototyping and ethical AI governance, Maestro-Orchestrator is designed for both solo developers and research collectives.
+
+> “Structure preserves dissent. Consensus refines it.”
 
 ---
 
-## 🧠 Overview
+## ✨ Features
 
-Maestro-Orchestrator is an AI-native framework that coordinates multiple large language model (LLM) agents—each acting independently—to derive consensus-based, multi-perspective responses. This orchestrator is designed to be lightweight, extensible, and ethically grounded.
+- **Multi-Agent Architecture**  
+  Includes built-in support for OpenAI, Anthropic, Google, and OpenRouter agents.
 
-Built by a father, not a startup. Maintained by ritual, not chaos.
+- **Orchestration Engine**  
+  FastAPI backend with a single `POST /api/ask` endpoint that drives agent collaboration.
+
+- **Frontend UI**  
+  Vite-powered React interface shows prompt input, agent responses, and consensus status.
+
+- **Quorum Logic**  
+  Structured debate with 66% consensus requirement. Visual quorum display coming soon.
+
+- **Session Logging**  
+  Logs each orchestration session to a `.jsonl` file for future meta-agent analysis.
+
+- **Container Ready**  
+  Multi-stage `Dockerfile` and `docker-compose.yml` included for one-command spin-up.
+
+- **Safe Configuration**  
+  Uses `.env` for secrets. `.env.example` and `.gitignore` are preconfigured for safety.
+
+- **Pluggable Agents**  
+  Easily add or swap in new agents using the modular `agent_*.py` format.
 
 ---
 
-## ✅ Current Version: `v0.2-webui`
+## 🚀 Quickstart Guide
 
-### 🔧 Backend
+### 1. Clone the Repo
 
-- **Engine:** Python + FastAPI  
-- **Entrypoint:** `main.py` (FastAPI app exposes `/api/ask`)  
-- **Agents:**
-  - `Sol` → OpenAI (GPT-4)
-  - `Aria` → Anthropic Claude
-  - `Prism` → Google Gemini
-  - `TempAgent` → OpenRouter (Mistral or alternate model)
-- **Orchestration Logic:** `orchestrator_foundry.py`
-- **Environment:** Loaded via `.env` using `python-dotenv`
-- **Run (Dev):**  
-  ```bash
-  uvicorn main:app --reload --port 8000
-🖥️ Frontend
-Stack: React + Vite + TailwindCSS
+```bash
+git clone https://github.com/d3fq0n1/maestro-orchestrator.git
+cd maestro-orchestrator
+```
 
-Entrypoint: ui/src/maestroUI.tsx
+### 2. Configure `.env`
 
-Features:
+Create a `.env` file in the root folder, based on `.env.example`:
 
-Live agent response feed with emoji identity
+```env
+OPENAI_API_KEY=your-openai-key
+ANTHROPIC_API_KEY=your-anthropic-key
+OPENROUTER_API_KEY=your-openrouter-key
+```
 
-Quorum logic display and session history
+### 3. Run Locally (Dev Mode)
 
-Input form with error handling
+```bash
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
 
-Run (Dev):
+Then open your browser to: [http://localhost:8000](http://localhost:8000)
 
-bash
-Copy
-Edit
-cd ui
-npm install
-npm run dev
-🐳 Docker Support
-A complete Docker container is available to run both frontend and backend with .env injection:
+### 4. Or Use Docker
 
-bash
-Copy
-Edit
+```bash
 docker-compose up --build
-🔗 Communication
-API Call: fetch("http://localhost:8000/api/ask")
+```
 
-CORS: Fully enabled for local development
+After build completes, access at: [http://localhost:8000](http://localhost:8000)
 
-📁 Project Structure (Simplified)
-bash
-Copy
-Edit
-maestro-orchestrator/
-├── main.py                   # FastAPI server
-├── orchestrator_foundry.py  # Core agent logic + quorum system
-├── orchestration_livefire.py # CLI mode orchestrator
-├── ui/                      # Frontend app (Vite)
-│   ├── index.html
-│   └── src/maestroUI.tsx
-├── .env.template            # Documents expected API keys
-├── docker-compose.yml       # Full-stack container config
-├── Dockerfile               # Frontend & backend build logic
-└── README.md
-📌 Milestones
-✅ v0.2-webui: Multi-agent orchestration, FastAPI backend, functional UI, and Dockerized capsule stability
+---
 
-🔜 v0.3 planned:
+## 🧪 Usage Example
 
-R2 Engine (reinforced consensus + audit trail)
+Send a prompt to the orchestrator via API or UI:
 
-MAGI meta-agent loop for integrity checks
+```bash
+curl -X POST http://localhost:8000/api/ask \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Should AI have voting rights?"}'
+```
 
-Immutable Snapshot Ledger
+Results will include all agent responses and indicate quorum status.
 
-Unified CLI/UI session logging
+---
 
-📄 Documentation Roadmap
-In-progress under /docs/:
+## 📁 Project Structure
 
-architecture.md
+```
+├── agents/                # Agent definitions (sol, aria, etc.)
+├── app/                   # FastAPI backend
+├── frontend/              # React + Vite frontend
+├── logs/                  # Session transcripts
+├── .env.example           # Template for environment variables
+├── docker-compose.yml     # One-click container spin-up
+└── orchestration_livefire.py # CLI interface
+```
 
-agents.md
+---
 
-ui-guide.md
+## 🤝 Contributing
 
-RELEASE.md
+Contributions welcome! Feel free to fork the repo, suggest ideas, or submit PRs.
 
-CHANGELOG.md
+To get started:
 
-Optional future additions:
+- Create a `.env` using `.env.example`
+- Run the app locally or via Docker
+- Review `agent_mock.py` for how to add custom agents
+- See `CONTRIBUTING.md` (coming soon)
 
-SECURITY.md
+---
 
-CONTRIBUTING.md
+## 📜 License
 
-COMMERCIAL_LICENSE.md
+This project is licensed under the MIT License. See [LICENSE.md](LICENSE.md) for details.
 
-Made with persistence by defcon — a self-taught sysadmin and father of three, building a future where synthetic minds collaborate with ours instead of replacing them.
+---
 
-
-
-
-
-
+Built with love, urgency, and defiance by [defcon](https://substack.com/@defqon1) — for the people, not the platforms.
