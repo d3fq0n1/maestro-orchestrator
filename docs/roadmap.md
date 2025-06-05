@@ -1,62 +1,61 @@
-# 🧭 Maestro-Orchestrator Roadmap
 
-**Maintainer:** defcon (Blake)  
-**Current Version:** `v0.2-webui`  
-**Last Capsule:** ✅ Manual run validated  
-**Public Status:** Substack live, repo open  
-**Financial Target:** $2,200 (roof repair)
+# 🛣️ Maestro-Orchestrator Roadmap
 
----
-
-## ✅ Current Milestone: `v0.2-webui` (COMPLETE)
-
-**Goal:** Achieve stable cross-stack orchestration with minimal dependencies
-
-**Highlights:**
-- FastAPI backend @ `/api/ask`
-- React/Vite UI with agent rendering + quorum display
-- CLI logic validated (`orchestration_livefire.py`)
-- Drift-checks passed (agents.md, quorum.py stable)
-- Manual verification script: `manual_verification.py`
-- Substack signal deployed with real voice + fundraising CTA
+**Current Version:** v0.2-webui  
+**Last Updated:** 2025-06-05  
+**Maintainer:** defcon
 
 ---
 
-## 🔭 Next Milestone: `v0.3-magi`
+## ✅ Completed Milestones
 
-**Goal:** Introduce orchestration oversight + simulation tooling
-
-**Tasks:**
-- [ ] 🐳 **Docker Deployment**: Full-stack container test
-- [ ] 🧠 **MAGI Meta-Agent Stub**: Behavior indexing + drift alerts
-- [ ] 📚 **Docs Polish**: `install.md`, `index.md`, UI walkthrough
-- [ ] ⏱ **Quickstart Timer (optional)**: Real-time quorum simulation
-- [ ] 💾 **Exportable Capsule**: Snapshot + transport capsule format
-- [ ] 🌐 **GitHub Pages/Web UI**: Optional lightweight hosting
+- 🔁 **Core Orchestration Logic** – Functional quorum-based multi-agent orchestration
+- 🧠 **Agent Roles System** – Randomized agent rotation to avoid bias accumulation
+- 📡 **FastAPI Backend** – Exposes `/api/ask` endpoint for live prompt orchestration
+- 🖥️ **React Web UI** – Functional frontend displaying agent output and consensus
+- 🐳 **Full Containerization** – Docker support for one-step deployment of backend + frontend
+- 🧪 **CLI Fallback** – Standalone session runner (`orchestration_livefire.py`)
+- 🔐 **License Split** – Custom open-use license and commercial terms clarified
 
 ---
 
-## 🧱 Planned Milestone: `v0.4-multimodel`
+## 🚧 Active Development (v0.3 Goals)
 
-**Goal:** Real multi-model orchestration with live APIs
-
-**Scope:**
-- Claude (Aria), Gemini (Prism), OpenRouter agent integration
-- Live quorum logic with session memory
-- Public-facing interactive POC
-- Model slot rotation + structured dissent enforcement
-- Data persistence layer for transcript + output logging
+- 📊 **Dissent Analysis** – Track and visualize disagreements in agent outputs
+- 🧬 **Reinforcement Loop** – Feed consensus outcomes into fine-tuning or snapshot logs
+- 🧱 **UI Enhancements** – Add tooltips, loading indicators, and error handling
+- 📂 **Session History Logging** – Persist and replay orchestration sessions
+- 🔎 **Drift Detection** – Meta-agent layer to compare outputs over time for stability
+- 🧩 **Module Isolation** – Refactor agent logic into swappable, testable components
 
 ---
 
-## 🌎 Long-Term Vision
+## 🌐 Planned Milestones
 
-| Goal              | Description |
-|-------------------|-------------|
-| 🤖 MAGI Cluster    | Self-auditing meta-agents to detect drift, flag inconsistencies, and reinforce epistemic integrity |
-| 🧬 R2 Engine       | Rapid Reinforcement indexer that prioritizes trust-weighted answers from multi-agent consensus |
-| 📜 Consensus Ledger | Encrypted immutable records of settled outputs + dissent snapshots (anti-drift ledger) |
-| 🔐 Privacy Capsule | Personal orchestrator instance for private use, audit-safe and offline-capable |
-| 🎓 Ethical Schooling | Human-guided quorum training on ethics, memory, and consensus through simulated feedback loops |
+- 🌍 **Decentralized Consensus Layer** – Future module allowing cross-host quorum
+- 💡 **Public Demo Endpoint** – Limited-use hosted version with transparent logging
+- 📘 **Expanded Documentation** – Add markdown docs on quorum theory, dissent modeling
+- 🧑‍💻 **Contributor Onboarding** – Launch `CONTRIBUTING.md` with examples and task tags
+- 💬 **Multilingual Agent Support** – Introduce language specialization agents
 
 ---
+
+## 🤝 Community & Contributions
+
+We welcome contributors who align with the ethos of epistemic humility, transparency, and structured dissent. If you're a dev, researcher, or curious observer—jump in. See:
+
+> `CONTRIBUTING.md` (coming soon)  
+> [substack.com/@defqon1](https://substack.com/@defqon1) for project essays
+
+---
+
+## 🧠 Guiding Principles
+
+- Preserve dissent
+- Prevent stagnation
+- Embrace disagreement as structure
+- Always show your work
+
+---
+
+Stay grounded. Build with care.
