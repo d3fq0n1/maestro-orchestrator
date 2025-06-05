@@ -15,7 +15,7 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - 🗳️ **Quorum Consensus** — 66% agreement logic with dissent logging
 - 💻 **React/Vite Frontend** — Simple, modular web UI (now containerized)
 - 🐳 **Docker Support** — One-step spin-up of both frontend and backend
-- 📜 **CLI Option** — Mock CLI run via `orchestration_livefire.py`
+- 📜 **CLI Option** — Mock CLI run via `orchestration_livefire.py` [Can be live if you have API keys configured in your .env)
 
 ---
 
