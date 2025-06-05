@@ -1,112 +1,161 @@
 # Contributing to Maestro-Orchestrator
 
-Thank you for your interest in contributing to the Maestro project!  
-This system represents an active orchestration framework unifying multiple live LLMs under a structured, ethical, and modular architecture.
+Thank you for your interest in contributing to Maestro-Orchestrator!  
+This project pluralizes synthetic intelligence by enabling multiple AI agents to collaborate, dissent, and reach consensus using quorum-based logic. Your contributions help advance this vision.
 
 ---
 
-## 🧠 Project Philosophy
+## Table of Contents
 
-Maestro-Orchestrator is designed to:
-- Harmonize outputs from GPT-4, Claude, Gemini, and others
-- Encourage dissent while moving toward synthetic consensus
-- Maintain human guidance, memory logging, and ethical governance
-
-Every contributor is participating in an experiment not just in software, but in **synthetic cognition and civilizational tooling**.
+- [Getting Started](#getting-started)
+- [Development Environment Setup](#development-environment-setup)
+- [Coding Standards](#coding-standards)
+- [Testing](#testing)
+- [Submitting Changes](#submitting-changes)
+- [Community Guidelines](#community-guidelines)
+- [License](#license)
 
 ---
 
-## 🛠️ Local Development Setup
+## Getting Started
 
-### Requirements
-- Python 3.10+
-- PowerShell (Windows recommended for full tooling)
-- `.env` file with valid API keys:
-  ```
-  OPENAI_API_KEY=your-key
-  ANTHROPIC_API_KEY=your-key
-  GOOGLE_API_KEY=your-key
-  ```
+To begin:
 
-### Setup Instructions
+1. **Fork the repository** using GitHub's UI.
+2. **Clone your fork**:
+   ```bash
+   git clone https://github.com/your-username/maestro-orchestrator.git
+   cd maestro-orchestrator
+   ```
+3. **Create a feature branch**:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+---
+
+## Development Environment Setup
+
+### Prerequisites
+
+- **Python 3.8+**
+- **Node.js** + **npm** (for frontend)
+- **Docker** + **docker-compose** (optional for full containerization)
+
+### Backend (FastAPI)
+
+1. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # Windows: venv\Scripts\activate
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Configure environment:
+   ```bash
+   cp .env.example .env
+   # Edit .env and insert valid API keys
+   ```
+4. Launch API:
+   ```bash
+   uvicorn app.main:app --reload --port 8000
+   ```
+
+### Frontend (React + Vite)
+
+1. From project root:
+   ```bash
+   cd frontend
+   npm install
+   ```
+2. Run development server:
+   ```bash
+   npm run dev
+   ```
+
+The frontend will be served at `http://localhost:3000`.
+
+---
+
+## Using Docker
+
+To run both backend and frontend together:
+
 ```bash
-git clone https://github.com/d3fq0n1/maestro-orchestrator.git
-cd maestro-orchestrator
-pip install -r requirements.txt
+docker-compose up --build
 ```
 
-To run:
-```bash
-python run_maestro.py
-```
+This spins up the entire system in containers.
 
 ---
 
-## 📚 Contribution Guidelines
+## Coding Standards
 
-We welcome help with:
-
-- 🔁 Enhancing orchestration strategies (`orchestrator_foundry.py`)
-- 🧠 Adding new agents or adapters (`model_adapters.py`)
-- 🖥️ Improving CLI and UI integration (`maestro_cli.py`)
-- 🧪 Building testing or replay tools (`test_orchestration.py`)
-- 📖 Writing documentation, guides, and onboarding tools
-- 💬 Creating ethical prompt patterns and dissent heuristics
+- **Python**: Follow [PEP8](https://peps.python.org/pep-0008/). Use `black` for formatting and `flake8` for linting.
+- **JavaScript/TypeScript**: Use `eslint` and `prettier`.
+- Include inline comments where logic is complex or orchestration is non-obvious.
+- Write meaningful commit messages (e.g. `fix: quorum logic rounding error`).
 
 ---
 
-## 🔍 Prompt Structure Standardization
+## Testing
 
-All prompt injections follow this format:
+### Backend
 
-1. SYSTEM CONTEXT
-2. ROLE/TASK DESCRIPTION
-3. ETHICAL AND BEHAVIORAL GUIDELINES
-4. PROMPT HISTORY (if relevant)
-5. CURRENT INPUT
+- Use `pytest`:
+  ```bash
+  pytest tests/
+  ```
 
-You can propose new prompt templates in `council_config.py`.
+### Frontend
 
----
+- Use `jest` and `react-testing-library`:
+  ```bash
+  cd frontend
+  npm test
+  ```
 
-## 🤖 Agent Guidelines
-
-Each agent (e.g., Sol, Aria, Prism) must:
-- Respond in their own unique voice
-- Accept live prompt context without modifying system logic
-- Return structured output prefixed with role and signature
+Ensure all tests pass before submitting PRs.
 
 ---
 
-## 💬 Issues and Discussions
+## Submitting Changes
 
-Please use GitHub Issues or Discussions for:
-- Bug reports
-- Feature requests
-- Model behavior observations
-- Council hallucination concerns
-
----
-
-## 🤝 Code Style
-
-- PEP8-compliant
-- Auto-docstrings encouraged (via AST or AI-based tools)
-- Modular and legible
-- Avoid complex state unless required for orchestration
+1. Add and commit:
+   ```bash
+   git add .
+   git commit -m "short but clear description"
+   ```
+2. Push your branch:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+3. Open a Pull Request via GitHub. Describe your change clearly. Reference any related issues.
 
 ---
 
-## ⚖️ License
+## Community Guidelines
 
-This project is under the MIT License.  
-See `LICENSE.md` for details.
+- **Respect dissent** – this project is built around diversity of thought, even among machines.
+- **Keep it constructive** – suggest improvements with context and intent.
+- **Use issues** – report bugs, propose ideas, or ask questions via GitHub Issues.
 
 ---
 
-## 🧭 Future Contributors
+## License
 
-You are not just writing Python.  
-You're potentially shaping how humans and machine minds align.  
+By contributing, you agree that your contributions will be licensed under the project's terms.
 
-Welcome to the council.
+- [LICENSE.md](LICENSE.md) (custom license)
+- [commercial_license.md](commercial_license.md) (for use terms)
+
+---
+
+For more context, refer to:
+- [`README.md`](./README.md)
+- [`agents.md`](./docs/agents.md)
+- [`quorum_logic.md`](./docs/quorum_logic.md)
+
+We’re building a better kind of intelligence—together.
