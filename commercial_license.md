@@ -1,57 +1,82 @@
-# 📄 Commercial License — Maestro-Orchestrator
 
-**Project Name:** Maestro-Orchestrator
-**Author:** defcon (Blake)
-**Version:** v0.2-foundry-webui
-**Date:** June 2025
+# 💼 Maestro-Orchestrator Commercial License
 
----
-
-## 📜 License Summary
-
-Maestro-Orchestrator is dual-licensed:
-
-* **Non-commercial use:** Permitted under a custom permissive license for personal, educational, or non-profit use.
-* **Commercial use:** Requires written approval or paid licensing from the author.
+**Version:** v1.0  
+**Last Updated:** 2025-06-05  
+**Author:** defcon (d3fq0n1)  
+**Contact:** Reach out via GitHub or Substack: [substack.com/@defqon1](https://substack.com/@defqon1)
 
 ---
 
-## ✅ Permitted (Free, Non-Commercial)
+## Overview
 
-* Personal experiments
-* Educational demos or research
-* Internal organizational prototyping (not sold or offered as a service)
-* Contributions or forks that preserve license notice
+This document outlines the terms under which commercial entities or individuals may license the Maestro-Orchestrator system for use in for-profit products, services, or infrastructure.
 
----
-
-## ❌ Not Permitted Without License
-
-* Integrating Maestro-Orchestrator into a paid SaaS or enterprise tool
-* Selling access to Maestro-powered products
-* Claiming exclusive derivative ownership of the orchestration logic
-* Redistributing under a different license
+Use of Maestro-Orchestrator in any commercial context **requires explicit agreement with the author.**
 
 ---
 
-## 📝 Licensing for Commercial Use
+## Covered Assets
 
-To obtain a commercial license:
+This license applies to:
 
-1. Contact the author via [GitHub](https://github.com/d3fq0n1) or Substack at [defqon1](https://substack.com/@defqon1)
-2. Outline intended use and scale
-3. Discuss ethical commitments and auditability standards
-
-Custom licenses may include:
-
-* Attribution requirements
-* API call caps or rate transparency
-* Co-governance agreements for forked systems
+- Source code within this repository
+- Orchestration logic, quorum mechanisms, and agent structures
+- Containerized deployment configurations
+- Frontend UI elements and backend API routes
+- All intellectual architecture derived from this system
 
 ---
 
-## ⚖️ Legal Disclaimer
+## Commercial License Includes
 
-This software is provided *as is*, without warranty of any kind. The author is not liable for damages, misuse, or misrepresentation caused by improper usage of this orchestration framework.
+- Legal use of Maestro-Orchestrator in internal tooling, paid apps, hosted services, or enterprise systems
+- Ability to brand and customize UI components with credit retained
+- Access to private updates or extensions (case-by-case)
 
-Use of this project constitutes acceptance of these terms.
+---
+
+## Restrictions Without This License
+
+Without commercial license approval, **you may not**:
+
+- Monetize access to Maestro-Orchestrator or its derivatives
+- Bundle it into commercial products
+- Use it in proprietary research pipelines intended for profit
+- Circumvent licensing via shell entities or indirect deployment
+
+---
+
+## License Models (Indicative)
+
+Pricing and structure negotiable based on:
+
+| Use Case                | Model Type       | Example                                     |
+|-------------------------|------------------|---------------------------------------------|
+| Startup SaaS            | Per-deployment   | Pay-per-container instance with support     |
+| Internal Enterprise Use | Seat License     | Tiered users with flat rate tiers           |
+| Academic/Nonprofit      | Discounted       | Case-by-case with open-source commitments   |
+| Infrastructure Provider | Rev-share        | Based on usage or resale of orchestration   |
+
+---
+
+## How to Apply
+
+To request a commercial license:
+
+1. Email or message the author with:
+   - Entity name
+   - Intended use case
+   - Project scope
+2. You will receive a human response.
+3. We will work from mutual understanding — not legal obfuscation.
+
+---
+
+## Ethos
+
+This isn’t about locking people out. It’s about **preserving integrity, protecting ideals, and building sustainable trust** in a world overrun by surveillance capitalism.
+
+Let’s build it right.
+
+— defcon
