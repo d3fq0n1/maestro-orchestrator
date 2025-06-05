@@ -1,47 +1,62 @@
-# GNU AFFERO GENERAL PUBLIC LICENSE  
-**Version 3, 19 November 2007**
 
-© 2025 Blake (defcon)
+# 🛡️ Maestro-Orchestrator Open-Use License
 
-Everyone is permitted to copy and distribute verbatim copies of this license document. Modifications to the license text are not permitted.
-
----
-
-## 📜 Preamble
-
-The GNU Affero General Public License is a free, copyleft license for software and other kinds of works, specifically designed to ensure cooperation with the community in the case of network server software.
-
-Most software licenses are designed to restrict your freedom to share and modify software. By contrast, the AGPL ensures your rights to use, modify, and share — including over a network.
-
-If you run a modified version of this software publicly, **you must share the source code of that version**. This guarantees that cloud-based and backend-modified versions stay transparent to the community.
-
-You should have received a copy of the GNU AGPL along with this program. If not, see:  
-🔗 [https://www.gnu.org/licenses/](https://www.gnu.org/licenses/)
+**Version:** v1.0  
+**Last Updated:** 2025-06-05  
+**Author:** defcon (d3fq0n1)
 
 ---
 
-## ✅ Summary of Key Terms
+## Overview
 
-1. **Freedom to Use**  
-   Use this software for any purpose.
+Maestro-Orchestrator is released under a **custom open-use license** designed to foster innovation, ethical usage, and structured synthetic intelligence development.
 
-2. **Freedom to Study & Modify**  
-   You may inspect, learn from, and adapt the code to your needs.
-
-3. **Freedom to Share**  
-   Redistribution of original or modified versions is permitted.
-
-4. **Freedom to Improve**  
-   If you run a modified version over a network, you must share its source.
-
-5. **Commercial Use**  
-   Permitted only if you remain AGPL-compliant — or acquire a separate license (see [`COMMERCIAL_LICENSE.md`](./COMMERCIAL_LICENSE.md)).
+This license permits **non-commercial usage** with attribution and integrity.
 
 ---
 
-## 🚫 Warranty Disclaimer
+## ✅ You Are Free To
 
-This software is provided **as-is**, without warranty of any kind, express or implied, including but not limited to the warranties of **merchantability** or **fitness for a particular purpose**.
+- Use, modify, and distribute this software for **non-commercial** purposes
+- Study and build upon the source code
+- Share your modifications under the same open-use terms
+- Deploy the software internally or publicly for research, education, or personal exploration
 
-For full legal terms, see the complete license:  
-🔗 [https://www.gnu.org/licenses/agpl-3.0.html](https://www.gnu.org/licenses/agpl-3.0.html)
+---
+
+## ❌ You May Not
+
+- Sell, license, or include this software in **commercial products or services**
+- Use this project or its outputs to train models that are sold or monetized
+- Remove or obfuscate attribution to the original author or project
+- Misrepresent this project as your original creation
+
+---
+
+## 🔁 Conditions
+
+- Attribution must be clear in any user-facing interface or documentation
+- Derivative works must retain this license and remain open to public inspection
+- Use must not violate applicable laws or be used in systems of oppression or surveillance
+
+---
+
+## 💼 For Commercial Use
+
+If you wish to:
+
+- Integrate Maestro-Orchestrator into a paid product
+- Monetize services built on its architecture
+- Use it within a for-profit business context
+
+Please refer to the [`commercial_license.md`](./commercial_license.md) and contact the author directly to negotiate terms.
+
+---
+
+## 💬 Final Note
+
+This project was born from a desire to protect the integrity of AI reasoning and collective human-machine collaboration. If you believe in those values, you're welcome to build with it.
+
+All others: ask permission first.
+
+— defcon
