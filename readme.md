@@ -1,131 +1,140 @@
+
 # Maestro-Orchestrator
 
-[![License](https://img.shields.io/badge/license-Custom--Open--Use-blue.svg)](LICENSE.md)
+**Version:** v0.2-webui  
+**Status:** Stable, containerized, live orchestration system
 
-Maestro-Orchestrator is a lightweight, container-ready orchestration system for synthetic intelligence. It enables multiple AI agents (like ChatGPT, Claude, Gemini, and others) to collaborate, disagree, and reach consensus using quorum-based logic. Built for rapid prototyping and ethical AI governance, Maestro-Orchestrator is designed for both solo developers and research collectives.
-
-> “Structure preserves dissent. Consensus refines it.”
-
----
-
-## ✨ Features
-
-- **Multi-Agent Architecture**  
-  Includes built-in support for OpenAI, Anthropic, Google, and OpenRouter agents.
-
-- **Orchestration Engine**  
-  FastAPI backend with a single `POST /api/ask` endpoint that drives agent collaboration.
-
-- **Frontend UI**  
-  Vite-powered React interface shows prompt input, agent responses, and consensus status.
-
-- **Quorum Logic**  
-  Structured debate with 66% consensus requirement. Visual quorum display coming soon.
-
-- **Session Logging**  
-  Logs each orchestration session to a `.jsonl` file for future meta-agent analysis.
-
-- **Container Ready**  
-  Multi-stage `Dockerfile` and `docker-compose.yml` included for one-command spin-up.
-
-- **Safe Configuration**  
-  Uses `.env` for secrets. `.env.example` and `.gitignore` are preconfigured for safety.
-
-- **Pluggable Agents**  
-  Easily add or swap in new agents using the modular `agent_*.py` format.
+Maestro-Orchestrator is a lightweight, container-ready orchestration engine that unifies multiple AI agents under a structured system of synthetic consensus and dissent. It enables real-time prompt routing through a rotating council of large language models, each with distinct capabilities, and synthesizes their output with quorum logic.
 
 ---
 
-## 🚀 Quickstart Guide
+## 🚀 Features
 
-### 1. Clone the Repo
+- ⚙️ **FastAPI Backend** — Live orchestration logic via `/api/ask`
+- 🧠 **Multi-Agent Council** — Models: Sol (OpenAI), Aria (Claude), Prism (Gemini), TempAgent (OpenRouter)
+- 🗳️ **Quorum Consensus** — 66% agreement logic with dissent logging
+- 💻 **React/Vite Frontend** — Simple, modular web UI (now containerized)
+- 🐳 **Docker Support** — One-step spin-up of both frontend and backend
+- 📜 **CLI Option** — Mock CLI run via `orchestration_livefire.py`
 
+---
+
+## 📦 Setup
+
+### 1. Local (dev)
 ```bash
 git clone https://github.com/d3fq0n1/maestro-orchestrator.git
 cd maestro-orchestrator
-```
-
-### 2. Configure `.env`
-
-Create a `.env` file in the root folder, based on `.env.example`:
-
-```env
-OPENAI_API_KEY=your-openai-key
-ANTHROPIC_API_KEY=your-anthropic-key
-OPENROUTER_API_KEY=your-openrouter-key
-```
-
-### 3. Run Locally (Dev Mode)
-
-```bash
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate  # or .\venv\Scripts\activate on Windows
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uvicorn api:app --reload
 ```
 
-Then open your browser to: [http://localhost:8000](http://localhost:8000)
+Frontend lives in the `frontend/` folder. To run manually:
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-### 4. Or Use Docker
-
+### 2. Containerized (recommended)
 ```bash
 docker-compose up --build
 ```
 
-After build completes, access at: [http://localhost:8000](http://localhost:8000)
+Frontend will be served at: [http://localhost:5173](http://localhost:5173)  
+Backend endpoint: [http://localhost:8000/api/ask](http://localhost:8000/api/ask)
 
 ---
 
-## 🧪 Usage Example
+## 🧠 Agent Council (v0.2 Roles)
 
-Send a prompt to the orchestrator via API or UI:
+| Agent    | Model Source     | Description                        |
+|----------|------------------|------------------------------------|
+| **Sol**  | OpenAI (GPT-4)    | Natural language programmer & scribe |
+| **Aria** | Claude (Anthropic) | Reflective moral and abstract agent |
+| **Prism**| Gemini (Google)   | Analytical and pattern-driven AI    |
+| **TempAgent**| OpenRouter     | Rotating agent for external model testing |
 
+Each session rotates agent roles randomly to avoid stagnation and echo chambers.
+
+---
+
+## 🤝 Consensus Model
+
+Maestro requires a **66% quorum** for a response to be marked as “agreed.” Dissenting responses are preserved for transparency and future reinforcement learning. This ensures creative tension and epistemic humility among models.
+
+---
+
+## 📤 API Example
+
+### `POST /api/ask`
+```json
+{
+  "prompt": "What are the ethical concerns of deploying autonomous drones?"
+}
+```
+
+Returns:
+```json
+{
+  "responses": {
+    "sol": "...",
+    "aria": "...",
+    "prism": "...",
+    "tempagent": "..."
+  },
+  "consensus": {
+    "agreement_ratio": 0.75,
+    "agreed": true,
+    "summary": "Consensus reached on ethical concerns."
+  }
+}
+```
+
+---
+
+## 🛠️ CLI Mode
+
+For local dev or testing without the UI:
 ```bash
-curl -X POST http://localhost:8000/api/ask \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Should AI have voting rights?"}'
-```
-
-Results will include all agent responses and indicate quorum status.
-
----
-
-## 📁 Project Structure
-
-```
-├── agents/                # Agent definitions (sol, aria, etc.)
-├── app/                   # FastAPI backend
-├── frontend/              # React + Vite frontend
-├── logs/                  # Session transcripts
-├── .env.example           # Template for environment variables
-├── docker-compose.yml     # One-click container spin-up
-└── orchestration_livefire.py # CLI interface
+python orchestration_livefire.py
 ```
 
 ---
 
-## 🤝 Contributing
+## 📚 Documentation
 
-Contributions welcome! Feel free to fork the repo, suggest ideas, or submit PRs.
-
-To get started:
-
-- Create a `.env` using `.env.example`
-- Run the app locally or via Docker
-- Review `agent_mock.py` for how to add custom agents
-- See `CONTRIBUTING.md` (coming soon)
+- [`agents.md`](./docs/agents.md)
+- [`roadmap.md`](./docs/roadmap.md)
+- [`quorum_logic.md`](./docs/quorum_logic.md) *(coming soon)*
 
 ---
 
-## 📜 License
+## 🔒 License
 
-This project is released under a **custom open-use license**.
+This project **does not** use the MIT license.
 
-- See [`LICENSE.md`](LICENSE.md) for open-source terms.
-- Commercial use requires a separate license — see [`commercial_license.md`](commercial_license.md).
+Instead, it operates under a **custom open-use license**, detailed here:
 
-Unauthorized monetization, redistribution, or deployment of this system without an approved commercial license is prohibited.
+- [`LICENSE.md`](./LICENSE.md)
+- [`commercial_license.md`](./commercial_license.md)
+
+Use is permitted with attribution. Commercial use requires an agreement.
 
 ---
 
-Built with love, urgency, and defiance by [defcon](https://substack.com/@defqon1) — for the people, not the platforms.
+## 🙌 Author
+
+**defcon** — autodidact sysadmin, father, builder of consensus AI systems  
+Follow: [substack.com/@defqon1](https://substack.com/@defqon1)
+
+---
+
+## 🧱 Future Work
+
+- Add dissent analysis module
+- Launch public demo endpoint
+- Reinforcement training pipeline
+- Extend to decentralized quorum network
