@@ -70,4 +70,4 @@ It means someone still cared.
 
 **Welcome. Let’s try to do better than what came before.**
 
-— defcon
+— blake
