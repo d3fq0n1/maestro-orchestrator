@@ -1,0 +1,1 @@
+The Humanity Core concept, Maestro, and all its components, introduced in 2025 by defcon/blake, represents an original synthesis of longitudinal EEG data with AI agent-templating. Any commercial use, derivation, or implementation of this concept without permission may constitute infringement.
