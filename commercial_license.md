@@ -1,3 +1,6 @@
+This license prohibits commercial use or redistribution of any component derived from or implementing the Humanity Core module (see HUMANITY_CORE.md) without explicit written consent.
+
+
 
 # 💼 Maestro-Orchestrator Commercial License
 
