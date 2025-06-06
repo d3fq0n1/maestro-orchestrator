@@ -1,4 +1,4 @@
-This license prohibits commercial use or redistribution of any component derived from or implementing the Humanity Core module (see HUMANITY_CORE.md) without explicit written consent.
+This license prohibits commercial use or redistribution of any component derived from or implementing the Humanity Core module, or other Maestro elements (see HUMANITY_CORE.md) without explicit written consent.
 
 
 
