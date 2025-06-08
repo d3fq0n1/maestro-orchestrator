@@ -1,11 +1,12 @@
 version: "3.9"
-
 services:
-  backend:
+  maestro:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      - .:/app
     env_file:
-      - .env  # This will only load if the user provides it locally
+      - .env
