@@ -5,8 +5,8 @@ This license prohibits commercial use or redistribution of any component derived
 # 💼 Maestro-Orchestrator Commercial License
 
 **Version:** v1.0  
-**Last Updated:** 2025-06-05  
-**Author:** defcon (d3fq0n1)  
+**Last Updated:** 2025-06-09 
+**Author:** defcon (d3fq0n1)  (aka Defcon, Aka Blake)
 **Contact:** Reach out via GitHub or Substack: [substack.com/@defqon1](https://substack.com/@defqon1)
 
 ---
