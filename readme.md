@@ -55,7 +55,7 @@ The core logic for multi-agent prompt orchestration lives in [`scripts/orchestra
 - **Sol** – OpenAI (GPT-4 / GPT-4o) via OpenAI API  
 - **Aria** – Claude (Opus / Sonnet) via Anthropic API  
 - **Prism** – Gemini (Pro) via Google Generative AI  
-- **OpenRouter** – Abstracted multi-model backend (e.g., Mixtral, GPT-4, Claude) via OpenRouter API  
+- **OpenRouter** – Abstracted multi-model backend (e.g., mistral, GPT-4, Claude) via OpenRouter API  
 
 API keys are securely loaded from a `.env` file. Example:
 
