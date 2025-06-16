@@ -300,7 +300,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Run a Maestro-Orchestrator session.")
     parser.add_argument("--agents", nargs="+", default=["Sol", "Aria", "Prism", "Axion"], help="List of agent names.")
-    parser.add_argument("--prompt", type=str, required=True, help="Prompt for agents to respond to.")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--prompt", type=str, help="Single prompt for one orchestration round.")
+    group.add_argument("--rounds", nargs="+", help="List of prompts to run as sequential rounds.")
+
     parser.add_argument("--quorum", type=int, default=51, help="Quorum percentage required for a winning vote.")
     parser.add_argument("--session-file", type=str, default="maestro_session.json", help="File to store conversation history.")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output.")
@@ -322,7 +325,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     capsule = GeminiCapsule(session_file=args.session_file)
-    result = run_orchestration(agent_objs, args.prompt, args.quorum, verbose=args.verbose)
+    prompts = [args.prompt] if args.prompt else args.rounds
+
+for idx, prompt in enumerate(prompts, 1):
+    print("\n" + "=" * 60)
+    print(f"\n=== Round {idx}/{len(prompts)}: \"{prompt}\" ===")
+    result = run_orchestration(agent_objs, prompt, args.quorum, verbose=args.verbose)
     capsule.add_round(result)
 
     print("\n--- Orchestration Complete ---")
@@ -336,8 +344,8 @@ if __name__ == "__main__":
             print(f"[{agent}]: {err}")
 
     if args.json_out:
-        with open(args.json_out, "w") as f:
+        base, ext = os.path.splitext(args.json_out)
+        out_path = f"{base}_round{idx}{ext}" if len(prompts) > 1 else args.json_out
+        with open(out_path, "w") as f:
             json.dump(result, f, indent=2)
-        print(f"\nSaved detailed results for this round to: {args.json_out}")
-    
-    print(f"Session history updated in: {args.session_file}")
+        print(f"\nSaved detailed results for this round to: {out_path}")
