@@ -1,0 +1,1 @@
+python orchestration_livefire.py --prompt "What is the nature of intelligence?"

@@ -3,7 +3,7 @@
 
 **Version:** v1.0  
 **Last Updated:** 2025-06-05  
-**Author:** defcon (d3fq0n1)
+**Author:** defcon (d3fq0n1) ((Blake))
 
 ---
 
