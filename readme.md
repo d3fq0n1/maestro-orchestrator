@@ -46,6 +46,48 @@ docker-compose up --build
 Frontend will be served at: [http://localhost:5173](http://localhost:5173)  
 Backend endpoint: [http://localhost:8000/api/ask](http://localhost:8000/api/ask)
 
+
+## 🧠 Orchestrator Engine (Latest Version)
+
+The core logic for multi-agent prompt orchestration lives in [`scripts/orchestrator.py`](scripts/orchestrator.py). It now supports the following agents and features:
+
+### ✅ Supported Agents
+- **Sol** – OpenAI (GPT-4 / GPT-4o) via OpenAI API  
+- **Aria** – Claude (Opus / Sonnet) via Anthropic API  
+- **Prism** – Gemini (Pro) via Google Generative AI  
+- **OpenRouter** – Abstracted multi-model backend (e.g., Mixtral, GPT-4, Claude) via OpenRouter API  
+
+API keys are securely loaded from a `.env` file. Example:
+
+```env
+OPENAI_API_KEY=...
+ANTHROPIC_API_KEY=...
+GOOGLE_API_KEY=...
+OPENROUTER_API_KEY=...
+```
+
+### 📦 Features
+- **CSV Input File Support** – Run batch orchestrations from a CSV file with `Question` or `Prompt` columns.
+- **Quorum-Based Voting** – Agents answer each prompt and vote on which response is best.
+- **Session Persistence** – Every round is saved to `maestro_session.json` with prompt, responses, votes, and timestamp.
+- **Modular Agent Architecture** – Easy to add new LLM backends or swap existing models.
+- **Dissent Preservation** – All responses are logged, even if they don’t win the vote.
+
+### 🚀 Example Usage
+```bash
+python scripts/orchestrator.py --input-file path/to/questions.csv
+```
+
+### 💡 CSV Format
+Your CSV must contain a column named `Question` or `Prompt`. Example:
+
+```csv
+Category,Question
+Philosophy,Can consciousness emerge from recursive symbol manipulation alone?
+Science,Could spacetime arise from error-correcting codes?
+```
+
+
 ---
 
 ## 🧠 Agent Council (v0.2 Roles)
