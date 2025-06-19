@@ -74,7 +74,7 @@ As the system evolves (e.g., through R2 Engine, MAGI meta-analysis, or self-heal
 
 ## 7. Contact & Attribution
 
-Maestro-Orchestrator is maintained by [Blake / defcon](https://github.com/d3fq0n1). This AUP exists in parallel with the MIT License as an ethical layer. Violations may result in revoked collaboration or public disassociation.
+Maestro-Orchestrator is maintained by [Blake / defcon](https://github.com/d3fq0n1). This AUP exists in parallel with all other licenses. Violations may result in revoked collaboration or public disassociation. Or worse.
 
 We welcome forks, mirrors, contributions, and commercial interest — so long as your goals **serve human benefit, respect dissent, and never compromise the integrity of the system.**
 
