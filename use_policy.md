@@ -20,7 +20,7 @@ Maestro-Orchestrator **may be used for**:
 - 🎓 **Educational purposes** in AI behavior, ethical reasoning, or structured debate  
 - 🛠️ **Personal and non-commercial use** on local or private systems  
 - 🌐 **Open-source collaboration** where contributions align with project ethics and transparency  
-- 💼 **Commercial applications**, **provided they strictly conform** to this AUP in both spirit and implementation  
+- 💼 **Commercial applications**, See commercial_license.md
 - 📝 **Documented experimentation** with dissent, consensus, and AI self-analysis
 
 ---
