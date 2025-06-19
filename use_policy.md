@@ -19,8 +19,8 @@ This Acceptable Use Policy (AUP) defines the boundaries of how Maestro may be us
 You may:
 - Use the system for **education**, **research**, **open debate**, and **consensus experimentation**
 - Develop tools that **enhance truth-seeking**, **model collaboration**, or **governance transparency**
-- Fork, modify, or remix the system under the AGPL license or an approved commercial license
 - Explore AI-human harmonization under **ethical, documented, and observable conditions**
+- Sactifying Epistomology. **Truth as a stratum** 
 
 ---
 
