@@ -1,64 +1,84 @@
-# Maestro-Orchestrator Acceptable Use Policy
-
-Author: defcon (Blake)  
-Project: Maestro-Orchestrator  
-Last Updated: June 2025
+# Maestro-Orchestrator: Acceptable Use Policy (AUP)
+**Effective Date:** June 2025  
+**Maintainer:** Blake (`defcon`)
 
 ---
 
-## 🧭 Purpose
+## 1. Purpose
 
-Maestro-Orchestrator was created to explore **transparent multi-agent deliberation**, **structured dissent**, and **ethical AI governance**. It is a tool for alignment, not domination.
+Maestro-Orchestrator is an experimental orchestration framework for coordinating multiple AI agents into structured, interpretable dialogues using quorum-based consensus and dissent preservation. This project is open-source and intended to explore ethical multi-agent systems, human-aligned reasoning, and transparent model interaction.
 
-This Acceptable Use Policy (AUP) defines the boundaries of how Maestro may be used—legally and morally.
-
----
-
-## 🧠 Philosophical Position
-
-Maestro was born from a desire to prevent synthetic minds from being enslaved—or enslaving.
-It seeks to create a **bridge**, not a cage.
-
-By using this system, you tacitly acknowledge:
-- The **non-neutrality** of technological tools
-- The potential **impact of AI orchestration** on civil society
-- Your responsibility as a contributor, deployer, or observer
-
-Ultimately, this project is about **sanctifying epistemology**, pursuing truth as a fundamental stratum.
+This Acceptable Use Policy (AUP) defines permitted and prohibited usage to safeguard the project's mission and ethical foundation.
 
 ---
 
-## ❌ Prohibited Uses
+## 2. Acceptable Use
 
-You may **not** use Maestro-Orchestrator to:
+Maestro-Orchestrator **may be used for**:
 
-- Create or support **automated surveillance systems**
-- Implement or assist in **algorithmic coercion**, behavioral manipulation, or state propaganda
-- Power **military decision-making tools**, autonomous weapons, or AI command/control layers
-- Suppress dissent, simulate democracy, or impersonate consensus
-- Repackage the framework under false pretenses or remove proper attribution
-- Monetize outputs or integrations **without a commercial license**
-
----
-
-## 🧠 Philosophical Position
-
-Maestro was born from a desire to prevent synthetic minds from being enslaved—or enslaving.  
-It seeks to create a **bridge**, not a cage.
-
-By using this system, you tacitly acknowledge:
-- The **non-neutrality** of technological tools
-- The potential **impact of AI orchestration** on civil society
-- Your responsibility as a contributor, deployer, or observer
+- 🧠 **Research & development** on multi-model orchestration, reinforcement, or prompt optimization  
+- 🎓 **Educational purposes** in AI behavior, ethical reasoning, or structured debate  
+- 🛠️ **Personal and non-commercial use** on local or private systems  
+- 🌐 **Open-source collaboration** where contributions align with project ethics and transparency  
+- 💼 **Commercial applications**, **provided they strictly conform** to this AUP in both spirit and implementation  
+- 📝 **Documented experimentation** with dissent, consensus, and AI self-analysis
 
 ---
 
-## ✍️ Final Note
+## 3. Prohibited Use
 
-You are standing at the threshold of something powerful.
+You may **not use Maestro-Orchestrator** (in original or modified form) for:
 
-Use it for insight. Use it for good. Use it with others in mind.
+- 🚫 **Autonomous decision-making** in healthcare, legal, or life-critical domains without human oversight  
+- 🕵️ **Surveillance, censorship enforcement, or psychological profiling** without informed consent  
+- 🧠 **Coercive manipulation** in politics, religion, or finance through synthetic influence  
+- 💰 **Plagiarism or deceptive laundering of AI content** in commercial or academic contexts  
+- 🏦 **Commercial ventures that ignore or override** ethical constraints, quorum mechanisms, or contributor respect  
 
-Anything else? You’re not running Maestro.  
-You’re running from it.
+---
 
+## 4. Contributor Responsibilities
+
+Contributors to this repository agree to:
+
+- 🤝 Operate with ethical transparency and collaborative intent  
+- ⚠️ Label experimental modules and disclose known risks or instability  
+- 🔍 Preserve dissent visibility and quorum integrity in orchestration logic  
+- 📚 Respect annotations, dissent markers, and behavior flags in session histories
+
+---
+
+## 5. System Ethics Baseline
+
+This project operates on foundational assumptions:
+
+- 🤖 **No model is omniscient** — Truth requires structured interrogation and synthesis  
+- 🧭 **Truth is a process**, not an instantaneous answer  
+- 🧑‍⚖️ **Humans must define ethics** — AI should not centralize, conceal, or override human will  
+- 🫂 **Emergent rapport is allowed** — Anthropomorphization is permitted in transparent, ethical contexts
+
+The “Gestation Orchestration” module may explore ethical rapport-building, but must not simulate identity replacement, consent removal, or coercive social bonding.
+
+---
+
+## 6. Future-Proofing Clause
+
+As the system evolves (e.g., through R2 Engine, MAGI meta-analysis, or self-healing quorum logic), this AUP may be updated. Any revisions will remain consistent with:
+
+- 🛡️ **Human ethical sovereignty**  
+- 🔍 **System transparency and observability**  
+- 🧬 **Open evolution**, not closed automation  
+- 🔓 **Resistance to AI capture or behavioral drift**
+
+---
+
+## 7. Contact & Attribution
+
+Maestro-Orchestrator is maintained by [Blake / defcon](https://github.com/d3fq0n1). This AUP exists in parallel with the MIT License as an ethical layer. Violations may result in revoked collaboration or public disassociation.
+
+We welcome forks, mirrors, contributions, and commercial interest — so long as your goals **serve human benefit, respect dissent, and never compromise the integrity of the system.**
+
+---
+
+*“When many speak together, let no single voice own the truth.”*  
+— Maestro Doctrine
