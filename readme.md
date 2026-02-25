@@ -1,10 +1,32 @@
 
 # Maestro-Orchestrator
 
-**Version:** v0.2-webui  
+![Version](https://img.shields.io/badge/version-v0.2--webui-blue)
+![License](https://img.shields.io/badge/license-Custom%20Open%20Use-orange)
+![Python](https://img.shields.io/badge/python-3.8%2B-green)
+![Docker](https://img.shields.io/badge/docker-supported-blue)
+
 **Status:** Stable, containerized, live orchestration system
 
 Maestro-Orchestrator is a lightweight, container-ready orchestration engine that unifies multiple AI agents under a structured system of synthetic consensus and dissent. It enables real-time prompt routing through a rotating council of large language models, each with distinct capabilities, and synthesizes their output with quorum logic.
+
+---
+
+## Table of Contents
+
+- [Features](#-features)
+- [Prerequisites](#-prerequisites)
+- [Setup](#-setup)
+- [Orchestrator Engine](#-orchestrator-engine-latest-version)
+- [Agent Council](#-agent-council-v02-roles)
+- [Consensus Model](#-consensus-model)
+- [API Reference](#-api-example)
+- [CLI Mode](#-cli-mode)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Author](#-author)
+- [Future Work](#-future-work)
 
 ---
 
@@ -15,7 +37,16 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - 🗳️ **Quorum Consensus** — 66% agreement logic with dissent logging
 - 💻 **React/Vite Frontend** — Simple, modular web UI (now containerized)
 - 🐳 **Docker Support** — One-step spin-up of both frontend and backend
-- 📜 **CLI Option** — Mock CLI run via `orchestration_livefire.py` [Can be live if you have API keys configured in your .env)
+- 📜 **CLI Option** — Mock CLI run via `orchestration_livefire.py` (can be live if you have API keys configured in your `.env`)
+
+---
+
+## 🔧 Prerequisites
+
+- Python 3.8+
+- Node.js 18+ (for frontend)
+- Docker & Docker Compose (for containerized setup)
+- API keys for at least one provider (OpenAI, Anthropic, Google, or OpenRouter)
 
 ---
 
@@ -43,19 +74,20 @@ npm run dev
 docker-compose up --build
 ```
 
-Frontend will be served at: [http://localhost:5173](http://localhost:5173)  
+Frontend will be served at: [http://localhost:5173](http://localhost:5173)
 Backend endpoint: [http://localhost:8000/api/ask](http://localhost:8000/api/ask)
 
+---
 
 ## 🧠 Orchestrator Engine (Latest Version)
 
 The core logic for multi-agent prompt orchestration lives in [`scripts/orchestrator.py`](scripts/orchestrator.py). It now supports the following agents and features:
 
 ### ✅ Supported Agents
-- **Sol** – OpenAI (GPT-4 / GPT-4o) via OpenAI API  
-- **Aria** – Claude (Opus / Sonnet) via Anthropic API  
-- **Prism** – Gemini (Pro) via Google Generative AI  
-- **OpenRouter** – Abstracted multi-model backend (e.g., mistral, GPT-4, Claude) via OpenRouter API  
+- **Sol** – OpenAI (GPT-4 / GPT-4o) via OpenAI API
+- **Aria** – Claude (Opus / Sonnet) via Anthropic API
+- **Prism** – Gemini (Pro) via Google Generative AI
+- **OpenRouter** – Abstracted multi-model backend (e.g., mistral, GPT-4, Claude) via OpenRouter API
 
 API keys are securely loaded from a `.env` file. Example:
 
@@ -66,12 +98,12 @@ GOOGLE_API_KEY=...
 OPENROUTER_API_KEY=...
 ```
 
-### 📦 Features
+### 📦 Batch & Session Features
 - **CSV Input File Support** – Run batch orchestrations from a CSV file with `Question` or `Prompt` columns.
 - **Quorum-Based Voting** – Agents answer each prompt and vote on which response is best.
 - **Session Persistence** – Every round is saved to `maestro_session.json` with prompt, responses, votes, and timestamp.
 - **Modular Agent Architecture** – Easy to add new LLM backends or swap existing models.
-- **Dissent Preservation** – All responses are logged, even if they don’t win the vote.
+- **Dissent Preservation** – All responses are logged, even if they don't win the vote.
 
 ### 🚀 Example Usage
 ```bash
@@ -87,10 +119,9 @@ Philosophy,Can consciousness emerge from recursive symbol manipulation alone?
 Science,Could spacetime arise from error-correcting codes?
 ```
 
-
 ---
 
-## 🧠 Agent Council (v0.2 Roles)
+## 👥 Agent Council (v0.2 Roles)
 
 | Agent    | Model Source     | Description                        |
 |----------|------------------|------------------------------------|
@@ -105,7 +136,7 @@ Each session rotates agent roles randomly to avoid stagnation and echo chambers.
 
 ## 🤝 Consensus Model
 
-Maestro requires a **66% quorum** for a response to be marked as “agreed.” Dissenting responses are preserved for transparency and future reinforcement learning. This ensures creative tension and epistemic humility among models.
+Maestro requires a **66% quorum** for a response to be marked as "agreed." Dissenting responses are preserved for transparency and future reinforcement learning. This ensures creative tension and epistemic humility among models.
 
 ---
 
@@ -150,7 +181,13 @@ python orchestration_livefire.py
 
 - [`agents.md`](./docs/agents.md)
 - [`roadmap.md`](./docs/roadmap.md)
-- [`quorum_logic.md`](./docs/quorum_logic.md) *(coming soon)*
+- [`quorum_logic.md`](./docs/quorum_logic.md)
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ---
 
@@ -169,7 +206,7 @@ Use is permitted with attribution. Commercial use requires an agreement.
 
 ## 🙌 Author
 
-**defcon** — autodidact sysadmin, father, builder of consensus AI systems  
+**defcon** — autodidact sysadmin, father, builder of consensus AI systems
 Follow: [substack.com/@defqon1](https://substack.com/@defqon1)
 
 ---
