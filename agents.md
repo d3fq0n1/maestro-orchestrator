@@ -4,24 +4,24 @@ This document describes each AI agent integrated into Maestro-Orchestrator, incl
 
 ---
 
-## 🤖 Agent Overview
+## Agent Overview
 
-| Name        | Source             | Description                              | Emoji |
-|-------------|--------------------|------------------------------------------|--------|
-| Sol         | OpenAI (GPT-4)     | Primary reasoning engine and scribe      | 🧠     |
-| Aria        | Claude (Anthropic) | Contextual analyst, often ethical anchor | 🌱     |
-| Prism       | Gemini (Google)    | Pattern-matcher, precision response type | 🌈     |
-| TempAgent   | OpenRouter         | Rotating model (Mistral, Mixtral, etc.)  | 🔮     |
-
----
-
-## 🧠 Agent Behavior
-
-All agents receive the same prompt simultaneously and respond independently. No agent sees another’s output during response generation.
+| Name        | Source             | Description                              | UI Emoji |
+|-------------|--------------------|------------------------------------------|----------|
+| Sol         | OpenAI (GPT-4)     | Primary reasoning engine and scribe      | 🧠       |
+| Aria        | Claude (Anthropic) | Contextual analyst, often ethical anchor | 🌱       |
+| Prism       | Gemini (Google)    | Pattern-matcher, precision response type | 🌈       |
+| TempAgent   | OpenRouter         | Rotating model (Mistral, Mixtral, etc.)  | 🔮       |
 
 ---
 
-## 🧩 Technical Notes
+## Agent Behavior
+
+All agents receive the same prompt simultaneously and respond independently. No agent sees another's output during response generation.
+
+---
+
+## Technical Notes
 
 - Each agent is initialized with its own API key from the `.env` file.
 - Responses are retrieved asynchronously via HTTP API calls.
@@ -30,15 +30,11 @@ All agents receive the same prompt simultaneously and respond independently. No 
 
 ---
 
-## 🛠️ Customization
+## Customization
 
 To modify or extend agent behavior:
 
 - Add or remove agents in `orchestrator_foundry.py`
 - Update agent display emoji in `ui/src/maestroUI.tsx`
 - Ensure proper `.env` keys are defined for each agent
-- Re-run locally or rebuild container for changes to take effect
-
----
-
-Each agent contributes a distinct voice. The strength of Maestro comes not from any one model, but from the space between them.
+- Re-run locally or rebuild the container for changes to take effect

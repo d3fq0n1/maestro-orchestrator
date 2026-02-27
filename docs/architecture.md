@@ -6,7 +6,7 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 
 ## Core Components
 
-### 🧠 Orchestrator (Python / FastAPI)
+### Orchestrator (Python / FastAPI)
 - Receives user prompts via RESTful POST `/api/ask`
 - Loads active agent configurations (Sol, Aria, Prism, etc.)
 - Sends prompts to agents either via live API or placeholder logic
@@ -16,17 +16,17 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
   - Consensus result (if quorum met)
   - Dissent logs
 
-### 🗂️ Agent Layer
+### Agent Layer
 - Each agent is an abstraction wrapping an API model
 - Agents respond based on assigned roles (Initiator, Responder, Arbiter)
 - Role assignment is randomized per session unless overridden
 
-### 🧪 Quorum Logic Module
+### Quorum Logic Module
 - Requires 66% agreement among agents to form consensus
 - If consensus fails, dissent is included and preserved in output
 - Role-based weighting and dissent propagation are planned future features
 
-### 🌐 Frontend UI (React + Vite)
+### Frontend UI (React + Vite)
 - Calls backend API at `/api/ask`
 - Displays:
   - Individual agent responses
@@ -35,7 +35,7 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 - Live-reloads via Vite dev server
 - Designed for deployment as static assets via Docker
 
-### 🐳 Dockerization
+### Docker
 - Multi-stage Dockerfile builds:
   - Python FastAPI backend (Uvicorn)
   - Node-based frontend (Vite build → static files)
@@ -69,7 +69,7 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 
 ---
 
-## Data Flow Summary
+## Data Flow
 
 ```text
 User → UI → /api/ask → [Agents] → Quorum Logic → Response (Consensus + Dissent) → UI Render
