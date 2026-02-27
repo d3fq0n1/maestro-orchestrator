@@ -1,4 +1,6 @@
-# maestro/agents/__init__.py
-
-from .agent_mock import MockAgent2, MockAgent3
-from .agent_openai import OpenAIAgent
+from .base import Agent
+from .mock import MockAgent
+from .sol import Sol
+from .aria import Aria
+from .prism import Prism
+from .tempagent import TempAgent
