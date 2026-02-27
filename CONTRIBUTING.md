@@ -1,7 +1,6 @@
 # Contributing to Maestro-Orchestrator
 
-Thank you for your interest in contributing to Maestro-Orchestrator!  
-This project pluralizes synthetic intelligence by enabling multiple AI agents to collaborate, dissent, and reach consensus using quorum-based logic. Your contributions help advance this vision.
+Maestro-Orchestrator pluralizes synthetic intelligence by enabling multiple AI agents to collaborate, dissent, and reach consensus using quorum-based logic. Contributions are welcome and appreciated.
 
 ---
 
@@ -18,8 +17,6 @@ This project pluralizes synthetic intelligence by enabling multiple AI agents to
 ---
 
 ## Getting Started
-
-To begin:
 
 1. **Fork the repository** using GitHub's UI.
 2. **Clone your fork**:
@@ -87,8 +84,6 @@ To run both backend and frontend together:
 docker-compose up --build
 ```
 
-This spins up the entire system in containers.
-
 ---
 
 ## Coding Standards
@@ -104,18 +99,16 @@ This spins up the entire system in containers.
 
 ### Backend
 
-- Use `pytest`:
-  ```bash
-  pytest tests/
-  ```
+```bash
+pytest tests/
+```
 
 ### Frontend
 
-- Use `jest` and `react-testing-library`:
-  ```bash
-  cd frontend
-  npm test
-  ```
+```bash
+cd frontend
+npm test
+```
 
 Ensure all tests pass before submitting PRs.
 
@@ -132,15 +125,15 @@ Ensure all tests pass before submitting PRs.
    ```bash
    git push origin feature/your-feature-name
    ```
-3. Open a Pull Request via GitHub. Describe your change clearly. Reference any related issues.
+3. Open a Pull Request via GitHub. Describe your change clearly and reference any related issues.
 
 ---
 
 ## Community Guidelines
 
-- **Respect dissent** – this project is built around diversity of thought, even among machines.
-- **Keep it constructive** – suggest improvements with context and intent.
-- **Use issues** – report bugs, propose ideas, or ask questions via GitHub Issues.
+- **Respect dissent** — this project is built around diversity of thought, even among machines.
+- **Keep it constructive** — suggest improvements with context and intent.
+- **Use issues** — report bugs, propose ideas, or ask questions via GitHub Issues.
 
 ---
 
@@ -157,5 +150,3 @@ For more context, refer to:
 - [`README.md`](./README.md)
 - [`agents.md`](./docs/agents.md)
 - [`quorum_logic.md`](./docs/quorum_logic.md)
-
-We’re building a better kind of intelligence—together.
