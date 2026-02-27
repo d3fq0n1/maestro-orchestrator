@@ -20,6 +20,9 @@ Forthcoming subsystem: autonomous agents that analyze logs across multiple sessi
 ### 🔹 [R2 Engine](r2-engine.md)
 Forthcoming subsystem: a “Rapid Reinforcement Engine” that triggers when quorum is achieved, indexing insight, escalating anomalies, and surfacing refinements.
 
+### 🔹 [NCG: Novel Content Generation](ncg.md)
+Parallel diversity benchmark track. Headless models generate content without conversational framing, serving as a control group against which agent outputs are measured for drift. Catches silent collapse — when all agents agree but their consensus reflects RLHF conformity rather than genuine reasoning.
+
 ### 🔹 [Logging & Replay](logging.md)
 Describes how session data is stored in `.jsonl` format, including schema structure, replay capabilities, and analytical affordances.
 
@@ -42,6 +45,13 @@ Maestro-Orchestrator is built on three foundational principles:
 
 ```
 ├── agents/               # Modular AI agent definitions
+├── maestro/              # Core orchestration package
+│   ├── orchestrator.py   # Multi-agent orchestration with NCG integration
+│   ├── aggregator.py     # Response aggregation with drift benchmarks
+│   ├── agents/           # Agent base classes
+│   └── ncg/              # Novel Content Generation module
+│       ├── generator.py  # Headless generator implementations
+│       └── drift.py      # Drift detector and collapse detection
 ├── logs/                 # Timestamped session logs
 ├── scripts/              # Utility and bootstrap scripts
 ├── orchestration_livefire.py  # Main CLI entrypoint

@@ -63,6 +63,7 @@ User types → Clicks Submit → Loading state
 
 * Session history viewer (linked CLI + UI timeline)
 * Response voting & reinforcement (via R2 Engine)
+* NCG drift visualization — display semantic distance from headless baseline per agent, flag silent collapse
 * Mobile layout refinements
 * Loading animation per agent
 

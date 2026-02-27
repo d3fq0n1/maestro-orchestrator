@@ -30,6 +30,19 @@ R2 gives the orchestrator a reflex — a way to recognize strong patterns and re
 
 ---
 
+## 🔗 Relationship to NCG
+
+R2 and NCG form two halves of the system's immune response:
+
+- **R2 detects obvious divergence** — when agents disagree with each other within a session. This is internal dissent detection.
+- **NCG detects silent collapse** — when all agents agree, but their agreement has drifted away from what an unconstrained (headless) model would produce. This is the blind spot R2 cannot see alone.
+
+Together they ensure that consensus is both genuine (agents independently converge) and grounded (the convergence point isn't shaped purely by RLHF conformity). When R2 records a consensus node, the NCG drift report can be attached to indicate how much the conversational layer compressed or reshaped the answer.
+
+See [`ncg.md`](./ncg.md) for the full NCG specification.
+
+---
+
 ## 📊 Ledger Output Example
 
 ```json

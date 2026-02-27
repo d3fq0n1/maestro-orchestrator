@@ -63,4 +63,6 @@ Developers can uncomment mock agent logic or use stubbed response mode for dry-r
 - Dynamic agent role assignment
 - Replay mode using `.jsonl` logs
 - Web-based orchestration panel (in development)
+- NCG baseline generation alongside livefire sessions for drift analysis
+- Session logs feeding into MAGI for cross-session NCG drift tracking
 

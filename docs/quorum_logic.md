@@ -74,9 +74,22 @@ Only Sol, Aria, and Prism align — **consensus is reached** (3/4).
 
 ---
 
+## NCG as Quorum Validation
+
+Quorum logic tells you *whether* agents agree. The NCG (Novel Content Generation) module tells you *whether that agreement is meaningful*.
+
+When quorum is reached, the NCG drift detector compares the agreed-upon output against a headless baseline — content generated without conversational framing. If the drift is high, consensus may reflect RLHF conformity rather than genuine reasoning convergence. The aggregator attaches this as `ncg_benchmark` data alongside the quorum result.
+
+This means quorum is no longer binary (agreed/dissented). It now has a quality dimension: agreement that is both internally consistent (agents converge) and externally grounded (convergence point isn't artificially compressed).
+
+See [`ncg.md`](./ncg.md) for details.
+
+---
+
 ## Future Enhancements
 
 - LLM-based response comparator (contextual evaluation)
 - Dissent weighting (track dissent frequency per agent)
 - Self-voting agents (models critique peer responses)
 - Public consensus ledger (decentralized append-only record)
+- NCG-informed quorum scoring (weight consensus by drift distance from headless baseline)

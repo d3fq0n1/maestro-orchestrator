@@ -26,6 +26,16 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 - If consensus fails, dissent is included and preserved in output
 - Role-based weighting and dissent propagation are planned future features
 
+### NCG Module (Novel Content Generation)
+- Runs a parallel headless generation track alongside conversational agents
+- Headless generators produce content without system prompts, personality framing, or RLHF scaffolding
+- Drift detector measures semantic distance between headless baseline and each agent's output
+- Flags **silent collapse** when agents agree but have drifted from unconstrained baseline
+- Two analysis tiers:
+  - Semantic drift (embedding distance, available for all models)
+  - Token-level drift (logprob analysis, available for models that expose logprobs)
+- Output feeds into the aggregator as `ncg_benchmark` data
+
 ### Frontend UI (React + Vite)
 - Calls backend API at `/api/ask`
 - Displays:
@@ -72,13 +82,28 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 ## Data Flow
 
 ```text
-User → UI → /api/ask → [Agents] → Quorum Logic → Response (Consensus + Dissent) → UI Render
+User → UI → /api/ask → Orchestrator
+                           │
+                           ├── Conversational Track: [Sol, Aria, Prism, TempAgent]
+                           │         │
+                           │         └── R2: Internal dissent detection
+                           │
+                           ├── NCG Track: [Headless Generator]
+                           │         │
+                           │         └── Drift Detector: Compare against conversational outputs
+                           │
+                           └── Aggregator (Quorum Logic + NCG Benchmark)
+                                  │
+                                  └── Response (Consensus + Dissent + Drift Report) → UI Render
 ```
 
 ---
 
 ## Planned Extensions
 
+- Token-level NCG drift analysis via logprobs across all supported models
+- NCG feedback loops that reshape prompts based on detected drift
+- Cross-session NCG baselines tracking what "normal" output looks like over time
 - CLI orchestration mode (for agent testing and scripting)
 - Local model agent support (e.g., llamacpp)
 - Real-time debate log and public-facing consensus ledger
