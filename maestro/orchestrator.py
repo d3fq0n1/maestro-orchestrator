@@ -1,36 +1,38 @@
+import asyncio
 
-from maestro.agents.agent_mock import MockAgent2, MockAgent3
+from maestro.agents.mock import MockAgent
 from maestro.aggregator import aggregate_responses
 from maestro.ncg import MockHeadlessGenerator, DriftDetector
 
 
-def run_orchestration(prompt: str, ncg_enabled: bool = True) -> dict:
+async def run_orchestration_async(prompt: str, agents: list = None, ncg_enabled: bool = True) -> dict:
     """
     Orchestrates multiple agents, aggregates responses, and runs the NCG
     diversity benchmark when enabled.
 
     Two parallel tracks:
-      1. Conversational track — agents respond with their personality/framing
-      2. NCG track — headless generator produces unframed baseline content
+      1. Conversational track -- agents respond with their personality/framing
+      2. NCG track -- headless generator produces unframed baseline content
 
     The drift detector compares the two tracks to catch silent collapse:
     when all conversational agents agree but have drifted from what an
     unconstrained model would produce.
     """
-    agents = {
-        "MockAgent2": MockAgent2(),     # Mock with opinionated reasoning
-        "MockAgent3": MockAgent3(),     # Mock with historical framing
-    }
+    if agents is None:
+        agents = [
+            MockAgent(name="MockAgent2", response_style="empathic"),
+            MockAgent(name="MockAgent3", response_style="historical"),
+        ]
 
     # --- Conversational track ---
-    responses = []
+    results = await asyncio.gather(*(agent.fetch(prompt) for agent in agents))
+
     named_responses = {}
-    for name, agent in agents.items():
-        print(f"Querying {name}...")
-        response = agent.respond(prompt)
-        print(f"{name} responded: {response}")
-        responses.append(response)
-        named_responses[name] = response
+    for agent, response in zip(agents, results):
+        print(f"{agent.name} responded: {response}")
+        named_responses[agent.name] = response
+
+    responses = list(named_responses.values())
 
     # --- NCG track (parallel diversity benchmark) ---
     ncg_drift_report = None
@@ -48,7 +50,7 @@ def run_orchestration(prompt: str, ncg_enabled: bool = True) -> dict:
         )
 
         if ncg_drift_report.silent_collapse_detected:
-            print("WARNING: Silent collapse detected — agents agree but "
+            print("WARNING: Silent collapse detected -- agents agree but "
                   "drift from headless baseline.")
         print(f"Mean drift from NCG baseline: "
               f"{ncg_drift_report.mean_semantic_distance}")
@@ -61,3 +63,8 @@ def run_orchestration(prompt: str, ncg_enabled: bool = True) -> dict:
         "responses": responses,
         "final_output": final_output,
     }
+
+
+def run_orchestration(prompt: str, ncg_enabled: bool = True) -> dict:
+    """Synchronous wrapper for backward compatibility with tests and CLI."""
+    return asyncio.run(run_orchestration_async(prompt, ncg_enabled=ncg_enabled))
