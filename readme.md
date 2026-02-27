@@ -35,6 +35,7 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - **FastAPI Backend** — Live orchestration logic via `/api/ask`
 - **Multi-Agent Council** — Models: Sol (OpenAI), Aria (Claude), Prism (Gemini), TempAgent (OpenRouter)
 - **Quorum Consensus** — 66% agreement logic with dissent logging
+- **NCG (Novel Content Generation)** — Headless baseline track that detects silent model collapse and RLHF conformity drift
 - **React/Vite Frontend** — Simple, modular web UI (containerized)
 - **Docker Support** — One-step spin-up of both frontend and backend
 - **CLI Option** — Standalone session runner via `orchestration_livefire.py`
@@ -138,6 +139,14 @@ Each session rotates agent roles randomly to reduce echo chamber effects.
 
 Maestro requires a **66% quorum** for a response to be marked as agreed. Dissenting responses are preserved for transparency and future analysis.
 
+### NCG Diversity Benchmark
+
+In parallel with the conversational agent track, Maestro runs a **Novel Content Generation (NCG)** headless baseline. A model generates content for the same prompt without any system prompt, personality framing, or RLHF-aligned assistant scaffolding. The drift detector then measures how far each conversational agent's output has drifted from this unconstrained baseline.
+
+This catches **silent collapse** — when all agents agree, but their agreement reflects conformity pressure rather than genuine reasoning. R2 detects when agents disagree with each other. NCG detects when they all drift together.
+
+See [`docs/ncg.md`](./docs/ncg.md) for the full technical specification.
+
 ---
 
 ## API Example
@@ -180,6 +189,10 @@ python orchestration_livefire.py
 ## Documentation
 
 - [`agents.md`](./docs/agents.md)
+- [`ncg.md`](./docs/ncg.md) — Novel Content Generation and drift detection
+- [`architecture.md`](./docs/architecture.md)
+- [`magi.md`](./docs/magi.md) — Meta-Agent Governance
+- [`r2-engine.md`](./docs/r2-engine.md) — Rapid Reinforcement Engine
 - [`roadmap.md`](./docs/roadmap.md)
 - [`quorum_logic.md`](./docs/quorum_logic.md)
 
@@ -211,6 +224,9 @@ Follow: [substack.com/@defqon1](https://substack.com/@defqon1)
 
 ## Future Work
 
+- Token-level drift analysis via logprobs (OpenAI bridge available now, others pending)
+- NCG feedback loops — reshape prompts based on where drift is detected
+- Cross-session NCG baselines that track what "normal" looks like over time
 - Add dissent analysis module
 - Launch public demo endpoint
 - Reinforcement training pipeline

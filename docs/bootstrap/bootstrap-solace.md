@@ -49,6 +49,7 @@ Restore alignment, tempo, and tooling context for continued development of the M
 - `livefire`: CLI orchestration engine
 - `MAGI`: Meta agents reviewing output
 - `R2 Engine`: Reinforcement engine after consensus
+- `NCG`: Novel Content Generation — headless baseline generation and silent collapse detection
 - `Consensus Ledger`: Immutable recordkeeping module
 - `Three Wisemen`: POC council of agents
 

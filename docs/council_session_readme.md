@@ -24,4 +24,4 @@ Logs will be stored in `scripts/council_session/logs/` and summaries appear in `
 
 - Requires `.env` for API keys
 - Currently hardcoded agents: Sol, Aria, OpenRouter
-- Will integrate with MAGI and R2 Engine in future roadmap
+- Will integrate with MAGI, R2 Engine, and NCG drift detection in future roadmap

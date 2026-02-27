@@ -15,6 +15,7 @@
 - **Full Containerization** – Docker support for one-step deployment of backend + frontend
 - **CLI Fallback** – Standalone session runner (`orchestration_livefire.py`)
 - **License Split** – Custom open-use license and commercial terms clarified
+- **NCG Module** – Novel Content Generation with headless generators, drift detection, and silent collapse prevention
 
 ---
 
@@ -24,7 +25,8 @@
 - **Reinforcement Loop** – Feed consensus outcomes into fine-tuning or snapshot logs
 - **UI Enhancements** – Add tooltips, loading indicators, and error handling
 - **Session History Logging** – Persist and replay orchestration sessions
-- **Drift Detection** – Meta-agent layer to compare outputs over time for stability
+- **Drift Detection** – Meta-agent layer to compare outputs over time for stability (NCG semantic tier operational, token-level tier in progress)
+- **Token-Level NCG Analysis** – Bridge from conversational metadata to logprob-level drift measurement (OpenAI logprobs integration built, pending for Anthropic/Google)
 - **Module Isolation** – Refactor agent logic into swappable, testable components
 
 ---
@@ -36,6 +38,8 @@
 - **Expanded Documentation** – Add markdown docs on quorum theory, dissent modeling
 - **Contributor Onboarding** – Expand `CONTRIBUTING.md` with examples and task tags
 - **Multilingual Agent Support** – Introduce language specialization agents
+- **NCG Feedback Loops** – Reshape prompts based on drift signals before they reach conversational agents
+- **Cross-Session NCG Baselines** – Track what "normal" headless output looks like over time to detect gradual model drift
 
 ---
 
