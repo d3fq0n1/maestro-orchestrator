@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pathlib import Path
 from orchestrator_foundry import run_orchestration
 
@@ -22,15 +22,19 @@ app.add_middleware(
 
 # === Request model ===
 class Prompt(BaseModel):
-    prompt: str
+    prompt: str = Field(..., min_length=1, max_length=10000)
 
 # === POST endpoint for orchestration ===
 @app.post("/api/ask")
 async def ask(prompt: Prompt):
-    print(f"[Maestro-Orchestrator] Prompt received: {prompt.prompt}")
+    user_prompt = prompt.prompt.strip()
+    if not user_prompt:
+        return {"error": "Prompt cannot be empty or whitespace-only."}
+
+    print(f"[Maestro-Orchestrator] Prompt received: {user_prompt}")
 
     try:
-        result = await run_orchestration(prompt.prompt)
+        result = await run_orchestration(user_prompt)
         return result
 
     except Exception as e:
