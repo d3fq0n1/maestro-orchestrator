@@ -1,15 +1,19 @@
-# Placeholder foimport openai
-from config import OPENAI_API_KEY
+# Placeholder for OpenAI agent wrapper
+import os
 
-# Create a client object (OpenAI SDK v1.x+)
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
 class OpenAIAgent:
     def __init__(self, model="gpt-3.5-turbo"):
         self.model = model
 
     def respond(self, prompt: str) -> str:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return f"[OpenAI Agent Placeholder] Response to: '{prompt}' — (API key not set)"
+
         try:
+            import openai
+            client = openai.OpenAI(api_key=api_key)
             response = client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -22,4 +26,3 @@ class OpenAIAgent:
             return response.choices[0].message.content.strip()
         except Exception as e:
             return f"[OpenAI Agent Error] {str(e)}"
-r OpenAI agent wrapper
