@@ -46,11 +46,10 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 - Designed for deployment as static assets via Docker
 
 ### Docker
-- Multi-stage Dockerfile builds:
-  - Python FastAPI backend (Uvicorn)
-  - Node-based frontend (Vite build → static files)
-- Containerized together via `docker-compose.yml`
+- Multi-stage Dockerfile: Stage 1 builds the Vite frontend, Stage 2 sets up Python with `backend/` and `maestro/` packages, then copies the built frontend as static assets served by FastAPI
+- Single service via `docker-compose.yml` — both UI and API are served on port 8000
 - `.env` support for API keys and runtime configuration
+- Named volumes for persistent session and R2 data
 
 ---
 

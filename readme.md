@@ -76,11 +76,12 @@ npm run dev
 
 ### 2. Containerized (recommended)
 ```bash
+cp .env.example .env   # add your API keys
 docker-compose up --build
 ```
 
-Frontend will be served at: [http://localhost:5173](http://localhost:5173)
-Backend endpoint: [http://localhost:8000/api/ask](http://localhost:8000/api/ask)
+Application (UI + API): [http://localhost:8000](http://localhost:8000)
+API endpoint: [http://localhost:8000/api/ask](http://localhost:8000/api/ask)
 
 ---
 
