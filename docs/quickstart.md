@@ -1,26 +1,33 @@
 # Maestro-Orchestrator Quickstart
 
 ## Prerequisites
-- Python 3.8+
-- Internet access (for API calls)
+- Python 3.10+
 - API keys for at least one provider (OpenAI, Anthropic, Google, or OpenRouter)
 
-## Installation
+## Docker (Recommended)
+
+```bash
+cp .env.example .env   # add your API keys
+docker-compose up --build
+```
+
+Application (UI + API): `http://localhost:8000`
+
+## Local Development
+
+### Backend (FastAPI)
 
 ```bash
 git clone https://github.com/d3fq0n1/maestro-orchestrator.git
 cd maestro-orchestrator
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-pip install -r backend/requirements.txt
-```
-
-## Running the Backend
-
-```bash
+cp .env.example .env  # add your API keys
 uvicorn backend.main:app --reload --port 8000
 ```
 
-## Running the Frontend
+### Frontend (React + Vite)
 
 ```bash
 cd frontend
@@ -28,18 +35,13 @@ npm install
 npm run dev
 ```
 
-The UI will be available at `http://localhost:5173`.
+The UI will be available at `http://localhost:5173` and proxies API calls to the backend.
 
-## Running via CLI
-
-```bash
-python backend/orchestration_livefire.py
-```
-
-## Batch Orchestration
+## Running Tests
 
 ```bash
-python scripts/orchestrator.py --input-file path/to/questions.csv
+pip install pytest
+python -m pytest tests/ -v
 ```
 
 ## Customizing Agents

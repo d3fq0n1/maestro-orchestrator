@@ -14,7 +14,6 @@ For complete setup instructions, see:
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-pip install -r backend/requirements.txt
 cp .env.example .env  # add your API keys
 uvicorn backend.main:app --reload --port 8000
 ```

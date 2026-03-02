@@ -21,29 +21,37 @@ Each file is a complete `SessionRecord` containing the prompt, all agent respons
 ```json
 {
   "session_id": "b04e41f8-...",
-  "timestamp": "2025-06-02T14:32:12+00:00",
+  "timestamp": "2026-03-02T14:32:12+00:00",
   "prompt": "What are the risks of synthetic consensus?",
   "agent_responses": {
-    "sol": "The key risk lies in...",
-    "aria": "From an ethical standpoint...",
-    "prism": "Analytically, the pattern suggests..."
+    "Sol": "The key risk lies in...",
+    "Aria": "From an ethical standpoint...",
+    "Prism": "Analytically, the pattern suggests..."
   },
-  "consensus": {
+  "agents_used": ["Sol", "Aria", "Prism"],
+  "final_output": {
+    "consensus": "Merged consensus view...",
+    "majority_view": "...",
+    "confidence": "High",
     "agreement_ratio": 0.75,
-    "agreed": true,
-    "summary": "Consensus reached."
+    "quorum_met": true,
+    "dissent": { ... },
+    "ncg_benchmark": { ... },
+    "r2": { "grade": "strong", "confidence_score": 0.82, ... }
   },
-  "ncg_benchmark": { ... },
-  "metadata": { ... }
+  "ncg_enabled": true,
+  "ncg_benchmark": { ... }
 }
 ```
 
 ### Key Fields:
-- `session_id`: Unique identifier for the session
-- `timestamp`: UTC timestamp for the session
+- `session_id`: Unique identifier (UUID) for the session
+- `timestamp`: UTC ISO timestamp
 - `prompt`: The user's input
 - `agent_responses`: Each agent's full output keyed by agent name
-- `consensus`: Quorum result with agreement ratio and summary
+- `agents_used`: List of agent names that participated
+- `final_output`: Full analysis results (consensus, dissent, NCG, R2)
+- `ncg_enabled`: Whether NCG headless benchmark was active
 - `ncg_benchmark`: NCG drift data (when enabled)
 
 ---

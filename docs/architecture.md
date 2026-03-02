@@ -62,6 +62,7 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
   - NCG benchmark with per-agent drift and collapse warnings
   - Individual agent responses
   - Session history browser
+  - API key configuration panel
 - Live-reloads via Vite dev server
 - Designed for deployment as static assets via Docker
 
@@ -73,11 +74,11 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 
 ---
 
-## File Structure (Simplified)
+## File Structure
 
 ```
 /backend
-  main.py                  # FastAPI app, mounts all routers
+  main.py                  # FastAPI app, mounts all routers, serves static UI
   orchestrator_foundry.py  # Thin wrapper: builds live council, calls core pipeline
 /maestro                   # Core orchestration package
   orchestrator.py          # Async orchestration engine (full pipeline)
@@ -86,8 +87,11 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
   r2.py                    # R2 Engine (scoring, ledger, signals)
   magi.py                  # MAGI meta-agent governance and recommendations
   session.py               # Session persistence
+  keyring.py               # API key management and .env persistence
   api_sessions.py          # Session history REST API
   api_magi.py              # MAGI analysis REST API
+  api_keys.py              # Key management REST API
+  cli_keys.py              # CLI key configuration tool
   agents/                  # Agent wrappers (base, sol, aria, prism, tempagent, mock)
   ncg/                     # Novel Content Generation (generator, drift)
 /frontend
@@ -96,12 +100,12 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
     app.tsx                 # App root
     style.css               # Component styles
 /tests
-  test_orchestration.py     # Comprehensive test suite
+  test_orchestration.py     # Orchestration pipeline tests
+  test_keyring.py           # Key management tests
 /data
   sessions/                 # Persisted session JSON logs
   r2/                       # R2 Engine ledger entries
-/docs
-Dockerfile
+Dockerfile                  # Multi-stage build (frontend + backend)
 docker-compose.yml
 .env.example
 ```
@@ -154,6 +158,9 @@ Cross-session (on demand):
 | GET | `/api/sessions` | List session history (paginated) |
 | GET | `/api/sessions/{id}` | Get full session record |
 | GET | `/api/magi` | Run MAGI cross-session analysis |
+| GET | `/api/keys` | List configured API key status |
+| POST | `/api/keys/{provider}` | Set or update an API key |
+| POST | `/api/keys/validate` | Validate all configured keys |
 
 ---
 
