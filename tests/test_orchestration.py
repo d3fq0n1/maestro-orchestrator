@@ -9,6 +9,7 @@ from maestro.ncg.generator import MockHeadlessGenerator
 from maestro.ncg.drift import DriftDetector, DriftReport
 from maestro.dissent import DissentAnalyzer, DissentReport
 from maestro.session import SessionLogger, SessionRecord, build_session_record
+from maestro.r2 import R2Engine, R2Score, ImprovementSignal, R2LedgerEntry
 
 
 class TestAgentInterface(unittest.TestCase):
@@ -455,6 +456,297 @@ class TestOrchestrationSessionIntegration(unittest.TestCase):
 
         logger = SessionLogger(storage_dir=self._tmpdir)
         self.assertEqual(logger.count(), 0)
+
+
+class TestR2Engine(unittest.TestCase):
+    """Verify R2 scoring, signal detection, ledger persistence, and trends."""
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self.r2 = R2Engine(ledger_dir=self._tmpdir)
+
+    def tearDown(self):
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def _make_dissent_report(self, agreement=0.8, dissent_level="low",
+                             outlier_agents=None):
+        return DissentReport(
+            prompt="test prompt",
+            internal_agreement=agreement,
+            pairwise=[],
+            agent_profiles=[],
+            outlier_agents=outlier_agents or [],
+            dissent_level=dissent_level,
+            agent_count=3,
+        )
+
+    def _make_drift_report(self, mean_drift=0.3, collapse=False,
+                           compression=False):
+        return DriftReport(
+            prompt="test prompt",
+            ncg_content="headless baseline content for test prompt",
+            ncg_model="mock-headless-v1",
+            agent_signals=[],
+            mean_semantic_distance=mean_drift,
+            max_semantic_distance=mean_drift + 0.1,
+            silent_collapse_detected=collapse,
+            compression_alert=compression,
+        )
+
+    # --- Scoring tests ---
+
+    def test_strong_grade(self):
+        """Clean session with no flags should score 'strong'."""
+        dissent = self._make_dissent_report(agreement=0.8, dissent_level="low")
+        drift = self._make_drift_report(mean_drift=0.2)
+        score = self.r2.score_session(dissent, drift, quorum_confidence="High")
+        self.assertEqual(score.grade, "strong")
+        self.assertEqual(score.flags, [])
+        self.assertGreater(score.confidence_score, 0.5)
+
+    def test_suspicious_grade_silent_collapse(self):
+        """Silent collapse triggers 'suspicious' grade."""
+        dissent = self._make_dissent_report(agreement=0.95)
+        drift = self._make_drift_report(mean_drift=0.6, collapse=True)
+        score = self.r2.score_session(dissent, drift, quorum_confidence="High")
+        self.assertEqual(score.grade, "suspicious")
+        self.assertTrue(score.silent_collapse)
+        self.assertTrue(any("Silent collapse" in f for f in score.flags))
+
+    def test_suspicious_grade_high_agreement_high_drift(self):
+        """High agreement + high NCG drift = suspicious even without collapse flag."""
+        dissent = self._make_dissent_report(agreement=0.95)
+        drift = self._make_drift_report(mean_drift=0.6, collapse=False)
+        score = self.r2.score_session(dissent, drift, quorum_confidence="High")
+        self.assertEqual(score.grade, "suspicious")
+        self.assertTrue(any("Suspicious consensus" in f for f in score.flags))
+
+    def test_weak_grade_no_quorum(self):
+        """Low quorum confidence produces 'weak' grade."""
+        dissent = self._make_dissent_report(agreement=0.5, dissent_level="moderate")
+        score = self.r2.score_session(dissent, quorum_confidence="Low")
+        self.assertEqual(score.grade, "weak")
+        self.assertFalse(score.quorum_met)
+
+    def test_weak_grade_high_dissent(self):
+        """High dissent produces 'weak' grade."""
+        dissent = self._make_dissent_report(agreement=0.3, dissent_level="high")
+        drift = self._make_drift_report(mean_drift=0.2)
+        score = self.r2.score_session(dissent, drift, quorum_confidence="High")
+        self.assertEqual(score.grade, "weak")
+
+    def test_acceptable_grade_with_outliers(self):
+        """Outliers without other severe problems => 'acceptable'."""
+        dissent = self._make_dissent_report(
+            agreement=0.7, dissent_level="moderate",
+            outlier_agents=["Prism"],
+        )
+        drift = self._make_drift_report(mean_drift=0.3)
+        score = self.r2.score_session(dissent, drift, quorum_confidence="Medium")
+        self.assertEqual(score.grade, "acceptable")
+        self.assertTrue(score.has_outliers)
+
+    def test_confidence_score_range(self):
+        """Confidence score should always be between 0 and 1."""
+        dissent = self._make_dissent_report(agreement=0.5)
+        drift = self._make_drift_report(mean_drift=0.8, collapse=True)
+        score = self.r2.score_session(dissent, drift, quorum_confidence="Low")
+        self.assertGreaterEqual(score.confidence_score, 0.0)
+        self.assertLessEqual(score.confidence_score, 1.0)
+
+    def test_no_ncg_no_penalty(self):
+        """When NCG is disabled, drift should be 0 with no penalty."""
+        dissent = self._make_dissent_report(agreement=0.8)
+        score = self.r2.score_session(dissent, drift_report=None,
+                                      quorum_confidence="High")
+        self.assertEqual(score.ncg_drift, 0.0)
+        self.assertFalse(score.silent_collapse)
+
+    # --- Signal detection tests ---
+
+    def test_signals_silent_collapse(self):
+        """Silent collapse should produce a critical suspicious_consensus signal."""
+        dissent = self._make_dissent_report(agreement=0.95)
+        drift = self._make_drift_report(collapse=True)
+        score = self.r2.score_session(dissent, drift, quorum_confidence="High")
+        signals = self.r2.detect_signals(score, dissent, drift)
+        types = [s.signal_type for s in signals]
+        self.assertIn("suspicious_consensus", types)
+        critical = [s for s in signals if s.severity == "critical"]
+        self.assertTrue(len(critical) >= 1)
+
+    def test_signals_persistent_outlier(self):
+        dissent = self._make_dissent_report(outlier_agents=["Prism"])
+        score = self.r2.score_session(dissent, quorum_confidence="Medium")
+        signals = self.r2.detect_signals(score, dissent)
+        types = [s.signal_type for s in signals]
+        self.assertIn("persistent_outlier", types)
+
+    def test_signals_compression(self):
+        dissent = self._make_dissent_report()
+        drift = self._make_drift_report(compression=True)
+        score = self.r2.score_session(dissent, drift, quorum_confidence="High")
+        signals = self.r2.detect_signals(score, dissent, drift)
+        types = [s.signal_type for s in signals]
+        self.assertIn("compression", types)
+
+    def test_signals_healthy_dissent(self):
+        """High dissent without outliers = healthy dissent (info signal)."""
+        dissent = self._make_dissent_report(
+            agreement=0.3, dissent_level="high", outlier_agents=[],
+        )
+        score = self.r2.score_session(dissent, quorum_confidence="High")
+        signals = self.r2.detect_signals(score, dissent)
+        types = [s.signal_type for s in signals]
+        self.assertIn("healthy_dissent", types)
+
+    def test_signals_agent_degradation(self):
+        """Weak grade + no quorum => agent_degradation signal."""
+        dissent = self._make_dissent_report(agreement=0.5, dissent_level="moderate")
+        score = self.r2.score_session(dissent, quorum_confidence="Low")
+        signals = self.r2.detect_signals(score, dissent)
+        types = [s.signal_type for s in signals]
+        self.assertIn("agent_degradation", types)
+
+    def test_no_signals_clean_session(self):
+        """Strong session should produce no signals."""
+        dissent = self._make_dissent_report(agreement=0.8, dissent_level="low")
+        drift = self._make_drift_report(mean_drift=0.2)
+        score = self.r2.score_session(dissent, drift, quorum_confidence="High")
+        signals = self.r2.detect_signals(score, dissent, drift)
+        self.assertEqual(len(signals), 0)
+
+    # --- Ledger persistence tests ---
+
+    def test_index_creates_file(self):
+        dissent = self._make_dissent_report()
+        score = self.r2.score_session(dissent, quorum_confidence="Medium")
+        signals = self.r2.detect_signals(score, dissent)
+        entry = self.r2.index(
+            session_id="sess-123",
+            prompt="test",
+            consensus="merged answer",
+            agents_agreed=["Sol", "Aria"],
+            score=score,
+            improvement_signals=signals,
+            dissent_report=dissent,
+        )
+        self.assertTrue(len(entry.entry_id) > 0)
+        self.assertEqual(self.r2.count(), 1)
+
+    def test_index_and_load(self):
+        dissent = self._make_dissent_report()
+        score = self.r2.score_session(dissent, quorum_confidence="High")
+        entry = self.r2.index(
+            session_id="sess-456",
+            prompt="test prompt",
+            consensus="the consensus",
+            agents_agreed=["Sol"],
+            score=score,
+            improvement_signals=[],
+            dissent_report=dissent,
+        )
+        loaded = self.r2.load_entry(entry.entry_id)
+        self.assertEqual(loaded["session_id"], "sess-456")
+        self.assertEqual(loaded["consensus"], "the consensus")
+        self.assertEqual(loaded["score"]["grade"], score.grade)
+
+    def test_list_entries(self):
+        dissent = self._make_dissent_report()
+        for i in range(3):
+            score = self.r2.score_session(dissent, quorum_confidence="High")
+            self.r2.index(
+                session_id=f"sess-{i}",
+                prompt=f"prompt {i}",
+                consensus="answer",
+                agents_agreed=["Sol"],
+                score=score,
+                improvement_signals=[],
+                dissent_report=dissent,
+            )
+        summaries = self.r2.list_entries(limit=10)
+        self.assertEqual(len(summaries), 3)
+        self.assertIn("entry_id", summaries[0])
+        self.assertIn("grade", summaries[0])
+
+    # --- Trend analysis tests ---
+
+    def test_trend_analysis_insufficient_data(self):
+        result = self.r2.analyze_ledger_trends()
+        self.assertEqual(result["entries_analyzed"], 0)
+        self.assertEqual(result["trends"], [])
+
+    def test_trend_analysis_with_data(self):
+        dissent = self._make_dissent_report()
+        for i in range(5):
+            score = self.r2.score_session(dissent, quorum_confidence="High")
+            self.r2.index(
+                session_id=f"sess-{i}",
+                prompt=f"prompt {i}",
+                consensus="answer",
+                agents_agreed=["Sol", "Aria"],
+                score=score,
+                improvement_signals=[],
+                dissent_report=dissent,
+            )
+        result = self.r2.analyze_ledger_trends(limit=10)
+        self.assertEqual(result["entries_analyzed"], 5)
+        self.assertGreater(result["mean_confidence"], 0.0)
+        self.assertIn("grade_distribution", result)
+
+
+class TestR2Integration(unittest.TestCase):
+    """Verify R2 data flows through the orchestrator output."""
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self._r2_tmpdir = tempfile.mkdtemp()
+        # Patch storage dirs so tests don't pollute real data
+        import maestro.session as session_mod
+        import maestro.r2 as r2_mod
+        self._original_session_dir = session_mod._DEFAULT_DIR
+        self._original_r2_dir = r2_mod._DEFAULT_LEDGER_DIR
+        session_mod._DEFAULT_DIR = __import__("pathlib").Path(self._tmpdir)
+        r2_mod._DEFAULT_LEDGER_DIR = __import__("pathlib").Path(self._r2_tmpdir)
+
+    def tearDown(self):
+        import maestro.session as session_mod
+        import maestro.r2 as r2_mod
+        session_mod._DEFAULT_DIR = self._original_session_dir
+        r2_mod._DEFAULT_LEDGER_DIR = self._original_r2_dir
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+        shutil.rmtree(self._r2_tmpdir, ignore_errors=True)
+
+    def test_r2_in_final_output(self):
+        result = run_orchestration("test prompt", session_logging=True)
+        final = result["final_output"]
+        self.assertIn("r2", final)
+
+        r2 = final["r2"]
+        self.assertIn("grade", r2)
+        self.assertIn("confidence_score", r2)
+        self.assertIn("flags", r2)
+        self.assertIn("signal_count", r2)
+        self.assertIn("entry_id", r2)
+
+        self.assertIn(r2["grade"], ("strong", "acceptable", "weak", "suspicious"))
+        self.assertGreaterEqual(r2["confidence_score"], 0.0)
+        self.assertLessEqual(r2["confidence_score"], 1.0)
+
+    def test_r2_creates_ledger_entry(self):
+        result = run_orchestration("test prompt", session_logging=True)
+        r2_engine = R2Engine(ledger_dir=self._r2_tmpdir)
+        self.assertEqual(r2_engine.count(), 1)
+
+        entry_id = result["final_output"]["r2"]["entry_id"]
+        loaded = r2_engine.load_entry(entry_id)
+        self.assertEqual(loaded["prompt"], "test prompt")
+
+    def test_r2_without_session_logging(self):
+        """R2 should still produce scores even with session logging off."""
+        result = run_orchestration("test prompt", session_logging=False)
+        self.assertIn("r2", result["final_output"])
+        self.assertIn("grade", result["final_output"]["r2"])
 
 
 if __name__ == "__main__":

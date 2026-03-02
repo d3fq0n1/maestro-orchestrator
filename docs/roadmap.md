@@ -19,12 +19,13 @@
 - **Session History Logging** – Persistent JSON-based session records with unified data layer for cross-session analysis
 - **Module Isolation** – Agent logic refactored into swappable, testable components with shared async interface
 - **Dissent Analysis** – Pairwise semantic distance, outlier detection, cross-session trend analysis, internal_agreement score feeding NCG silent collapse detection
+- **R2 Engine** – Rapid Recursion & Reinforcement: session scoring, consensus ledger indexing, structured improvement signal generation for MAGI, cross-session trend analysis
 
 ---
 
 ## Active Development (v0.3 Goals)
 
-- **R2 Engine** – Scoring, consensus reinforcement, and real-time dissent detection (building on dissent analysis)
+- **MAGI Loop** – Meta-agent governance layer that reads R2 ledger trends and proposes code-level improvements (the rapid recursion loop)
 - **Reinforcement Loop** – Feed consensus outcomes into fine-tuning or snapshot logs
 - **UI Enhancements** – Add tooltips, loading indicators, and error handling
 - **Drift Detection** – Meta-agent layer to compare outputs over time for stability (NCG semantic tier operational, token-level tier in progress)

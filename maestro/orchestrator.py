@@ -4,6 +4,7 @@ from maestro.agents.mock import MockAgent
 from maestro.aggregator import aggregate_responses
 from maestro.dissent import DissentAnalyzer
 from maestro.ncg import MockHeadlessGenerator, DriftDetector
+from maestro.r2 import R2Engine
 from maestro.session import SessionLogger, build_session_record
 
 
@@ -14,20 +15,20 @@ async def run_orchestration_async(
     session_logging: bool = True,
 ) -> dict:
     """
-    Orchestrates multiple agents, aggregates responses, and runs the NCG
-    diversity benchmark when enabled.
+    Orchestrates multiple agents, aggregates responses, and runs the
+    full analysis pipeline.
 
-    Three analysis layers run after the conversational track:
-      1. Dissent analysis -- measures how agents disagree with each other
-      2. NCG track -- headless generator produces unframed baseline content
+    Pipeline after the conversational track:
+      1. Dissent analysis -- measures internal agreement between agents
+      2. NCG track -- headless baseline for drift/collapse detection
       3. Aggregation -- synthesizes responses with dissent and NCG data
+      4. R2 Engine -- scores the session, detects improvement signals,
+         and indexes the consensus node into the ledger
 
     The dissent analyzer produces an internal_agreement score that feeds
-    into NCG's silent collapse detector. This closes the loop: high
-    internal agreement + high NCG drift = silent collapse.
-
-    When session_logging is True, the full session is persisted to disk
-    for cross-session analysis by R2.
+    into NCG's silent collapse detector. R2 then synthesizes all signals
+    into a quality grade and structured improvement recommendations that
+    MAGI will consume for the rapid recursion loop.
     """
     if agents is None:
         agents = [
@@ -95,6 +96,41 @@ async def run_orchestration_async(
         logger.save(record)
         session_id = record.session_id
         print(f"Session logged: {session_id}")
+
+    # --- R2 Engine (score, signal, index) ---
+    r2 = R2Engine()
+    r2_score = r2.score_session(
+        dissent_report=dissent_report,
+        drift_report=ncg_drift_report,
+        quorum_confidence=final_output.get("confidence", "Low"),
+    )
+    r2_signals = r2.detect_signals(r2_score, dissent_report, ncg_drift_report)
+    r2_entry = r2.index(
+        session_id=session_id,
+        prompt=prompt,
+        consensus=final_output.get("consensus", ""),
+        agents_agreed=[a.name for a in agents],
+        score=r2_score,
+        improvement_signals=r2_signals,
+        dissent_report=dissent_report,
+        drift_report=ncg_drift_report,
+    )
+
+    print(f"R2 grade: {r2_score.grade} (confidence: {r2_score.confidence_score})")
+    if r2_score.flags:
+        for flag in r2_score.flags:
+            print(f"  R2 flag: {flag}")
+    if r2_signals:
+        print(f"  R2 signals: {len(r2_signals)} improvement recommendation(s)")
+
+    # Attach R2 summary to final output
+    final_output["r2"] = {
+        "grade": r2_score.grade,
+        "confidence_score": r2_score.confidence_score,
+        "flags": r2_score.flags,
+        "signal_count": len(r2_signals),
+        "entry_id": r2_entry.entry_id,
+    }
 
     return {
         "responses": responses,

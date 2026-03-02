@@ -47,6 +47,7 @@ __pycache__/
 maestro_session.json
 gemini_session.json
 data/sessions/*.json
+data/r2/*.json
 
 # Environment variables file
 .env
