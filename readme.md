@@ -37,6 +37,7 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - **Quorum Consensus** — 66% agreement logic with dissent logging
 - **NCG (Novel Content Generation)** — Headless baseline track that detects silent model collapse and RLHF conformity drift
 - **Dissent Analysis** — Pairwise semantic distance between agents, outlier detection, and cross-session trend tracking
+- **R2 Engine (Rapid Recursion)** — Session scoring, consensus ledger indexing, and structured improvement signals for MAGI — the foundation for self-improving software
 - **Session History** — Persistent JSON logging of every orchestration session for cross-session analysis
 - **React/Vite Frontend** — Simple, modular web UI (containerized)
 - **Docker Support** — One-step spin-up of both frontend and backend
@@ -222,7 +223,7 @@ Retrieve a full session record including all agent responses, consensus output, 
 - [`ncg.md`](./docs/ncg.md) — Novel Content Generation and drift detection
 - [`architecture.md`](./docs/architecture.md)
 - [`magi.md`](./docs/magi.md) — Meta-Agent Governance
-- [`r2-engine.md`](./docs/r2-engine.md) — Rapid Reinforcement Engine
+- [`r2-engine.md`](./docs/r2-engine.md) — Rapid Recursion & Reinforcement Engine
 - [`roadmap.md`](./docs/roadmap.md)
 - [`quorum_logic.md`](./docs/quorum_logic.md)
 
@@ -254,7 +255,7 @@ Follow: [substack.com/@defqon1](https://substack.com/@defqon1)
 
 ## Future Work
 
-- R2 Engine — real-time scoring, consensus reinforcement, and dissent detection
+- MAGI Loop — meta-agent governance that reads R2 ledger and proposes code-level improvements (rapid recursion)
 - Token-level drift analysis via logprobs (OpenAI bridge available now, others pending)
 - NCG feedback loops — reshape prompts based on where drift is detected
 - Cross-session NCG baselines that track what "normal" looks like over time

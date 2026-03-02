@@ -11,13 +11,19 @@
 - Dissent analysis module (`maestro/dissent.py`) — pairwise semantic distance, outlier detection, cross-session trend analysis
 - `DissentAnalyzer` produces `internal_agreement` score that feeds into NCG silent collapse detection
 - Dissent report included in aggregated output with per-agent profiles and pairwise distances
-- Tests for dissent analysis, orchestrator integration, session persistence, and edge cases
+- R2 Engine (`maestro/r2.py`) — Rapid Recursion & Reinforcement engine for session scoring, consensus indexing, and improvement signal generation
+- `R2Engine` with `score_session()`, `detect_signals()`, `index()`, and `analyze_ledger_trends()` methods
+- `R2Score` grades each session as strong/acceptable/weak/suspicious based on dissent, NCG drift, and quorum data
+- `ImprovementSignal` dataclass produces structured observations (persistent_outlier, suspicious_consensus, compression, healthy_dissent, agent_degradation) for MAGI consumption
+- `R2LedgerEntry` writes scored consensus nodes to persistent ledger at `data/r2/`
+- Cross-session trend analysis detects confidence trends, recurring signals, and repeated suspicious consensus
+- R2 integrated into orchestrator pipeline — every session is scored, signals detected, and indexed after aggregation
+- Tests for R2 scoring, signal detection, ledger persistence, trend analysis, and orchestrator integration
 
 ### Planned for 0.3.0
 
-- R2 Engine for scoring and consensus reinforcement (building on dissent analysis)
+- MAGI loop for meta-agent audits — reads R2 ledger to propose code-level improvements (rapid recursion)
 - Immutable Snapshot Ledger
-- MAGI loop for meta-agent audits and drift detection
 - Capsule history anchoring and meta-analysis
 
 ---
