@@ -1,15 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from pathlib import Path
 from orchestrator_foundry import run_orchestration
 from maestro.api_sessions import router as sessions_router
 from maestro.api_magi import router as magi_router
 from maestro.api_keys import router as keys_router
-
-import os
 
 # === Initialize FastAPI app ===
 app = FastAPI()
@@ -44,10 +41,6 @@ async def ask(prompt: Prompt):
     try:
         result = await run_orchestration(user_prompt)
 
-        # Normalize response shape: the frontend reads "responses" as a
-        # dict keyed by agent name, and the analysis pipeline returns
-        # "named_responses" for that. Merge both into a single envelope
-        # that carries the full analysis alongside legacy fields.
         final = result.get("final_output", {})
         return {
             "responses": result.get("named_responses", {}),
@@ -71,16 +64,10 @@ async def ask(prompt: Prompt):
         }
 
 # === Static UI Mount (Vite production build) ===
+# In Docker, the built frontend is copied to backend/frontend/dist.
+# In local dev, the frontend runs its own Vite dev server instead.
 ui_path = Path(__file__).parent / "frontend" / "dist"
-if not ui_path.exists():
-    raise RuntimeError(f"UI build output not found at: {ui_path}")
-
-app.mount("/", StaticFiles(directory=ui_path, html=True), name="static")
-
-# === Optional: direct GET fallback ===
-@app.get("/")
-async def serve_index():
-    index_path = ui_path / "index.html"
-    if index_path.exists():
-        return FileResponse(index_path)
-    return {"error": "index.html not found in dist/"}
+if ui_path.exists():
+    app.mount("/", StaticFiles(directory=ui_path, html=True), name="static")
+else:
+    print(f"[Maestro] UI build not found at {ui_path} -- running in API-only mode")

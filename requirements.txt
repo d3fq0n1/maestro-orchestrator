@@ -1,6 +1,4 @@
-openai>=1.3.9
-anthropic>=0.24.0
-google-generativeai>=0.3.1
-pandas>=2.0.0
-python-dotenv>=1.0.0
-requests>=2.31.0
+# Runtime dependencies for Maestro-Orchestrator.
+# For Docker builds, backend/requirements.txt is used directly.
+# This file is provided for local development convenience.
+-r backend/requirements.txt

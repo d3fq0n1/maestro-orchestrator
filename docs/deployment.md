@@ -17,7 +17,6 @@ This guide walks you through deploying Maestro-Orchestrator in local, containeri
 2. Install dependencies:
    ```bash
    pip install -r requirements.txt
-   pip install -r backend/requirements.txt
    ```
 
 3. Configure environment variables:

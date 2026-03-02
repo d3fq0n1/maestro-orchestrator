@@ -1,30 +1,42 @@
-## [Unreleased]
+## [0.3.0] - 2026-03
 
 ### Added
 
+- MAGI meta-agent governance (`maestro/magi.py`) — cross-session pattern analysis with structured recommendations
+- API key management (`maestro/keyring.py`, `maestro/api_keys.py`, `maestro/cli_keys.py`) — in-app key configuration, validation, and secure `.env` persistence
+- Key management REST endpoints: `GET /api/keys`, `POST /api/keys/{provider}`, `POST /api/keys/validate`
+- Key management test suite (`tests/test_keyring.py`)
+- MAGI REST endpoint: `GET /api/magi`
+- Frontend key configuration panel in the web UI
 - Session history logging (`maestro/session.py`) — every orchestration session persisted to `data/sessions/` as structured JSON
-- `SessionLogger` class with save, load, list, delete, and count operations
-- `SessionRecord` dataclass capturing prompt, agent responses, consensus, NCG benchmark, and metadata
-- `build_session_record()` convenience function for orchestrator integration
 - Session history REST API (`maestro/api_sessions.py`) — `GET /api/sessions` and `GET /api/sessions/{id}`
-- Orchestrator now returns `session_id` in its output
 - Dissent analysis module (`maestro/dissent.py`) — pairwise semantic distance, outlier detection, cross-session trend analysis
-- `DissentAnalyzer` produces `internal_agreement` score that feeds into NCG silent collapse detection
-- Dissent report included in aggregated output with per-agent profiles and pairwise distances
-- R2 Engine (`maestro/r2.py`) — Rapid Recursion & Reinforcement engine for session scoring, consensus indexing, and improvement signal generation
-- `R2Engine` with `score_session()`, `detect_signals()`, `index()`, and `analyze_ledger_trends()` methods
-- `R2Score` grades each session as strong/acceptable/weak/suspicious based on dissent, NCG drift, and quorum data
-- `ImprovementSignal` dataclass produces structured observations (persistent_outlier, suspicious_consensus, compression, healthy_dissent, agent_degradation) for MAGI consumption
-- `R2LedgerEntry` writes scored consensus nodes to persistent ledger at `data/r2/`
+- R2 Engine (`maestro/r2.py`) — session scoring, consensus ledger indexing, and improvement signal generation
 - Cross-session trend analysis detects confidence trends, recurring signals, and repeated suspicious consensus
-- R2 integrated into orchestrator pipeline — every session is scored, signals detected, and indexed after aggregation
-- Tests for R2 scoring, signal detection, ledger persistence, trend analysis, and orchestrator integration
 
-### Planned for 0.3.0
+### Removed
 
-- MAGI loop for meta-agent audits — reads R2 ledger to propose code-level improvements (rapid recursion)
-- Immutable Snapshot Ledger
-- Capsule history anchoring and meta-analysis
+- Legacy `agents/` directory (replaced by `maestro/agents/`)
+- Legacy `scripts/` directory (orchestrator.py, model_adapters.py, council_session/, etc.)
+- Legacy CLI scripts: `backend/orchestration_livefire.py`, `backend/orchestration_livefire_rotating.py`, `backend/maestro_cli.py`
+- Legacy utility scripts: `backend/env_debug.py`, `backend/manual_verification.py`
+- Root-level `orchestrator_foundry.py` (replaced by `backend/orchestrator_foundry.py`)
+- PowerShell scripts: `combo-sync.ps1`, `scaffold.ps1`, `scripts/combosync.ps1`
+- Duplicate Dockerfiles: `backend/Dockerfile`, `frontend/Dockerfile` (root `Dockerfile` is canonical)
+- Duplicate/stale docs: `.env.template`, root `agents.md`, root `ui-guide.md`, `dev thoughts.md`
+- Windows artifacts: `desktop.ini`, `scripts/desktop.ini`
+- Vite boilerplate: `frontend/src/counter.ts`, `frontend/src/typescript.svg`
+
+### Fixed
+
+- `backend/main.py` no longer crashes when frontend dist is missing (runs in API-only mode)
+- Root `requirements.txt` now references `backend/requirements.txt` instead of listing stale legacy deps
+- `.gitignore` cleaned up (removed duplicate entries)
+- `frontend/index.html` title changed from "Vite + TS" to "Maestro-Orchestrator"
+
+### Changed
+
+- All documentation updated to reflect current codebase (removed references to deleted files, updated API response format, added key management endpoints)
 
 ---
 
