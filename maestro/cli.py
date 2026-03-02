@@ -89,9 +89,12 @@ def _print_banner():
     print()
     print("  Type a prompt and press Enter to run the full pipeline.")
     print("  Commands:")
-    print("    /keys     — show API key status")
-    print("    /help     — show this help text")
-    print("    /quit     — exit the CLI")
+    print("    /keys       — show API key status")
+    print("    /improve    — run a self-improvement cycle")
+    print("    /introspect — analyze code for optimization targets")
+    print("    /cycles     — show recent improvement cycles")
+    print("    /help       — show this help text")
+    print("    /quit       — exit the CLI")
     print()
 
 
@@ -197,6 +200,178 @@ def _print_keys():
 
 
 # ---------------------------------------------------------------------------
+# Self-improvement commands
+# ---------------------------------------------------------------------------
+
+def _run_improvement_cycle():
+    """Run a full self-improvement cycle and display results."""
+    from maestro.self_improve import SelfImprovementEngine
+
+    print()
+    print(SEPARATOR)
+    print("  Self-Improvement Cycle")
+    print(SEPARATOR)
+    print("  Running: MAGI analysis -> Introspect -> Propose -> Validate")
+    print()
+
+    try:
+        engine = SelfImprovementEngine()
+        cycle = engine.run_cycle()
+
+        print(f"  Cycle ID    : {cycle.cycle_id}")
+        print(f"  Phase       : {cycle.phase}")
+        print(f"  Outcome     : {cycle.outcome}")
+        print(f"  Proposals   : {cycle.proposal_count}")
+        print(f"  Duration    : {cycle.duration_ms}ms")
+        print(f"  Compute node: {cycle.compute_node}")
+
+        if cycle.magi_report:
+            report = cycle.magi_report
+            print()
+            print(THIN_SEP)
+            print("  MAGI Analysis")
+            print(THIN_SEP)
+            print(f"  Sessions analyzed : {report.get('sessions_analyzed', 0)}")
+            print(f"  Confidence trend  : {report.get('confidence_trend', 'N/A')}")
+            print(f"  Collapse frequency: {report.get('collapse_frequency', 0)}")
+            rec_count = report.get("recommendation_count", 0)
+            print(f"  Recommendations   : {rec_count}")
+
+        if cycle.introspection_summary:
+            print()
+            print(THIN_SEP)
+            print("  Code Introspection")
+            print(THIN_SEP)
+            print(_wrap(cycle.introspection_summary))
+
+        if cycle.proposals:
+            print()
+            print(THIN_SEP)
+            print("  Optimization Proposals")
+            print(THIN_SEP)
+            for p in cycle.proposals[:5]:
+                priority = p.get("priority", "?")
+                title = p.get("title", "untitled")
+                print(f"  [{priority.upper()}] {title}")
+
+        if cycle.vir_report:
+            vir = cycle.vir_report
+            print()
+            print(THIN_SEP)
+            print("  MAGI_VIR Validation")
+            print(THIN_SEP)
+            print(f"  VIR ID         : {vir.get('vir_id', 'N/A')}")
+            print(f"  Benchmarks     : {vir.get('benchmark_count', 0)}")
+            print(f"  Improvement    : {vir.get('overall_improvement', 0):.4f}")
+            print(f"  Recommendation : {vir.get('recommendation', 'N/A')}")
+            print()
+            print(_wrap(vir.get("summary", "")))
+
+        if cycle.metadata.get("error"):
+            print()
+            print(f"  ERROR: {cycle.metadata['error']}")
+
+    except Exception as e:
+        print(f"\n[ERROR] Self-improvement cycle failed: {e}\n")
+
+    print()
+    print(SEPARATOR)
+    print()
+
+
+def _run_introspection():
+    """Run analysis + introspection and display results."""
+    from maestro.self_improve import SelfImprovementEngine
+
+    print()
+    print(SEPARATOR)
+    print("  Code Introspection (Analysis Only)")
+    print(SEPARATOR)
+    print()
+
+    try:
+        engine = SelfImprovementEngine()
+        result = engine.run_analysis_only()
+
+        print(f"  Code targets found : {result.get('code_targets', 0)}")
+        print(f"  Proposals generated: {result.get('proposal_count', 0)}")
+        print()
+        print(_wrap(result.get("introspection_summary", "No summary")))
+
+        hotspots = result.get("complexity_hotspots", [])
+        if hotspots:
+            print()
+            print(THIN_SEP)
+            print("  Complexity Hotspots")
+            print(THIN_SEP)
+            for h in hotspots[:5]:
+                print(f"  {h['function']:<30} {h['file']:<40} {h['complexity']:.2f}")
+
+        proposals = result.get("proposals", [])
+        if proposals:
+            print()
+            print(THIN_SEP)
+            print("  Optimization Proposals")
+            print(THIN_SEP)
+            for p in proposals[:10]:
+                priority = p.get("priority", "?")
+                title = p.get("title", "untitled")
+                category = p.get("category", "?")
+                print(f"  [{priority.upper():<8}] [{category:<15}] {title}")
+
+        summary = result.get("batch_summary", "")
+        if summary:
+            print()
+            print(_wrap(summary))
+
+    except Exception as e:
+        print(f"\n[ERROR] Introspection failed: {e}\n")
+
+    print()
+    print(SEPARATOR)
+    print()
+
+
+def _show_improvement_cycles():
+    """Show recent self-improvement cycles."""
+    from maestro.self_improve import SelfImprovementEngine
+
+    print()
+    print(SEPARATOR)
+    print("  Recent Improvement Cycles")
+    print(SEPARATOR)
+    print()
+
+    try:
+        engine = SelfImprovementEngine()
+        cycles = engine.list_cycles(limit=10)
+
+        if not cycles:
+            print("  No improvement cycles recorded yet.")
+            print("  Run /improve to start a self-improvement cycle.")
+        else:
+            print(f"  {'Timestamp':<22} {'Outcome':<14} {'Proposals':<10} {'Duration':<10} {'Node'}")
+            print(f"  {'─' * 22} {'─' * 14} {'─' * 10} {'─' * 10} {'─' * 10}")
+            for c in cycles:
+                ts = c.get("timestamp", "?")[:19]
+                outcome = c.get("outcome", "?")
+                proposals = c.get("proposal_count", 0)
+                duration = f"{c.get('duration_ms', 0)}ms"
+                node = c.get("compute_node", "local")
+                print(f"  {ts:<22} {outcome:<14} {proposals:<10} {duration:<10} {node}")
+
+        total = engine.count_cycles()
+        print(f"\n  Total cycles: {total}")
+
+    except Exception as e:
+        print(f"\n[ERROR] Failed to load cycles: {e}\n")
+
+    print()
+    print(SEPARATOR)
+    print()
+
+
+# ---------------------------------------------------------------------------
 # Main interactive loop
 # ---------------------------------------------------------------------------
 
@@ -226,6 +401,18 @@ def interactive_loop():
 
         if lower in ("/keys", "/key"):
             _print_keys()
+            continue
+
+        if lower in ("/improve", "/self-improve"):
+            _run_improvement_cycle()
+            continue
+
+        if lower in ("/introspect", "/inspect"):
+            _run_introspection()
+            continue
+
+        if lower in ("/cycles", "/history"):
+            _show_improvement_cycles()
             continue
 
         # --- Run orchestration ---

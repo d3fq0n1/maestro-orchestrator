@@ -282,7 +282,7 @@ class R2Engine:
         Read recent ledger entries and detect patterns across sessions.
         Returns trend data that MAGI uses for longer-term improvements.
         """
-        entries = self._load_recent_entries(limit)
+        entries = self.load_recent_entries(limit)
         if len(entries) < 2:
             return {
                 "entries_analyzed": len(entries),
@@ -404,7 +404,7 @@ class R2Engine:
         """Total number of ledger entries."""
         return len(list(self._dir.glob("*.json")))
 
-    def _load_recent_entries(self, limit: int) -> list:
+    def load_recent_entries(self, limit: int) -> list:
         """Load full entry data for recent entries."""
         files = sorted(self._dir.glob("*.json"), key=os.path.getmtime, reverse=True)
         entries = []

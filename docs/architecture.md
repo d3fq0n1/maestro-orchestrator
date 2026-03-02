@@ -50,8 +50,18 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 - Analyzes per-agent health (outlier rates, consistency)
 - Tracks confidence trends, collapse frequency, and recurring signals
 - Produces structured Recommendations: human-readable proposals for system-level changes
-- Available on-demand via `GET /api/magi`
+- **Code introspection**: maps R2 improvement signals to specific source code locations via AST analysis
+- **Optimization proposals**: generates concrete code change proposals (threshold tuning, agent config, architecture)
+- Available on-demand via `GET /api/magi` and `GET /api/self-improve/introspect`
 - All analysis is read-only; MAGI never auto-applies changes
+
+### Self-Improvement Pipeline
+- **Code Introspection Engine** (`maestro/introspect.py`): Three-tier source analysis — static AST parsing with complexity metrics, signal-to-code mapping rules, and token-level behavior analysis from R2 ledger data
+- **Optimization Engine** (`maestro/optimization.py`): Translates introspection results into structured `OptimizationProposal` objects with threshold strategies, temperature strategies, and architecture refactoring rules
+- **MAGI_VIR** (`maestro/magi_vir.py`): Virtual Instance Runtime — sandboxed testing environment that runs benchmark prompts through baseline and optimized configurations, compares results, and produces promotion/rejection recommendations
+- **Self-Improvement Orchestrator** (`maestro/self_improve.py`): Top-level coordinator for the rapid recursion loop: MAGI → Introspect → Propose → Validate (VIR) → Promote/Reject
+- **Compute Node Registry**: JSON-based registry for distributed validation across multiple Maestro nodes
+- All proposals require human approval; no changes are auto-applied
 
 ### Unified Startup Wrapper (`entrypoint.py`)
 - Single Docker entrypoint that presents a dialog-based GUI on container launch
@@ -64,7 +74,7 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 - Terminal-based REPL that runs the full orchestration pipeline
 - Typed prompts flow through the same agent council, dissent analysis, NCG, R2, and session logging as the Web-UI
 - Renders agent responses, consensus, dissent metrics, NCG benchmark, and R2 grade in a formatted terminal layout
-- Built-in commands: `/keys` (show API key status), `/help`, `/quit`
+- Built-in commands: `/keys` (show API key status), `/improve` (run self-improvement cycle), `/introspect` (analyze code for optimization targets), `/cycles` (show improvement history), `/help`, `/quit`
 - Can be run standalone (`python -m maestro.cli`) or via the startup wrapper
 
 ### Frontend UI (React + Vite)
@@ -106,9 +116,14 @@ entrypoint.py                # Unified startup wrapper (dialog GUI for mode sele
   keyring.py                 # API key management and .env persistence
   cli.py                     # Interactive CLI (REPL for terminal orchestration)
   cli_keys.py                # CLI key configuration tool
+  introspect.py              # Code introspection engine (AST, signal mapping, token analysis)
+  optimization.py            # Optimization proposal system (strategies, proposals)
+  magi_vir.py                # MAGI Virtual Instance Runtime (sandboxed validation)
+  self_improve.py            # Self-improvement orchestrator (rapid recursion loop)
   api_sessions.py            # Session history REST API
   api_magi.py                # MAGI analysis REST API
   api_keys.py                # Key management REST API
+  api_self_improve.py        # Self-improvement pipeline REST API
   agents/                    # Agent wrappers (base, sol, aria, prism, tempagent, mock)
   ncg/                       # Novel Content Generation (generator, drift)
 /frontend
@@ -120,9 +135,12 @@ entrypoint.py                # Unified startup wrapper (dialog GUI for mode sele
   test_orchestration.py       # Orchestration pipeline tests
   test_keyring.py             # Key management tests
   test_startup.py             # Startup wrapper and CLI tests
+  test_self_improvement.py    # Self-improvement pipeline tests (49 tests)
 /data
   sessions/                   # Persisted session JSON logs
   r2/                         # R2 Engine ledger entries
+  improvements/               # Self-improvement cycle records
+  compute_nodes/              # Compute node registry
 Dockerfile                    # Multi-stage build (frontend + backend + dialog)
 docker-compose.yml
 .env.example
@@ -175,6 +193,18 @@ docker-compose.yml
 
 Cross-session (on demand):
   data/r2/ + data/sessions/ -> MAGI -> Recommendations -> /api/magi
+
+Self-improvement (on demand):
+  MAGI Analysis -> Code Introspection (AST + signal mapping)
+       |
+       v
+  Optimization Proposals (threshold, agent_config, architecture)
+       |
+       v
+  MAGI_VIR Sandbox (benchmark baseline vs optimized)
+       |
+       v
+  VIR Report -> Promote / Reject / Needs Review -> data/improvements/
 ```
 
 ---
@@ -190,6 +220,13 @@ Cross-session (on demand):
 | GET | `/api/keys` | List configured API key status |
 | POST | `/api/keys/{provider}` | Set or update an API key |
 | POST | `/api/keys/validate` | Validate all configured keys |
+| GET | `/api/self-improve` | Self-improvement status and recent cycles |
+| POST | `/api/self-improve/cycle` | Trigger a full self-improvement cycle |
+| POST | `/api/self-improve/analyze` | Run analysis + introspection without validation |
+| GET | `/api/self-improve/cycle/{id}` | Load a specific improvement cycle record |
+| GET | `/api/self-improve/introspect` | MAGI analysis with code introspection |
+| GET | `/api/self-improve/nodes` | List available compute nodes |
+| POST | `/api/self-improve/nodes` | Register a new compute node |
 
 ---
 
@@ -200,7 +237,9 @@ Cross-session (on demand):
 - Cross-session NCG baselines tracking what "normal" output looks like over time
 - Local model agent support (e.g., llamacpp)
 - Real-time debate log and public-facing consensus ledger
-- MAGI automation layer (opt-in auto-apply for low-risk recommendations)
+- MAGI automation layer (opt-in auto-apply for validated low-risk proposals)
+- Remote compute node MAGI_VIR validation (full pipeline on distributed nodes)
+- Web-UI integration for self-improvement cycle monitoring and proposal review
 
 ---
 

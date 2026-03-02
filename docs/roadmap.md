@@ -23,6 +23,12 @@
 - **Semantic Quorum** -- Agreement determined by semantic similarity clustering (pairwise distance threshold) rather than exact string matching; numeric agreement_ratio with 66% supermajority
 - **MAGI Module** -- Meta-Agent Governance and Insight: reads R2 ledger and session history, detects cross-session patterns (persistent outliers, confidence trends, collapse frequency), produces structured recommendations
 - **Headless Generator Selection** -- Automatically selects the best available headless generator (OpenAI with logprobs, Anthropic, or mock fallback) based on API key availability
+- **Self-Improvement Pipeline** -- Complete rapid recursion loop: MAGI analysis → code introspection (AST, signal-to-code mapping, token-level analysis) → optimization proposals (threshold tuning, agent config, prompt optimization, architecture refactoring) → MAGI_VIR sandboxed validation → promote/reject cycle
+- **MAGI_VIR (Virtual Instance Runtime)** -- Isolated sandbox for testing optimization proposals with ephemeral data directories, benchmark suite, and side-by-side comparison reporting
+- **Code Introspection Engine** -- Three-tier analysis: static source (AST parsing, complexity metrics), runtime signal mapping (R2 signals → code locations), and token-level behavior analysis
+- **Compute Node Registry** -- JSON-based registry for distributed MAGI_VIR validation across multiple Maestro nodes
+- **Self-Improvement API** -- REST endpoints for triggering cycles, reviewing proposals, and managing compute nodes (`/api/self-improve/*`)
+- **Self-Improvement CLI Commands** -- `/improve`, `/introspect`, `/cycles` commands in the interactive CLI
 
 ---
 
@@ -30,8 +36,9 @@
 
 - **Token-Level NCG Analysis** -- Bridge from conversational metadata to logprob-level drift measurement across all providers (OpenAI logprobs integration built, pending for Anthropic/Google)
 - **NCG Feedback Loops** -- Reshape prompts based on drift signals before they reach conversational agents
-- **MAGI Automation Layer** -- Opt-in auto-apply for low-risk recommendations (e.g., temperature adjustments)
+- **MAGI Automation Layer** -- Opt-in auto-apply for validated low-risk proposals (e.g., threshold adjustments that pass MAGI_VIR validation)
 - **Reinforcement Loop** -- Feed consensus outcomes into fine-tuning or snapshot logs
+- **Remote Compute Node Validation** -- Full MAGI_VIR validation on remote Maestro nodes via the compute node registry
 
 ---
 
