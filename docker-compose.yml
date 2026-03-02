@@ -11,7 +11,9 @@ services:
     volumes:
       - maestro-sessions:/app/data/sessions
       - maestro-r2:/app/data/r2
+      - maestro-env:/app/backend/env
 
 volumes:
   maestro-sessions:
   maestro-r2:
+  maestro-env:

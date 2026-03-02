@@ -3,8 +3,9 @@ import sys
 import asyncio
 from dotenv import load_dotenv
 
-# Load .env from the same directory as this script
-dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+# Load .env — prefer MAESTRO_ENV_FILE (set in Docker for volume-backed persistence),
+# then fall back to the same directory as this script.
+dotenv_path = os.environ.get("MAESTRO_ENV_FILE") or os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path=dotenv_path)
 
 # Allow imports from the project root so the maestro package is visible

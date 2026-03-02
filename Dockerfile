@@ -28,10 +28,14 @@ COPY backend/ ./backend/
 COPY maestro/ ./maestro/
 
 # Create persistent data directories
-RUN mkdir -p data/sessions data/r2
+RUN mkdir -p data/sessions data/r2 backend/env
 
 # Copy environment template as fallback (override via env_file or -e flags)
 COPY .env.example ./backend/.env
+COPY .env.example ./backend/env/.env
+
+# Point keyring at the volume-backed env file so keys survive rebuilds
+ENV MAESTRO_ENV_FILE=/app/backend/env/.env
 
 # Copy Vite frontend build output into the path expected by backend/main.py
 COPY --from=frontend-builder /app/frontend/dist ./backend/frontend/dist
