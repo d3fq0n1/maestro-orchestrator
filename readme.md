@@ -40,6 +40,8 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - **API Key Management** -- In-app key configuration, validation, and secure `.env` persistence
 - **Session History** -- Persistent JSON logging of every orchestration session
 - **React/Vite Frontend** -- Full analysis dashboard (R2 grade, quorum bar, dissent, NCG drift, session browser)
+- **Unified Startup Wrapper** -- Single Docker entrypoint with a GUI that lets you choose Web-UI or CLI mode
+- **Interactive CLI** -- Full orchestration pipeline in the terminal (REPL with agent responses, consensus, dissent, NCG, R2)
 - **Docker Support** -- Single-container deployment serving both UI and API
 
 ---
@@ -61,7 +63,30 @@ cp .env.example .env   # add your API keys
 docker-compose up --build
 ```
 
-Application (UI + API): [http://localhost:8000](http://localhost:8000)
+On startup, a mode-selection dialog will appear:
+
+```
+┌── Maestro-Orchestrator ────────────────────────┐
+│ Welcome to Maestro-Orchestrator.               │
+│                                                │
+│ Select how you would like to run the system:   │
+│                                                │
+│   web  —  Web-UI (dashboard on port 8000)      │
+│   cli  —  Interactive command-line interface    │
+└────────────────────────────────────────────────┘
+```
+
+- **Web-UI**: Launches the full React dashboard + API on [http://localhost:8000](http://localhost:8000)
+- **CLI**: Opens an interactive terminal for running prompts through the full pipeline
+
+To skip the dialog, set the `MAESTRO_MODE` environment variable:
+```bash
+# Always launch Web-UI (useful for headless / CI deployments)
+MAESTRO_MODE=web docker-compose up --build
+
+# Always launch CLI
+docker-compose run maestro   # with MAESTRO_MODE=cli in .env
+```
 
 ### 2. Local development
 ```bash
@@ -71,6 +96,10 @@ python -m venv venv
 source venv/bin/activate  # or .\venv\Scripts\activate on Windows
 pip install -r requirements.txt
 cp .env.example .env      # add your API keys
+```
+
+**Web-UI mode:**
+```bash
 uvicorn backend.main:app --reload --port 8000
 ```
 
@@ -79,6 +108,11 @@ Frontend (separate terminal):
 cd frontend
 npm install
 npm run dev
+```
+
+**CLI mode:**
+```bash
+python -m maestro.cli
 ```
 
 Backend API: `http://localhost:8000/api/ask`

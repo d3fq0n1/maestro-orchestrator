@@ -11,11 +11,19 @@ cp .env.example .env   # add your API keys
 docker-compose up --build
 ```
 
-Application (UI + API): `http://localhost:8000`
+A startup dialog will appear — choose **Web-UI** or **CLI**:
+
+- **Web-UI**: Full React dashboard + API at `http://localhost:8000`
+- **CLI**: Interactive terminal for running prompts through the orchestration pipeline
+
+To skip the dialog and go straight to Web-UI mode:
+```bash
+MAESTRO_MODE=web docker-compose up --build
+```
 
 ## Local Development
 
-### Backend (FastAPI)
+### Web-UI (Backend + Frontend)
 
 ```bash
 git clone https://github.com/d3fq0n1/maestro-orchestrator.git
@@ -27,8 +35,7 @@ cp .env.example .env  # add your API keys
 uvicorn backend.main:app --reload --port 8000
 ```
 
-### Frontend (React + Vite)
-
+Frontend (separate terminal):
 ```bash
 cd frontend
 npm install
@@ -36,6 +43,14 @@ npm run dev
 ```
 
 The UI will be available at `http://localhost:5173` and proxies API calls to the backend.
+
+### CLI Mode
+
+```bash
+python -m maestro.cli
+```
+
+Type prompts at the `maestro>` prompt. Results include agent responses, consensus, dissent analysis, NCG benchmark, and R2 grade. Type `/help` for available commands.
 
 ## Running Tests
 

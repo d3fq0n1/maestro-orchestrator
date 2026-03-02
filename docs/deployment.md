@@ -55,6 +55,16 @@ Frontend will run at `http://localhost:5173`.
 
 ---
 
+### Interactive CLI (local)
+
+```bash
+python -m maestro.cli
+```
+
+This opens a REPL where you can type prompts and see the full orchestration pipeline output (agent responses, consensus, dissent, NCG benchmark, R2 grade) directly in the terminal.
+
+---
+
 ## Docker Deployment (Recommended)
 
 ### Prerequisites
@@ -68,7 +78,24 @@ cp .env.example .env   # add your API keys
 docker-compose up --build
 ```
 
-The application (UI + API) will be available at `http://localhost:8000`.
+On startup, a mode-selection dialog will appear asking you to choose **Web-UI** or **CLI** mode. Choose the mode you want and press Enter.
+
+- **Web-UI**: The dashboard + API will be available at `http://localhost:8000`
+- **CLI**: An interactive terminal opens for running prompts directly
+
+### Skipping the Startup Dialog
+
+Set the `MAESTRO_MODE` environment variable to bypass the dialog:
+
+```bash
+# Always launch Web-UI (recommended for headless / CI / production)
+MAESTRO_MODE=web docker-compose up --build
+
+# Always launch CLI
+docker-compose run maestro   # with MAESTRO_MODE=cli in .env
+```
+
+When no TTY is attached (e.g., `docker-compose up` without `-it`), the system defaults to Web-UI automatically.
 
 ---
 
@@ -76,11 +103,12 @@ The application (UI + API) will be available at `http://localhost:8000`.
 
 - **`Dockerfile`** (root):
   - Multi-stage build: Stage 1 builds the Vite frontend, Stage 2 sets up the Python backend and copies the built frontend as static assets
-  - Copies `backend/`, `maestro/`, and built frontend into the container
-  - Uses Uvicorn to serve FastAPI (which also serves the static UI)
+  - Installs `dialog` for the ncurses startup GUI
+  - Copies `backend/`, `maestro/`, `entrypoint.py`, and built frontend into the container
+  - Uses `entrypoint.py` as the default CMD (unified startup wrapper)
 
 - **`docker-compose.yml`**:
-  - Defines `maestro` service
+  - Defines `maestro` service with `stdin_open: true` and `tty: true` for interactive mode
   - Loads API keys from `.env`
   - Maps port `8000:8000`
   - Uses named volumes for session and R2 data persistence

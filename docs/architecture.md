@@ -53,6 +53,20 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 - Available on-demand via `GET /api/magi`
 - All analysis is read-only; MAGI never auto-applies changes
 
+### Unified Startup Wrapper (`entrypoint.py`)
+- Single Docker entrypoint that presents a dialog-based GUI on container launch
+- Users choose between **Web-UI** (React dashboard + API) or **CLI** (interactive terminal)
+- Uses the `dialog` ncurses utility for the selection menu; falls back to a plain text prompt when `dialog` is unavailable
+- Respects the `MAESTRO_MODE` environment variable (`web` or `cli`) to skip the dialog entirely
+- When no TTY is attached, defaults to Web-UI automatically (safe for headless / CI deployments)
+
+### Interactive CLI (`maestro/cli.py`)
+- Terminal-based REPL that runs the full orchestration pipeline
+- Typed prompts flow through the same agent council, dissent analysis, NCG, R2, and session logging as the Web-UI
+- Renders agent responses, consensus, dissent metrics, NCG benchmark, and R2 grade in a formatted terminal layout
+- Built-in commands: `/keys` (show API key status), `/help`, `/quit`
+- Can be run standalone (`python -m maestro.cli`) or via the startup wrapper
+
 ### Frontend UI (React + Vite)
 - Calls backend API at `/api/ask`
 - Displays:
@@ -67,9 +81,10 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 - Designed for deployment as static assets via Docker
 
 ### Docker
-- Multi-stage Dockerfile: Stage 1 builds the Vite frontend, Stage 2 sets up Python with `backend/` and `maestro/` packages, then copies the built frontend as static assets served by FastAPI
-- Single service via `docker-compose.yml` -- both UI and API are served on port 8000
-- `.env` support for API keys and runtime configuration
+- Multi-stage Dockerfile: Stage 1 builds the Vite frontend, Stage 2 sets up Python with `backend/` and `maestro/` packages, installs `dialog`, then copies the built frontend as static assets served by FastAPI
+- Unified startup via `entrypoint.py` — presents mode selection on first launch
+- Single service via `docker-compose.yml` with `stdin_open: true` and `tty: true` for interactive mode
+- `.env` support for API keys and runtime configuration (including `MAESTRO_MODE`)
 - Named volumes for persistent session and R2 data
 
 ---
@@ -77,35 +92,38 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 ## File Structure
 
 ```
+entrypoint.py                # Unified startup wrapper (dialog GUI for mode selection)
 /backend
-  main.py                  # FastAPI app, mounts all routers, serves static UI
-  orchestrator_foundry.py  # Thin wrapper: builds live council, calls core pipeline
-/maestro                   # Core orchestration package
-  orchestrator.py          # Async orchestration engine (full pipeline)
-  aggregator.py            # Semantic quorum logic and response synthesis
-  dissent.py               # Pairwise dissent analysis, outlier detection
-  r2.py                    # R2 Engine (scoring, ledger, signals)
-  magi.py                  # MAGI meta-agent governance and recommendations
-  session.py               # Session persistence
-  keyring.py               # API key management and .env persistence
-  api_sessions.py          # Session history REST API
-  api_magi.py              # MAGI analysis REST API
-  api_keys.py              # Key management REST API
-  cli_keys.py              # CLI key configuration tool
-  agents/                  # Agent wrappers (base, sol, aria, prism, tempagent, mock)
-  ncg/                     # Novel Content Generation (generator, drift)
+  main.py                    # FastAPI app, mounts all routers, serves static UI
+  orchestrator_foundry.py    # Thin wrapper: builds live council, calls core pipeline
+/maestro                     # Core orchestration package
+  orchestrator.py            # Async orchestration engine (full pipeline)
+  aggregator.py              # Semantic quorum logic and response synthesis
+  dissent.py                 # Pairwise dissent analysis, outlier detection
+  r2.py                      # R2 Engine (scoring, ledger, signals)
+  magi.py                    # MAGI meta-agent governance and recommendations
+  session.py                 # Session persistence
+  keyring.py                 # API key management and .env persistence
+  cli.py                     # Interactive CLI (REPL for terminal orchestration)
+  cli_keys.py                # CLI key configuration tool
+  api_sessions.py            # Session history REST API
+  api_magi.py                # MAGI analysis REST API
+  api_keys.py                # Key management REST API
+  agents/                    # Agent wrappers (base, sol, aria, prism, tempagent, mock)
+  ncg/                       # Novel Content Generation (generator, drift)
 /frontend
   src/
-    maestroUI.tsx           # Main UI with full analysis rendering
-    app.tsx                 # App root
-    style.css               # Component styles
+    maestroUI.tsx             # Main UI with full analysis rendering
+    app.tsx                   # App root
+    style.css                 # Component styles
 /tests
-  test_orchestration.py     # Orchestration pipeline tests
-  test_keyring.py           # Key management tests
+  test_orchestration.py       # Orchestration pipeline tests
+  test_keyring.py             # Key management tests
+  test_startup.py             # Startup wrapper and CLI tests
 /data
-  sessions/                 # Persisted session JSON logs
-  r2/                       # R2 Engine ledger entries
-Dockerfile                  # Multi-stage build (frontend + backend)
+  sessions/                   # Persisted session JSON logs
+  r2/                         # R2 Engine ledger entries
+Dockerfile                    # Multi-stage build (frontend + backend + dialog)
 docker-compose.yml
 .env.example
 ```
@@ -115,34 +133,45 @@ docker-compose.yml
 ## Data Flow
 
 ```text
-User -> UI -> /api/ask -> Orchestrator Foundry (live council)
-                              |
-                              v
-                    maestro.orchestrator (core pipeline)
-                              |
-         +--------------------+--------------------+
-         |                    |                    |
-   Conversational Track  NCG Track          Dissent Analysis
-   [Sol, Aria, Prism,    [Headless Gen]     (pairwise distance,
-    TempAgent]                |              outlier detection)
-         |                    |                    |
-         |                    v                    |
-         |              Drift Detector             |
-         |              (semantic + token)         |
-         |                    |                    |
-         +--------------------+--------------------+
-                              |
-                              v
-                    Aggregator (Semantic Quorum)
-                              |
-                              v
-                    Session Logger -> data/sessions/
-                              |
-                              v
-                    R2 Engine (score, signal, index) -> data/r2/
-                              |
-                              v
-                    Response -> UI Render
+                    entrypoint.py (startup dialog)
+                         |
+              +----------+----------+
+              |                     |
+         [Web-UI]              [CLI]
+              |                     |
+   User -> UI -> /api/ask   User -> maestro> prompt
+              |                     |
+   Orchestrator Foundry      maestro.cli (direct call)
+              |                     |
+              +----------+----------+
+                         |
+                         v
+               maestro.orchestrator (core pipeline)
+                         |
+         +---------------+---------------+
+         |               |               |
+   Conversational    NCG Track     Dissent Analysis
+   Track             [Headless     (pairwise distance,
+   [Sol, Aria,        Gen]          outlier detection)
+    Prism,               |               |
+    TempAgent]           v               |
+         |         Drift Detector        |
+         |         (semantic + token)    |
+         |               |               |
+         +---------------+---------------+
+                         |
+                         v
+               Aggregator (Semantic Quorum)
+                         |
+                         v
+               Session Logger -> data/sessions/
+                         |
+                         v
+               R2 Engine (score, signal, index) -> data/r2/
+                         |
+              +----------+----------+
+              |                     |
+         Response -> UI Render  Response -> Terminal Render
 
 Cross-session (on demand):
   data/r2/ + data/sessions/ -> MAGI -> Recommendations -> /api/magi
