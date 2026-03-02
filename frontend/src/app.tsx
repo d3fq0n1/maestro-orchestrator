@@ -1,7 +1,8 @@
 import React from "react";
+import MaestroUI from "./maestroUI";
 
 function App() {
-  return <div>Hello from Maestro UI</div>;
+  return <MaestroUI />;
 }
 
 export default App;

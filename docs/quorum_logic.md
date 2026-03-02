@@ -1,7 +1,7 @@
 # Quorum Logic – Maestro-Orchestrator
 
-**Version:** v0.2-webui
-**Last Updated:** 2025-06-05
+**Version:** v0.3
+**Last Updated:** 2026-03-02
 **Author:** defcon
 
 Maestro-Orchestrator uses a structured quorum system to synthesize multiple AI model responses into a single representative answer while preserving meaningful dissent.
@@ -13,8 +13,10 @@ This approach prevents groupthink and fosters dynamic interplay among models.
 ## Quorum Threshold
 
 - The system requires a **66% supermajority** to mark a consensus.
-- If 3 out of 4 agents agree, the response is marked as **agreed**.
+- Agreement is determined by **semantic similarity clustering**, not exact string matching.
+- If 3 out of 4 agents cluster together (pairwise distance < 0.5), the response is marked as **agreed**.
 - Dissenting outputs are stored and displayed in the UI for transparency.
+- The API returns a numeric `agreement_ratio` (0.0-1.0) alongside "High"/"Medium"/"Low" confidence labels.
 
 ---
 
@@ -28,13 +30,14 @@ This approach prevents groupthink and fosters dynamic interplay among models.
 
 ## Agreement Criteria
 
-Agreement between agents is determined by:
+Agreement between agents is determined by semantic similarity clustering:
 
-1. **Semantic similarity** — token overlap, structural alignment
-2. **Intent convergence** — do the models arrive at similar conclusions?
-3. **Tone and framing** — aggressive vs. reflective vs. skeptical modes are normalized
+1. The dissent analyzer computes pairwise semantic distance between all agent responses
+2. The aggregator groups agents into clusters where members have mean pairwise distance below 0.5
+3. The largest cluster is the "majority" -- its size divided by total agents is the `agreement_ratio`
+4. If `agreement_ratio >= 0.66`, quorum is met
 
-The system uses lightweight heuristics for now, with plans to integrate LLM-based self-evaluation in future releases.
+The pairwise distance function uses sentence-transformers embeddings when available, falling back to Jaccard token distance.
 
 ---
 
@@ -89,7 +92,8 @@ See [`ncg.md`](./ncg.md) for details.
 ## Future Enhancements
 
 - LLM-based response comparator (contextual evaluation)
-- Dissent weighting (track dissent frequency per agent)
+- Dissent weighting (MAGI tracks per-agent outlier rates across sessions)
 - Self-voting agents (models critique peer responses)
 - Public consensus ledger (decentralized append-only record)
 - NCG-informed quorum scoring (weight consensus by drift distance from headless baseline)
+- Embedding-based clustering upgrade (use full sentence embeddings instead of token overlap for higher accuracy)

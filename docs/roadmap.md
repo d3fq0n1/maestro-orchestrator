@@ -1,47 +1,48 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v0.2-webui
-**Last Updated:** 2025-06-05
+**Current Version:** v0.3
+**Last Updated:** 2026-03-02
 **Maintainer:** defcon
 
 ---
 
 ## Completed Milestones
 
-- **Core Orchestration Logic** – Functional quorum-based multi-agent orchestration
-- **Agent Roles System** – Randomized agent rotation to avoid bias accumulation
-- **FastAPI Backend** – Exposes `/api/ask` endpoint for live prompt orchestration
-- **React Web UI** – Functional frontend displaying agent output and consensus
-- **Full Containerization** – Docker support for one-step deployment of backend + frontend
-- **CLI Fallback** – Standalone session runner (`orchestration_livefire.py`)
-- **License Split** – Custom open-use license and commercial terms clarified
-- **NCG Module** – Novel Content Generation with headless generators, drift detection, and silent collapse prevention
-- **Session History Logging** – Persistent JSON-based session records with unified data layer for cross-session analysis
-- **Module Isolation** – Agent logic refactored into swappable, testable components with shared async interface
-- **Dissent Analysis** – Pairwise semantic distance, outlier detection, cross-session trend analysis, internal_agreement score feeding NCG silent collapse detection
-- **R2 Engine** – Rapid Recursion & Reinforcement: session scoring, consensus ledger indexing, structured improvement signal generation for MAGI, cross-session trend analysis
+- **Core Orchestration Logic** -- Functional quorum-based multi-agent orchestration
+- **FastAPI Backend** -- Exposes `/api/ask` endpoint for live prompt orchestration
+- **React Web UI** -- Full analysis display: R2 grades, quorum bar, dissent, NCG, session history
+- **Full Containerization** -- Docker support for one-step deployment of backend + frontend
+- **CLI Fallback** -- Standalone session runner (`orchestration_livefire.py`)
+- **License Split** -- Custom open-use license and commercial terms clarified
+- **NCG Module** -- Novel Content Generation with headless generators, drift detection, and silent collapse prevention
+- **Session History Logging** -- Persistent JSON-based session records with unified data layer for cross-session analysis
+- **Module Isolation** -- Agent logic refactored into swappable, testable components with shared async interface
+- **Dissent Analysis** -- Pairwise semantic distance, outlier detection, cross-session trend analysis, internal_agreement score feeding NCG silent collapse detection
+- **R2 Engine** -- Rapid Recursion & Reinforcement: session scoring, consensus ledger indexing, structured improvement signal generation for MAGI, cross-session trend analysis
+- **Unified Pipeline** -- Web API runs the full analysis pipeline (dissent, NCG, R2, session logging) on every request; orchestrator foundry is a thin wrapper over the core engine
+- **Semantic Quorum** -- Agreement determined by semantic similarity clustering (pairwise distance threshold) rather than exact string matching; numeric agreement_ratio with 66% supermajority
+- **MAGI Module** -- Meta-Agent Governance and Insight: reads R2 ledger and session history, detects cross-session patterns (persistent outliers, confidence trends, collapse frequency), produces structured recommendations
+- **Headless Generator Selection** -- Automatically selects the best available headless generator (OpenAI with logprobs, Anthropic, or mock fallback) based on API key availability
 
 ---
 
-## Active Development (v0.3 Goals)
+## Active Development (v0.4 Goals)
 
-- **MAGI Loop** – Meta-agent governance layer that reads R2 ledger trends and proposes code-level improvements (the rapid recursion loop)
-- **Reinforcement Loop** – Feed consensus outcomes into fine-tuning or snapshot logs
-- **UI Enhancements** – Add tooltips, loading indicators, and error handling
-- **Drift Detection** – Meta-agent layer to compare outputs over time for stability (NCG semantic tier operational, token-level tier in progress)
-- **Token-Level NCG Analysis** – Bridge from conversational metadata to logprob-level drift measurement (OpenAI logprobs integration built, pending for Anthropic/Google)
+- **Token-Level NCG Analysis** -- Bridge from conversational metadata to logprob-level drift measurement across all providers (OpenAI logprobs integration built, pending for Anthropic/Google)
+- **NCG Feedback Loops** -- Reshape prompts based on drift signals before they reach conversational agents
+- **MAGI Automation Layer** -- Opt-in auto-apply for low-risk recommendations (e.g., temperature adjustments)
+- **Reinforcement Loop** -- Feed consensus outcomes into fine-tuning or snapshot logs
 
 ---
 
 ## Planned Milestones
 
-- **Decentralized Consensus Layer** – Future module allowing cross-host quorum
-- **Public Demo Endpoint** – Limited-use hosted version with transparent logging
-- **Expanded Documentation** – Add markdown docs on quorum theory, dissent modeling
-- **Contributor Onboarding** – Expand `CONTRIBUTING.md` with examples and task tags
-- **Multilingual Agent Support** – Introduce language specialization agents
-- **NCG Feedback Loops** – Reshape prompts based on drift signals before they reach conversational agents
-- **Cross-Session NCG Baselines** – Track what "normal" headless output looks like over time to detect gradual model drift
+- **Decentralized Consensus Layer** -- Future module allowing cross-host quorum
+- **Public Demo Endpoint** -- Limited-use hosted version with transparent logging
+- **Contributor Onboarding** -- Expand `CONTRIBUTING.md` with examples and task tags
+- **Multilingual Agent Support** -- Introduce language specialization agents
+- **Cross-Session NCG Baselines** -- Track what "normal" headless output looks like over time to detect gradual model drift
+- **Local Model Support** -- Agent wrappers for llamacpp, Ollama, and other local inference
 
 ---
 
