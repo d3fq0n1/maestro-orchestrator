@@ -18,24 +18,34 @@ This guide outlines the structure and behavior of the Maestro-Orchestrator front
 ## Layout
 
 * **Prompt Input Field:**
-
   * Single text box with a submit button
   * Triggers `POST` to `/api/ask`
 
-* **Agent Response Section:**
+* **R2 Session Grade:**
+  * Displays session quality grade (strong/acceptable/weak/suspicious)
+  * Shows confidence score and any flags detected
 
+* **Quorum Bar:**
+  * Agreement ratio visualization with 66% threshold indicator
+  * Shows whether quorum was met
+
+* **Agent Response Section:**
   * Displays all agent responses in vertical list
   * Includes emoji, agent name, and response text
 
-* **Consensus Indicator:**
+* **Dissent Analysis:**
+  * Pairwise semantic distances between agents (expandable)
+  * Outlier detection and internal agreement score
 
-  * Renders when 2 or more agents match
-  * Shows count and brief summary of matched output
+* **NCG Benchmark:**
+  * Per-agent drift from headless baseline
+  * Silent collapse warnings when detected
 
-* **Dissent Log:**
+* **Session History Browser:**
+  * Browse and review past orchestration sessions
 
-  * Below consensus area
-  * Displays unique or minority views from agents
+* **API Key Configuration Panel:**
+  * Configure, validate, and update API keys in-app
 
 ---
 
@@ -43,29 +53,24 @@ This guide outlines the structure and behavior of the Maestro-Orchestrator front
 
 ```text
 User types -> Clicks Submit -> Loading state
--> Agent responses stream in (one per card)
--> Quorum logic analyzed
--> Consensus + Dissent rendered
+-> Agent responses rendered (one per card)
+-> Dissent analysis displayed
+-> NCG benchmark with drift data
+-> Quorum bar with agreement ratio
+-> R2 grade with confidence and flags
+-> Session persisted to history
 ```
 
 ---
 
 ## Features
 
-* **Live Render:** UI updates incrementally as each agent replies
+* **Full Analysis Rendering:** R2 grades, quorum bar, dissent, NCG drift -- all displayed per session
 * **Emoji Mapping:** Helps humanize model identity
+* **Session History:** Browse past sessions from the UI
+* **Key Management:** Configure and validate API keys without editing `.env`
 * **Error Handling:** API failure messages shown inline
 * **Local Dev Support:** Fully CORS-compliant for FastAPI
-
----
-
-## Planned Improvements
-
-* Session history viewer (linked CLI + UI timeline)
-* Response voting & reinforcement (via R2 Engine)
-* NCG drift visualization -- display semantic distance from headless baseline per agent, flag silent collapse
-* Mobile layout refinements
-* Loading animation per agent
 
 ---
 

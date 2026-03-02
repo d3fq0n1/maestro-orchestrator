@@ -35,7 +35,7 @@ Maestro-Orchestrator pluralizes synthetic intelligence by enabling multiple AI a
 
 ### Prerequisites
 
-- **Python 3.8+**
+- **Python 3.10+**
 - **Node.js** + **npm** (for frontend)
 - **Docker** + **docker-compose** (optional for full containerization)
 
