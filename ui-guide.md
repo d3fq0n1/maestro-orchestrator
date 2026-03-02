@@ -6,10 +6,10 @@ This guide documents the user interface layer of Maestro-Orchestrator, which is 
 
 ## 🧰 Installation
 
-Ensure you are inside the `ui/` directory:
+Ensure you are inside the `frontend/` directory:
 
 ```bash
-cd ui
+cd frontend
 npm install
 ```
 
@@ -62,11 +62,12 @@ http://localhost:5173
 ## 📦 File Structure
 
 ```
-ui/
+frontend/
 ├── index.html                 # Root template
 └── src/
     ├── maestroUI.tsx         # Main React component
-    └── components/           # (Optional) reusable UI components
+    ├── app.tsx               # App shell
+    └── main.tsx              # Entry point
 ```
 
 ---

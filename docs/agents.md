@@ -62,7 +62,7 @@ All responses are displayed in the frontend UI alongside a computed consensus ou
 
 ## Notes for Devs
 
-- Defined in `agents_config.py`
+- Defined in `maestro/agents/` as modular classes extending a shared base
 - Loaded dynamically into containerized FastAPI app
 - Must conform to response schema:
 ```json

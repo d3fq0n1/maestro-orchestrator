@@ -27,7 +27,7 @@ This guide walks you through deploying Maestro-Orchestrator in local, containeri
 
 4. Start the backend server:
    ```bash
-   uvicorn app.main:app --reload --port 8000
+   uvicorn backend.main:app --reload --port 8000
    ```
 
 The backend will be available at:  
@@ -52,8 +52,8 @@ The backend will be available at:
    npm run dev
    ```
 
-Frontend will run at:  
-➡️ `http://localhost:3000`
+Frontend will run at:
+➡️ `http://localhost:5173`
 
 ---
 

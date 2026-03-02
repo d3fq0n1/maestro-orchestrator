@@ -1,46 +1,66 @@
 # Maestro Orchestrator Developer Guide
 
-**Version**: v0.2  
-**Last Updated**: June 2025  
+**Version**: v0.2
+**Last Updated**: June 2025
 **Maintainer**: [defcon](https://github.com/d3fq0n1)
 
 ---
 
-## 🧠 Overview
+## Overview
 
 Maestro is an orchestration engine designed to coordinate multiple LLMs in a live deliberation format. It introduces structured dissent, rotating roles, historical logging, and agent-aware consensus mechanisms. Designed for researchers, developers, and experimenters interested in meta-intelligence and synthetic governance.
 
 ---
 
-## 📁 Directory Structure
+## Directory Structure
 
 ```text
-maestro/
-├── orchestrator_foundry.py           # Primary entry point for orchestration logic
-├── orchestration_livefire.py         # Live execution loop for session-based orchestration
-├── orchestration_livefire_rotating.py# Variant with rotating agent roles
-├── council_config.py                 # Defines quorum, role structure, and dissent thresholds
-├── sol.py / aria.py / prism.py      # Agent adapters for GPT-4, Claude, Gemini
-├── aggregator.py                     # Consensus computation and result collation
-├── maestro_cli.py                    # CLI interface for local testing
-├── run_maestro.py                    # Quick launch script
-├── history_log.jsonl                 # Logged results of prior sessions
-├── .env                              # API key configuration (excluded from version control)
-├── CONTRIBUTING.md / LICENSE.md      # Project metadata
+maestro-orchestrator/
+├── backend/
+│   ├── main.py                          # FastAPI app (entry point)
+│   ├── orchestrator_foundry.py          # Foundry orchestration logic
+│   ├── orchestration_livefire.py        # Live CLI session runner
+│   ├── orchestration_livefire_rotating.py # Variant with rotating agent roles
+│   └── maestro_cli.py                   # CLI interface for local testing
+├── maestro/                             # Core orchestration package
+│   ├── orchestrator.py                  # Async orchestration engine
+│   ├── aggregator.py                    # Consensus computation and result collation
+│   ├── dissent.py                       # Pairwise dissent analysis
+│   ├── r2.py                            # R2 Engine (scoring, ledger, signals)
+│   ├── session.py                       # Session persistence
+│   ├── agents/                          # Agent adapters (sol, aria, prism, tempagent)
+│   │   └── base.py                      # Shared async agent interface
+│   └── ncg/                             # Novel Content Generation module
+│       ├── generator.py                 # Headless generators
+│       └── drift.py                     # Drift detection
+├── frontend/                            # React + Vite UI
+│   └── src/maestroUI.tsx                # Main UI component
+├── scripts/
+│   ├── orchestrator.py                  # Batch orchestration with CSV input
+│   ├── run_maestro.py                   # Quick launch script
+│   ├── model_adapters.py                # Model adapter utilities
+│   └── council_session/                 # Council session runner
+│       └── council_config.py            # Quorum and role structure
+├── data/
+│   ├── sessions/                        # Persisted session JSON logs
+│   └── r2/                              # R2 Engine ledger entries
+├── .env.example                         # API key template
+├── CONTRIBUTING.md / LICENSE.md         # Project metadata
 ```
 
 ---
 
-## ⚙️ Setup
+## Setup
 
 ### Requirements
 
-- Python 3.10+
+- Python 3.8+
 - Create a `.env` file with:
   ```ini
   OPENAI_API_KEY=sk-...
   ANTHROPIC_API_KEY=sk-ant...
   GOOGLE_API_KEY=AIza...
+  OPENROUTER_API_KEY=...
   ```
 
 ### Installation
@@ -49,93 +69,97 @@ maestro/
 git clone https://github.com/d3fq0n1/maestro-orchestrator
 cd maestro-orchestrator
 pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 ---
 
-## 🚀 Usage
+## Usage
+
+### Backend API
+
+```bash
+uvicorn backend.main:app --reload --port 8000
+```
 
 ### CLI
 
 ```bash
-python maestro_cli.py
+python backend/maestro_cli.py
 ```
 
 ### Full Orchestration
 
 ```bash
-python run_maestro.py
+python scripts/run_maestro.py
 ```
 
 ### With Rotating Agent Roles
 
 ```bash
-python orchestration_livefire_rotating.py
+python backend/orchestration_livefire_rotating.py
 ```
 
 ---
 
-## 🔁 Workflow
+## Workflow
 
-1. **Initialization**: Models are instantiated using agent adapters.
-2. **Prompt Handling**: Input prompt is distributed to agents via a consistent interface.
+1. **Initialization**: Models are instantiated using agent adapters in `maestro/agents/`.
+2. **Prompt Handling**: Input prompt is distributed to agents via the shared async interface.
 3. **Deliberation**: Each model generates responses; dissent and agreement are recorded.
-4. **Consensus**: Aggregator module scores, filters, and optionally returns unified output.
-5. **Logging**: Sessions are saved to `history_log.jsonl`.
+4. **NCG Baseline**: A headless generator produces an unconstrained baseline for drift comparison.
+5. **Consensus**: Aggregator module scores, filters, and returns unified output with NCG benchmark.
+6. **R2 Scoring**: R2 Engine grades the session, detects improvement signals, and indexes to ledger.
+7. **Logging**: Sessions are saved to `data/sessions/` as structured JSON.
 
 ---
 
-## 🧩 Customizing
+## Customizing
 
 ### Agents
 
-Add or modify adapters in:
-- `sol.py`, `aria.py`, `prism.py`
-- Extend via `model_adapters.py`
+Add or modify agent adapters in `maestro/agents/`. Each agent extends `maestro/agents/base.py`.
 
 ### Dissent Thresholds
 
-Modify:
+Modify quorum settings in `scripts/council_session/council_config.py`:
 ```python
 MINIMUM_QUORUM = 3
 CONSENSUS_THRESHOLD = 2/3
 ```
-in `council_config.py`.
 
 ---
 
-## 📚 Developer Notes
+## Developer Notes
 
-- Functions and classes are now fully documented with auto-generated docstrings.
 - Persistent logging enables replay and auditing.
 - Modular design enables hot-swapping of models or consensus algorithms.
+- Agent classes share an async `fetch(prompt)` interface defined in `maestro/agents/base.py`.
 
 ---
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 - **API Errors**: Ensure `.env` is correctly configured and rate limits are respected.
-- **Broken UI**: See last known regression in `run_maestro()` linkage.
 - **Sync Scripts**: Use PowerShell scripts only on Windows (`combo-sync.ps1`).
 
 ---
 
-## 📈 Future Work
+## Future Work
 
-- Full web UI (React/Flask planned)
-- Auto-consensus confidence scoring
-- Integration with MAGI auditing layer
+- MAGI loop for meta-agent audits reading R2 ledger
+- Token-level NCG drift analysis via logprobs
+- NCG feedback loops reshaping prompts based on drift
 - Streamlined onboarding wizard
 
 ---
 
-## 🤝 Contributions
+## Contributions
 
 See `CONTRIBUTING.md` for more.
 
 ---
 
-## 🧾 License
+## License
 
-MIT License (see `LICENSE.md`)
-
+Custom open-use license (see `LICENSE.md`). Commercial use requires agreement (see `commercial_license.md`).

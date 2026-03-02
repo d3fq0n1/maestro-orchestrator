@@ -18,7 +18,7 @@ NCG catches **silent collapse** (agents all agreeing on something shaped by conf
 ```
 Conversational track:  Sol ───┐
                        Aria ───┼── compare among ── R2 (internal dissent)
-                       Sage ───┘
+                      Prism ───┘
                                      │
                                      ▼
 NCG track:          headless ─── compare against ── DriftDetector

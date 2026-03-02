@@ -41,7 +41,7 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - **Session History** — Persistent JSON logging of every orchestration session for cross-session analysis
 - **React/Vite Frontend** — Simple, modular web UI (containerized)
 - **Docker Support** — One-step spin-up of both frontend and backend
-- **CLI Option** — Standalone session runner via `orchestration_livefire.py`
+- **CLI Option** — Standalone session runner via `backend/orchestration_livefire.py`
 
 ---
 
@@ -63,7 +63,8 @@ cd maestro-orchestrator
 python -m venv venv
 source venv/bin/activate  # or .\venv\Scripts\activate on Windows
 pip install -r requirements.txt
-uvicorn api:app --reload
+pip install -r backend/requirements.txt
+uvicorn backend.main:app --reload --port 8000
 ```
 
 Frontend lives in the `frontend/` folder. To run manually:
@@ -184,7 +185,7 @@ Returns:
 
 For local dev or testing without the UI:
 ```bash
-python orchestration_livefire.py
+python backend/orchestration_livefire.py
 ```
 
 ---

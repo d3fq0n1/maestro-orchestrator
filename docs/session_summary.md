@@ -45,7 +45,7 @@ python orchestration_livefire.py --prompt "Should AI have voting rights?"
 
 ## 🗃️ Logging Artifacts
 
-- **Session Log**: `history/session_log.jsonl`
+- **Session Log**: `data/sessions/` (structured JSON per session)
 - **Summaries**:
   - `docs/session_summary.md`
   - `scripts/council_session/docs/session_summary.md`

@@ -57,23 +57,34 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 ## File Structure (Simplified)
 
 ```
-/app
+/backend
   └── main.py              # FastAPI app
   └── orchestrator_foundry.py
-  └── agents/              # Agent wrappers and role logic
+  └── maestro_cli.py
+/maestro                   # Core orchestration package
+  └── orchestrator.py      # Async orchestration engine
+  └── aggregator.py        # Response aggregation
+  └── dissent.py           # Dissent analysis
+  └── r2.py                # R2 Engine (scoring, ledger, signals)
+  └── session.py           # Session persistence
+  └── agents/              # Agent wrappers (base, sol, aria, prism, tempagent)
+  └── ncg/                 # Novel Content Generation (generator, drift)
 /frontend
   └── index.html
   └── src/
-      └── components/
-      └── views/
+      └── maestroUI.tsx
+      └── app.tsx
 /docs
-  └── README.md
   └── agents.md
-  └── quorum_logic.md
   └── architecture.md
-/docker
-  └── Dockerfile
-  └── docker-compose.yml
+  └── quorum_logic.md
+  └── ncg.md
+  └── r2-engine.md
+/data
+  └── sessions/            # Persisted session JSON logs
+  └── r2/                  # R2 Engine ledger entries
+Dockerfile
+docker-compose.yml
 .env.example
 ```
 
@@ -104,10 +115,9 @@ User → UI → /api/ask → Orchestrator
 - Token-level NCG drift analysis via logprobs across all supported models
 - NCG feedback loops that reshape prompts based on detected drift
 - Cross-session NCG baselines tracking what "normal" output looks like over time
-- CLI orchestration mode (for agent testing and scripting)
+- MAGI loop — meta-agent governance reading R2 ledger to propose code-level improvements
 - Local model agent support (e.g., llamacpp)
 - Real-time debate log and public-facing consensus ledger
-- Session persistence and agent memory simulation
 
 ---
 

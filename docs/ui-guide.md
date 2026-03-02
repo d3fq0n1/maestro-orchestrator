@@ -11,7 +11,7 @@ This guide outlines the structure and behavior of the Maestro-Orchestrator front
 * **Framework:** React (Vite)
 * **Styling:** TailwindCSS
 * **Language:** TypeScript
-* **Location:** `ui/src/maestroUI.tsx`
+* **Location:** `frontend/src/maestroUI.tsx`
 
 ---
 
@@ -74,11 +74,11 @@ User types → Clicks Submit → Loading state
 To launch UI:
 
 ```bash
-cd ui
+cd frontend
 npm install
 npm run dev
 ```
 
 Frontend runs on `http://localhost:5173` and sends requests to `http://localhost:8000/api/ask`
 
-Ensure backend (`main.py`) is running simultaneously via `uvicorn`.
+Ensure backend (`backend/main.py`) is running simultaneously via `uvicorn backend.main:app --reload --port 8000`.
