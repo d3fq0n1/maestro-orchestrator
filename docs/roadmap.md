@@ -18,12 +18,12 @@
 - **NCG Module** – Novel Content Generation with headless generators, drift detection, and silent collapse prevention
 - **Session History Logging** – Persistent JSON-based session records with unified data layer for cross-session analysis
 - **Module Isolation** – Agent logic refactored into swappable, testable components with shared async interface
+- **Dissent Analysis** – Pairwise semantic distance, outlier detection, cross-session trend analysis, internal_agreement score feeding NCG silent collapse detection
 
 ---
 
 ## Active Development (v0.3 Goals)
 
-- **Dissent Analysis** – Track and visualize disagreements in agent outputs (building on session history data layer)
 - **R2 Engine** – Scoring, consensus reinforcement, and real-time dissent detection (building on dissent analysis)
 - **Reinforcement Loop** – Feed consensus outcomes into fine-tuning or snapshot logs
 - **UI Enhancements** – Add tooltips, loading indicators, and error handling

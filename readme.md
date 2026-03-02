@@ -36,6 +36,7 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - **Multi-Agent Council** — Models: Sol (OpenAI), Aria (Claude), Prism (Gemini), TempAgent (OpenRouter)
 - **Quorum Consensus** — 66% agreement logic with dissent logging
 - **NCG (Novel Content Generation)** — Headless baseline track that detects silent model collapse and RLHF conformity drift
+- **Dissent Analysis** — Pairwise semantic distance between agents, outlier detection, and cross-session trend tracking
 - **Session History** — Persistent JSON logging of every orchestration session for cross-session analysis
 - **React/Vite Frontend** — Simple, modular web UI (containerized)
 - **Docker Support** — One-step spin-up of both frontend and backend
@@ -253,7 +254,6 @@ Follow: [substack.com/@defqon1](https://substack.com/@defqon1)
 
 ## Future Work
 
-- Dissent analysis module — track and quantify disagreement patterns across session history
 - R2 Engine — real-time scoring, consensus reinforcement, and dissent detection
 - Token-level drift analysis via logprobs (OpenAI bridge available now, others pending)
 - NCG feedback loops — reshape prompts based on where drift is detected

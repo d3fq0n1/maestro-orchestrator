@@ -2,6 +2,7 @@ import asyncio
 
 from maestro.agents.mock import MockAgent
 from maestro.aggregator import aggregate_responses
+from maestro.dissent import DissentAnalyzer
 from maestro.ncg import MockHeadlessGenerator, DriftDetector
 from maestro.session import SessionLogger, build_session_record
 
@@ -16,16 +17,17 @@ async def run_orchestration_async(
     Orchestrates multiple agents, aggregates responses, and runs the NCG
     diversity benchmark when enabled.
 
-    Two parallel tracks:
-      1. Conversational track -- agents respond with their personality/framing
+    Three analysis layers run after the conversational track:
+      1. Dissent analysis -- measures how agents disagree with each other
       2. NCG track -- headless generator produces unframed baseline content
+      3. Aggregation -- synthesizes responses with dissent and NCG data
 
-    The drift detector compares the two tracks to catch silent collapse:
-    when all conversational agents agree but have drifted from what an
-    unconstrained model would produce.
+    The dissent analyzer produces an internal_agreement score that feeds
+    into NCG's silent collapse detector. This closes the loop: high
+    internal agreement + high NCG drift = silent collapse.
 
     When session_logging is True, the full session is persisted to disk
-    for later analysis by dissent analysis and R2.
+    for cross-session analysis by R2.
     """
     if agents is None:
         agents = [
@@ -43,7 +45,17 @@ async def run_orchestration_async(
 
     responses = list(named_responses.values())
 
+    # --- Dissent analysis (internal agreement between agents) ---
+    dissent_analyzer = DissentAnalyzer()
+    dissent_report = dissent_analyzer.analyze(prompt, named_responses)
+    print(f"\nDissent level: {dissent_report.dissent_level} "
+          f"(agreement: {dissent_report.internal_agreement})")
+    if dissent_report.outlier_agents:
+        print(f"Outlier agents: {', '.join(dissent_report.outlier_agents)}")
+
     # --- NCG track (parallel diversity benchmark) ---
+    # Now feeds internal_agreement from dissent analysis into the drift
+    # detector so it can detect silent collapse.
     ncg_drift_report = None
     if ncg_enabled:
         print("\nRunning NCG headless baseline...")
@@ -56,6 +68,7 @@ async def run_orchestration_async(
             prompt=prompt,
             ncg_output=ncg_output,
             conversational_outputs=named_responses,
+            internal_agreement=dissent_report.internal_agreement,
         )
 
         if ncg_drift_report.silent_collapse_detected:
@@ -64,9 +77,9 @@ async def run_orchestration_async(
         print(f"Mean drift from NCG baseline: "
               f"{ncg_drift_report.mean_semantic_distance}")
 
-    # --- Aggregation (now with NCG benchmark data) ---
+    # --- Aggregation (now with dissent and NCG data) ---
     print("\nAggregating responses...")
-    final_output = aggregate_responses(responses, ncg_drift_report)
+    final_output = aggregate_responses(responses, ncg_drift_report, dissent_report)
 
     # --- Session persistence ---
     session_id = None

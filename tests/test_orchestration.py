@@ -7,6 +7,7 @@ from maestro.orchestrator import run_orchestration
 from maestro.agents import Agent, MockAgent, Sol, Aria, Prism, TempAgent
 from maestro.ncg.generator import MockHeadlessGenerator
 from maestro.ncg.drift import DriftDetector, DriftReport
+from maestro.dissent import DissentAnalyzer, DissentReport
 from maestro.session import SessionLogger, SessionRecord, build_session_record
 
 
@@ -194,6 +195,124 @@ class TestDriftDetector(unittest.TestCase):
         detector = DriftDetector()
         distance = detector._semantic_distance("hello world", "hello world")
         self.assertEqual(distance, 0.0)
+
+
+class TestDissentAnalyzer(unittest.TestCase):
+    """Verify internal dissent measurement across agent responses."""
+
+    def test_identical_responses_no_dissent(self):
+        analyzer = DissentAnalyzer()
+        report = analyzer.analyze("test", {
+            "Sol": "the answer is 42",
+            "Aria": "the answer is 42",
+        })
+        self.assertIsInstance(report, DissentReport)
+        self.assertEqual(report.internal_agreement, 1.0)
+        self.assertEqual(report.dissent_level, "none")
+        self.assertEqual(len(report.pairwise), 1)
+
+    def test_different_responses_show_dissent(self):
+        analyzer = DissentAnalyzer()
+        report = analyzer.analyze("test", {
+            "Sol": "the answer is clearly about philosophy and meaning",
+            "Aria": "weather patterns indicate rain tomorrow in the northeast",
+        })
+        self.assertLess(report.internal_agreement, 1.0)
+        self.assertGreater(report.pairwise[0].distance, 0.0)
+
+    def test_three_agents_pairwise_count(self):
+        analyzer = DissentAnalyzer()
+        report = analyzer.analyze("test", {
+            "Sol": "response one",
+            "Aria": "response two",
+            "Prism": "response three",
+        })
+        # 3 agents = 3 pairs: (Sol,Aria), (Sol,Prism), (Aria,Prism)
+        self.assertEqual(len(report.pairwise), 3)
+        self.assertEqual(len(report.agent_profiles), 3)
+        self.assertEqual(report.agent_count, 3)
+
+    def test_outlier_detection(self):
+        analyzer = DissentAnalyzer()
+        report = analyzer.analyze("test", {
+            "Sol": "cats are great pets for families",
+            "Aria": "cats make wonderful household companions",
+            "Prism": "quantum mechanics governs subatomic particle behavior",
+        })
+        # Prism is talking about something completely different
+        # It should have a higher mean distance to others
+        prism_profile = [p for p in report.agent_profiles if p.agent_name == "Prism"][0]
+        sol_profile = [p for p in report.agent_profiles if p.agent_name == "Sol"][0]
+        self.assertGreater(prism_profile.mean_distance_to_others,
+                           sol_profile.mean_distance_to_others)
+
+    def test_agreement_score_range(self):
+        analyzer = DissentAnalyzer()
+        report = analyzer.analyze("test", {
+            "Sol": "hello world",
+            "Aria": "goodbye world",
+        })
+        self.assertGreaterEqual(report.internal_agreement, 0.0)
+        self.assertLessEqual(report.internal_agreement, 1.0)
+
+    def test_dissent_level_classification(self):
+        analyzer = DissentAnalyzer()
+        # Identical => none
+        report = analyzer.analyze("test", {
+            "A": "same text here",
+            "B": "same text here",
+        })
+        self.assertEqual(report.dissent_level, "none")
+
+    def test_two_agents_no_outlier(self):
+        """Outlier detection requires at least 3 agents."""
+        analyzer = DissentAnalyzer()
+        report = analyzer.analyze("test", {
+            "Sol": "apples",
+            "Aria": "quantum physics",
+        })
+        self.assertEqual(report.outlier_agents, [])
+
+    def test_cross_session_analysis(self):
+        analyzer = DissentAnalyzer()
+        sessions = [
+            {"prompt": "q1", "agent_responses": {"Sol": "a", "Aria": "b"}},
+            {"prompt": "q2", "agent_responses": {"Sol": "c", "Aria": "d"}},
+            {"prompt": "q3", "agent_responses": {"Sol": "e", "Aria": "f"}},
+            {"prompt": "q4", "agent_responses": {"Sol": "g", "Aria": "h"}},
+        ]
+        result = analyzer.analyze_across_sessions(sessions)
+        self.assertEqual(result["sessions_analyzed"], 4)
+        self.assertIn("Sol", result["per_agent"])
+        self.assertIn("Aria", result["per_agent"])
+        self.assertIn(result["trend"], ("stable", "converging", "diverging"))
+
+    def test_cross_session_skips_single_agent(self):
+        analyzer = DissentAnalyzer()
+        sessions = [
+            {"prompt": "q1", "agent_responses": {"Sol": "only one"}},
+        ]
+        result = analyzer.analyze_across_sessions(sessions)
+        self.assertEqual(result["sessions_analyzed"], 0)
+
+
+class TestOrchestrationDissentIntegration(unittest.TestCase):
+    """Verify dissent analysis flows through the orchestrator output."""
+
+    def test_dissent_in_final_output(self):
+        result = run_orchestration("test", session_logging=False)
+        final = result["final_output"]
+        self.assertIn("dissent", final)
+
+        dissent = final["dissent"]
+        self.assertIn("internal_agreement", dissent)
+        self.assertIn("dissent_level", dissent)
+        self.assertIn("outlier_agents", dissent)
+        self.assertIn("pairwise", dissent)
+        self.assertIn("agent_profiles", dissent)
+
+        self.assertGreaterEqual(dissent["internal_agreement"], 0.0)
+        self.assertLessEqual(dissent["internal_agreement"], 1.0)
 
 
 class TestSessionLogger(unittest.TestCase):
