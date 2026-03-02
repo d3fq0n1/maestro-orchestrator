@@ -3,11 +3,12 @@ import os
 import shutil
 import tempfile
 import unittest
-from maestro.orchestrator import run_orchestration
+from maestro.orchestrator import run_orchestration, run_orchestration_async
 from maestro.agents import Agent, MockAgent, Sol, Aria, Prism, TempAgent
+from maestro.aggregator import analyze_agreement, aggregate_responses, QUORUM_THRESHOLD
 from maestro.ncg.generator import MockHeadlessGenerator
 from maestro.ncg.drift import DriftDetector, DriftReport
-from maestro.dissent import DissentAnalyzer, DissentReport
+from maestro.dissent import DissentAnalyzer, DissentReport, PairwiseDissent, AgentDissentProfile
 from maestro.session import SessionLogger, SessionRecord, build_session_record
 from maestro.r2 import R2Engine, R2Score, ImprovementSignal, R2LedgerEntry
 
@@ -125,6 +126,105 @@ class TestMaestroOrchestration(unittest.TestCase):
 
         final = result["final_output"]
         self.assertNotIn("ncg_benchmark", final)
+
+    def test_named_responses_in_output(self):
+        """The orchestrator should return agent-keyed responses."""
+        result = run_orchestration("test", session_logging=False)
+        self.assertIn("named_responses", result)
+        self.assertIsInstance(result["named_responses"], dict)
+        self.assertEqual(len(result["named_responses"]), 2)
+        for name in result["named_responses"]:
+            self.assertIsInstance(name, str)
+
+    def test_custom_headless_generator(self):
+        """A custom headless generator should be used when provided."""
+        result = asyncio.run(run_orchestration_async(
+            "test",
+            ncg_enabled=True,
+            session_logging=False,
+            headless_generator=MockHeadlessGenerator(),
+        ))
+        final = result["final_output"]
+        self.assertIn("ncg_benchmark", final)
+        self.assertEqual(final["ncg_benchmark"]["ncg_model"], "mock-headless-v1")
+
+
+class TestSemanticQuorum(unittest.TestCase):
+    """Verify semantic similarity-based quorum logic."""
+
+    def _make_dissent_report(self, agent_responses, prompt="test"):
+        """Helper: run dissent analysis to get a real report with pairwise distances."""
+        analyzer = DissentAnalyzer()
+        return analyzer.analyze(prompt, agent_responses)
+
+    def test_identical_responses_high_quorum(self):
+        """Identical responses should produce agreement_ratio of 1.0."""
+        responses = {
+            "Sol": "the answer is 42",
+            "Aria": "the answer is 42",
+            "Prism": "the answer is 42",
+        }
+        report = self._make_dissent_report(responses)
+        confidence, ratio, majority, dissenting = analyze_agreement(responses, report)
+        self.assertEqual(ratio, 1.0)
+        self.assertEqual(confidence, "High")
+        self.assertEqual(len(dissenting), 0)
+
+    def test_similar_responses_reach_quorum(self):
+        """Similar but not identical responses should still cluster together."""
+        responses = {
+            "Sol": "cats are wonderful pets for families with children",
+            "Aria": "cats make wonderful pets for families",
+            "Prism": "quantum mechanics describes subatomic particle behavior",
+        }
+        report = self._make_dissent_report(responses)
+        confidence, ratio, majority, dissenting = analyze_agreement(responses, report)
+        # Sol and Aria should cluster (similar), Prism is the outlier
+        # 2/3 = 0.66... which meets the 66% threshold
+        self.assertGreaterEqual(ratio, QUORUM_THRESHOLD)
+        self.assertEqual(len(dissenting), 1)
+
+    def test_all_different_low_quorum(self):
+        """Completely unrelated responses should produce low agreement."""
+        responses = {
+            "Sol": "cats are wonderful household companions",
+            "Aria": "quantum mechanics describes particle behavior",
+            "Prism": "the french revolution began in 1789",
+        }
+        report = self._make_dissent_report(responses)
+        confidence, ratio, majority, dissenting = analyze_agreement(responses, report)
+        # Each agent is on a different topic, no cluster > 1
+        self.assertLessEqual(ratio, 0.5)
+
+    def test_quorum_fields_in_orchestration_output(self):
+        """Orchestration output should contain quorum metadata."""
+        result = run_orchestration("test", session_logging=False)
+        final = result["final_output"]
+        self.assertIn("agreement_ratio", final)
+        self.assertIn("quorum_met", final)
+        self.assertIn("quorum_threshold", final)
+        self.assertIsInstance(final["agreement_ratio"], float)
+        self.assertIsInstance(final["quorum_met"], bool)
+        self.assertEqual(final["quorum_threshold"], QUORUM_THRESHOLD)
+
+    def test_fallback_without_dissent_report(self):
+        """Without a dissent report, falls back to exact string matching."""
+        responses = ["answer A", "answer A", "answer B"]
+        confidence, ratio, majority, dissenting = analyze_agreement(responses)
+        self.assertAlmostEqual(ratio, 2 / 3, places=2)
+        self.assertEqual(majority, "answer A")
+        self.assertEqual(len(dissenting), 1)
+
+    def test_agreement_ratio_range(self):
+        """Agreement ratio should always be between 0 and 1."""
+        responses = {
+            "Sol": "hello",
+            "Aria": "world",
+        }
+        report = self._make_dissent_report(responses)
+        _, ratio, _, _ = analyze_agreement(responses, report)
+        self.assertGreaterEqual(ratio, 0.0)
+        self.assertLessEqual(ratio, 1.0)
 
 
 class TestNCGGenerator(unittest.TestCase):
@@ -747,6 +847,111 @@ class TestR2Integration(unittest.TestCase):
         result = run_orchestration("test prompt", session_logging=False)
         self.assertIn("r2", result["final_output"])
         self.assertIn("grade", result["final_output"]["r2"])
+
+
+class TestMagi(unittest.TestCase):
+    """Verify MAGI cross-session analysis and recommendation generation."""
+
+    def setUp(self):
+        self._r2_dir = tempfile.mkdtemp()
+        self._session_dir = tempfile.mkdtemp()
+        self.r2 = R2Engine(ledger_dir=self._r2_dir)
+        from maestro.session import SessionLogger
+        self.session_logger = SessionLogger(storage_dir=self._session_dir)
+
+    def tearDown(self):
+        shutil.rmtree(self._r2_dir, ignore_errors=True)
+        shutil.rmtree(self._session_dir, ignore_errors=True)
+
+    def _populate_ledger(self, count=5, outlier_agents=None, collapse=False,
+                         dissent_level="low", agreement=0.8):
+        """Add entries to the R2 ledger for testing."""
+        for i in range(count):
+            dissent = DissentReport(
+                prompt=f"prompt {i}",
+                internal_agreement=agreement,
+                pairwise=[],
+                agent_profiles=[],
+                outlier_agents=outlier_agents or [],
+                dissent_level=dissent_level,
+                agent_count=3,
+            )
+            drift = DriftReport(
+                prompt=f"prompt {i}",
+                ncg_content="baseline",
+                ncg_model="mock",
+                agent_signals=[],
+                mean_semantic_distance=0.6 if collapse else 0.2,
+                max_semantic_distance=0.7 if collapse else 0.3,
+                silent_collapse_detected=collapse,
+                compression_alert=False,
+            )
+            score = self.r2.score_session(dissent, drift, quorum_confidence="High")
+            signals = self.r2.detect_signals(score, dissent, drift)
+            self.r2.index(
+                session_id=f"sess-{i}",
+                prompt=f"prompt {i}",
+                consensus="answer",
+                agents_agreed=["Sol", "Aria", "Prism"],
+                score=score,
+                improvement_signals=signals,
+                dissent_report=dissent,
+                drift_report=drift,
+            )
+
+    def test_empty_analysis(self):
+        """MAGI should handle empty ledger gracefully."""
+        from maestro.magi import Magi
+        magi = Magi(r2=self.r2, session_logger=self.session_logger)
+        report = magi.analyze()
+        self.assertEqual(report.ledger_entries_analyzed, 0)
+        self.assertEqual(report.confidence_trend, "stable")
+
+    def test_healthy_system(self):
+        """A healthy ledger should produce positive recommendations."""
+        self._populate_ledger(count=5, collapse=False, agreement=0.8)
+        from maestro.magi import Magi
+        magi = Magi(r2=self.r2, session_logger=self.session_logger)
+        report = magi.analyze()
+        self.assertEqual(report.ledger_entries_analyzed, 5)
+        self.assertEqual(report.collapse_frequency, 0.0)
+        # Should have at least the "no silent collapse" positive signal
+        positive = [r for r in report.recommendations if r.category == "positive"]
+        self.assertTrue(len(positive) >= 1)
+
+    def test_persistent_outlier_recommendation(self):
+        """An agent that is always an outlier should trigger a recommendation."""
+        self._populate_ledger(count=5, outlier_agents=["Prism"])
+        from maestro.magi import Magi
+        magi = Magi(r2=self.r2, session_logger=self.session_logger)
+        report = magi.analyze()
+        self.assertGreater(report.agent_health["Prism"]["outlier_rate"], 0.5)
+        agent_recs = [r for r in report.recommendations if r.category == "agent"]
+        self.assertTrue(len(agent_recs) >= 1)
+        self.assertIn("Prism", agent_recs[0].affected_agents)
+
+    def test_frequent_collapse_recommendation(self):
+        """Frequent silent collapses should trigger a critical recommendation."""
+        self._populate_ledger(count=5, collapse=True, agreement=0.95)
+        from maestro.magi import Magi
+        magi = Magi(r2=self.r2, session_logger=self.session_logger)
+        report = magi.analyze()
+        self.assertGreater(report.collapse_frequency, 0.3)
+        critical = [r for r in report.recommendations if r.severity == "critical"]
+        self.assertTrue(len(critical) >= 1)
+
+    def test_report_fields(self):
+        """Verify all expected fields are present in the MAGI report."""
+        self._populate_ledger(count=3)
+        from maestro.magi import Magi, MagiReport
+        magi = Magi(r2=self.r2, session_logger=self.session_logger)
+        report = magi.analyze()
+        self.assertIsInstance(report, MagiReport)
+        self.assertIn(report.confidence_trend, ("improving", "declining", "stable"))
+        self.assertIsInstance(report.mean_confidence, float)
+        self.assertIsInstance(report.grade_distribution, dict)
+        self.assertIsInstance(report.agent_health, dict)
+        self.assertIsInstance(report.recommendations, list)
 
 
 if __name__ == "__main__":

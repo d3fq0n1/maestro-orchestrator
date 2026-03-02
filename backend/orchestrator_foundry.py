@@ -14,6 +14,12 @@ from maestro.agents.sol import Sol
 from maestro.agents.aria import Aria
 from maestro.agents.prism import Prism
 from maestro.agents.tempagent import TempAgent
+from maestro.orchestrator import run_orchestration_async
+from maestro.ncg.generator import (
+    OpenAIHeadlessGenerator,
+    AnthropicHeadlessGenerator,
+    MockHeadlessGenerator,
+)
 
 # === Council ===
 # Each agent is a self-contained module. Swap models, timeouts, or
@@ -26,40 +32,29 @@ COUNCIL = [
 ]
 
 
+def _select_headless_generator():
+    """Pick the best available headless generator based on API keys."""
+    if os.getenv("OPENAI_API_KEY"):
+        return OpenAIHeadlessGenerator()
+    if os.getenv("ANTHROPIC_API_KEY"):
+        return AnthropicHeadlessGenerator()
+    return MockHeadlessGenerator()
+
+
 # === Orchestration Runner ===
 async def run_orchestration(prompt: str) -> dict:
-    try:
-        print(f"[Orchestrator] Prompt received: {prompt}")
-        results = await asyncio.gather(
-            *(agent.fetch(prompt) for agent in COUNCIL)
-        )
-        print("[Orchestrator] All results received.")
-
-        responses = {agent.name: result for agent, result in zip(COUNCIL, results)}
-
-        successful = {k: v for k, v in responses.items() if not v.startswith("[")}
-        quorum = {
-            "consensus": "Consensus logic pending...",
-            "successful_votes": len(successful),
-            "total_agents": len(COUNCIL),
-        }
-
-        return {
-            "responses": responses,
-            "quorum": quorum,
-        }
-
-    except Exception as e:
-        print(f"[ERROR] Orchestration Exception: {type(e).__name__} - {e}")
-        error_responses = {agent.name: "Orchestration Error" for agent in COUNCIL}
-        return {
-            "responses": error_responses,
-            "quorum": {
-                "consensus": "Orchestration Failed",
-                "successful_votes": 0,
-                "total_agents": len(COUNCIL),
-            },
-        }
+    """
+    Thin wrapper that passes the live council and best available headless
+    generator into the core orchestration pipeline. All analysis (dissent,
+    NCG, R2, session logging) runs on every request.
+    """
+    return await run_orchestration_async(
+        prompt=prompt,
+        agents=COUNCIL,
+        ncg_enabled=True,
+        session_logging=True,
+        headless_generator=_select_headless_generator(),
+    )
 
 
 # === API Key Validation ===
@@ -83,9 +78,15 @@ async def main():
     result = await run_orchestration(prompt)
 
     print("\n--- Orchestration Results ---")
-    for agent_name, response in result["responses"].items():
-        print(f"Agent: {agent_name}\nResponse: {response}\n{'-' * 20}")
-    print(f"Quorum: {result['quorum']}")
+    for name, response in result.get("named_responses", {}).items():
+        print(f"Agent: {name}\nResponse: {response}\n{'-' * 20}")
+
+    final = result.get("final_output", {})
+    print(f"Consensus: {final.get('consensus', 'N/A')}")
+    print(f"Confidence: {final.get('confidence', 'N/A')}")
+    if "r2" in final:
+        print(f"R2 Grade: {final['r2']['grade']} "
+              f"(confidence: {final['r2']['confidence_score']})")
 
 
 if __name__ == "__main__":

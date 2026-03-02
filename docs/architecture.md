@@ -8,23 +8,26 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 
 ### Orchestrator (Python / FastAPI)
 - Receives user prompts via RESTful POST `/api/ask`
-- Loads active agent configurations (Sol, Aria, Prism, etc.)
-- Sends prompts to agents either via live API or placeholder logic
-- Collects responses and executes quorum consensus logic
-- Returns structured JSON with:
-  - Raw agent responses
-  - Consensus result (if quorum met)
-  - Dissent logs
+- Loads active agent configurations (Sol, Aria, Prism, TempAgent)
+- Sends prompts to all agents concurrently via live API calls
+- Runs the full analysis pipeline on every request:
+  1. Dissent analysis (internal agreement between agents)
+  2. NCG headless baseline and drift detection
+  3. Semantic quorum aggregation (66% similarity threshold)
+  4. R2 scoring, signal detection, and ledger indexing
+  5. Session persistence
+- Returns structured JSON with agent responses, consensus, dissent metrics, NCG benchmark, and R2 grade
 
 ### Agent Layer
-- Each agent is an abstraction wrapping an API model
-- Agents respond based on assigned roles (Initiator, Responder, Arbiter)
-- Role assignment is randomized per session unless overridden
+- Each agent is an abstraction wrapping an API model (Sol/OpenAI, Aria/Anthropic, Prism/Gemini, TempAgent/OpenRouter)
+- All agents implement a shared async `fetch(prompt) -> str` interface
+- Agents receive the same raw prompt; the analysis pipeline measures their actual behavior rather than assigning explicit roles
 
 ### Quorum Logic Module
-- Requires 66% agreement among agents to form consensus
-- If consensus fails, dissent is included and preserved in output
-- Role-based weighting and dissent propagation are planned future features
+- Uses **semantic similarity clustering** to determine agreement (pairwise distance < 0.5 threshold)
+- Requires a **66% supermajority** of agents in the largest agreeing cluster to form consensus
+- Returns a numeric `agreement_ratio` (0.0-1.0) alongside "High"/"Medium"/"Low" confidence labels
+- If quorum fails, dissent is preserved in the output
 
 ### NCG Module (Novel Content Generation)
 - Runs a parallel headless generation track alongside conversational agents
@@ -36,18 +39,35 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
   - Token-level drift (logprob analysis, available for models that expose logprobs)
 - Output feeds into the aggregator as `ncg_benchmark` data
 
+### R2 Engine (Rapid Recursion & Reinforcement)
+- Scores every session on a 4-grade scale: strong, acceptable, weak, suspicious
+- Detects improvement signals: persistent outliers, silent collapse, compression, agent degradation, healthy dissent
+- Indexes scored consensus nodes into a persistent JSON ledger
+- Provides cross-session trend analysis for MAGI
+
+### MAGI (Meta-Agent Governance and Insight)
+- Reads the R2 ledger and session history to detect cross-session patterns
+- Analyzes per-agent health (outlier rates, consistency)
+- Tracks confidence trends, collapse frequency, and recurring signals
+- Produces structured Recommendations: human-readable proposals for system-level changes
+- Available on-demand via `GET /api/magi`
+- All analysis is read-only; MAGI never auto-applies changes
+
 ### Frontend UI (React + Vite)
 - Calls backend API at `/api/ask`
 - Displays:
+  - R2 session grade with confidence score and flags
+  - Quorum bar with agreement ratio and threshold indicator
+  - Dissent analysis with pairwise distances (expandable)
+  - NCG benchmark with per-agent drift and collapse warnings
   - Individual agent responses
-  - Consensus or dissent state
-  - Prompt/response history
+  - Session history browser
 - Live-reloads via Vite dev server
 - Designed for deployment as static assets via Docker
 
 ### Docker
 - Multi-stage Dockerfile: Stage 1 builds the Vite frontend, Stage 2 sets up Python with `backend/` and `maestro/` packages, then copies the built frontend as static assets served by FastAPI
-- Single service via `docker-compose.yml` — both UI and API are served on port 8000
+- Single service via `docker-compose.yml` -- both UI and API are served on port 8000
 - `.env` support for API keys and runtime configuration
 - Named volumes for persistent session and R2 data
 
@@ -57,31 +77,30 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 
 ```
 /backend
-  └── main.py              # FastAPI app
-  └── orchestrator_foundry.py
-  └── maestro_cli.py
+  main.py                  # FastAPI app, mounts all routers
+  orchestrator_foundry.py  # Thin wrapper: builds live council, calls core pipeline
 /maestro                   # Core orchestration package
-  └── orchestrator.py      # Async orchestration engine
-  └── aggregator.py        # Response aggregation
-  └── dissent.py           # Dissent analysis
-  └── r2.py                # R2 Engine (scoring, ledger, signals)
-  └── session.py           # Session persistence
-  └── agents/              # Agent wrappers (base, sol, aria, prism, tempagent)
-  └── ncg/                 # Novel Content Generation (generator, drift)
+  orchestrator.py          # Async orchestration engine (full pipeline)
+  aggregator.py            # Semantic quorum logic and response synthesis
+  dissent.py               # Pairwise dissent analysis, outlier detection
+  r2.py                    # R2 Engine (scoring, ledger, signals)
+  magi.py                  # MAGI meta-agent governance and recommendations
+  session.py               # Session persistence
+  api_sessions.py          # Session history REST API
+  api_magi.py              # MAGI analysis REST API
+  agents/                  # Agent wrappers (base, sol, aria, prism, tempagent, mock)
+  ncg/                     # Novel Content Generation (generator, drift)
 /frontend
-  └── index.html
-  └── src/
-      └── maestroUI.tsx
-      └── app.tsx
-/docs
-  └── agents.md
-  └── architecture.md
-  └── quorum_logic.md
-  └── ncg.md
-  └── r2-engine.md
+  src/
+    maestroUI.tsx           # Main UI with full analysis rendering
+    app.tsx                 # App root
+    style.css               # Component styles
+/tests
+  test_orchestration.py     # Comprehensive test suite
 /data
-  └── sessions/            # Persisted session JSON logs
-  └── r2/                  # R2 Engine ledger entries
+  sessions/                 # Persisted session JSON logs
+  r2/                       # R2 Engine ledger entries
+/docs
 Dockerfile
 docker-compose.yml
 .env.example
@@ -92,20 +111,49 @@ docker-compose.yml
 ## Data Flow
 
 ```text
-User → UI → /api/ask → Orchestrator
-                           │
-                           ├── Conversational Track: [Sol, Aria, Prism, TempAgent]
-                           │         │
-                           │         └── R2: Internal dissent detection
-                           │
-                           ├── NCG Track: [Headless Generator]
-                           │         │
-                           │         └── Drift Detector: Compare against conversational outputs
-                           │
-                           └── Aggregator (Quorum Logic + NCG Benchmark)
-                                  │
-                                  └── Response (Consensus + Dissent + Drift Report) → UI Render
+User -> UI -> /api/ask -> Orchestrator Foundry (live council)
+                              |
+                              v
+                    maestro.orchestrator (core pipeline)
+                              |
+         +--------------------+--------------------+
+         |                    |                    |
+   Conversational Track  NCG Track          Dissent Analysis
+   [Sol, Aria, Prism,    [Headless Gen]     (pairwise distance,
+    TempAgent]                |              outlier detection)
+         |                    |                    |
+         |                    v                    |
+         |              Drift Detector             |
+         |              (semantic + token)         |
+         |                    |                    |
+         +--------------------+--------------------+
+                              |
+                              v
+                    Aggregator (Semantic Quorum)
+                              |
+                              v
+                    Session Logger -> data/sessions/
+                              |
+                              v
+                    R2 Engine (score, signal, index) -> data/r2/
+                              |
+                              v
+                    Response -> UI Render
+
+Cross-session (on demand):
+  data/r2/ + data/sessions/ -> MAGI -> Recommendations -> /api/magi
 ```
+
+---
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/ask` | Run orchestration with full analysis pipeline |
+| GET | `/api/sessions` | List session history (paginated) |
+| GET | `/api/sessions/{id}` | Get full session record |
+| GET | `/api/magi` | Run MAGI cross-session analysis |
 
 ---
 
@@ -114,9 +162,9 @@ User → UI → /api/ask → Orchestrator
 - Token-level NCG drift analysis via logprobs across all supported models
 - NCG feedback loops that reshape prompts based on detected drift
 - Cross-session NCG baselines tracking what "normal" output looks like over time
-- MAGI loop — meta-agent governance reading R2 ledger to propose code-level improvements
 - Local model agent support (e.g., llamacpp)
 - Real-time debate log and public-facing consensus ledger
+- MAGI automation layer (opt-in auto-apply for low-risk recommendations)
 
 ---
 

@@ -13,6 +13,7 @@ async def run_orchestration_async(
     agents: list = None,
     ncg_enabled: bool = True,
     session_logging: bool = True,
+    headless_generator=None,
 ) -> dict:
     """
     Orchestrates multiple agents, aggregates responses, and runs the
@@ -29,6 +30,14 @@ async def run_orchestration_async(
     into NCG's silent collapse detector. R2 then synthesizes all signals
     into a quality grade and structured improvement recommendations that
     MAGI will consume for the rapid recursion loop.
+
+    Args:
+        prompt: The user's prompt to orchestrate.
+        agents: List of Agent instances. Defaults to mock agents for testing.
+        ncg_enabled: Whether to run the NCG headless baseline track.
+        session_logging: Whether to persist the session record.
+        headless_generator: HeadlessGenerator instance for NCG. When None,
+            falls back to MockHeadlessGenerator.
     """
     if agents is None:
         agents = [
@@ -60,7 +69,7 @@ async def run_orchestration_async(
     ncg_drift_report = None
     if ncg_enabled:
         print("\nRunning NCG headless baseline...")
-        generator = MockHeadlessGenerator()
+        generator = headless_generator or MockHeadlessGenerator()
         ncg_output = generator.generate(prompt)
         print(f"NCG ({generator.model_id}) generated baseline content.")
 
@@ -134,6 +143,7 @@ async def run_orchestration_async(
 
     return {
         "responses": responses,
+        "named_responses": named_responses,
         "final_output": final_output,
         "session_id": session_id,
     }

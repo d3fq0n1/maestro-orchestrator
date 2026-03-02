@@ -1,22 +1,27 @@
-# Agent Roles – Maestro-Orchestrator
+# Agent Layer -- Maestro-Orchestrator
 
-**Version:** v0.2-webui
-**Status:** Containerized and Modular
-**Last Updated:** 2025-06-05
+**Version:** v0.3
+**Last Updated:** 2026-03-02
 **Maintainer:** defcon
 
-Maestro-Orchestrator integrates multiple LLM agents via a containerized backend and frontend system. This document outlines the roles and routing logic for each agent within the orchestrated council.
+Maestro-Orchestrator integrates multiple LLM agents via a containerized backend. This document describes the agent architecture and the current council.
 
 ---
 
-## Containerized Deployment Context
+## Architecture
 
-As of `v0.2-webui`, agents operate within a modular, container-friendly system:
+All agents extend a shared abstract base class (`maestro/agents/base.py`):
 
-- The **FastAPI backend** routes prompts to individual agents based on configuration
-- The **React/Vite frontend** displays all agent responses and quorum status
-- Agents are defined in Python as modular handlers with consistent schema
-- Role randomization is handled within container execution, not hardcoded
+```python
+class Agent(ABC):
+    name: str
+    model: str
+
+    @abstractmethod
+    async def fetch(self, prompt: str) -> str: ...
+```
+
+Every agent implements one method: receive a prompt, return a response string. The analysis pipeline (dissent, NCG, R2, MAGI) then measures the actual behavior of each agent's output rather than assigning explicit roles.
 
 ---
 
@@ -24,18 +29,24 @@ As of `v0.2-webui`, agents operate within a modular, container-friendly system:
 
 | ID          | Codename   | Backed By           | Description                                  |
 |-------------|------------|---------------------|----------------------------------------------|
-| `sol`       | Sol        | OpenAI (GPT-4)      | Language-first anchor and orchestrator       |
-| `aria`      | Aria       | Claude (Anthropic)  | Moral and philosophical lens                 |
-| `prism`     | Prism      | Gemini (Google)     | Analytical and pattern-focused perspective   |
-| `tempagent` | TempAgent  | OpenRouter (varied) | Rotating agent for external model injection  |
+| `sol`       | Sol        | OpenAI (GPT-4)      | Language-first anchor and reasoning engine    |
+| `aria`      | Aria       | Claude (Anthropic)  | Contextual analyst, ethical perspective       |
+| `prism`     | Prism      | Gemini (Google)     | Analytical and pattern-focused perspective    |
+| `tempagent` | TempAgent  | OpenRouter (varied) | Rotating agent for external model diversity   |
+| `mock`      | MockAgent  | (built-in)          | Deterministic responses for testing           |
 
 ---
 
-## Role Randomization Logic
+## How Agents Are Used
 
-- Session-based rotation prevents static role alignment
-- Reduces echo chamber effects across repeated sessions
-- Implemented in orchestration logic, not frontend or fixed backend mapping
+1. The **orchestrator foundry** (`backend/orchestrator_foundry.py`) instantiates the live council
+2. All agents receive the same prompt concurrently via `asyncio.gather`
+3. The **dissent analyzer** measures pairwise semantic distance between agent responses
+4. The **aggregator** clusters agents by similarity to determine quorum
+5. **R2** scores the session quality based on agent agreement patterns
+6. **MAGI** tracks per-agent health across sessions (outlier rates, consistency)
+
+Agents that consistently diverge from the council are flagged by R2 as persistent outliers. MAGI tracks whether this divergence is providing valuable signal (healthy dissent) or noise (model degradation).
 
 ---
 
@@ -43,11 +54,20 @@ As of `v0.2-webui`, agents operate within a modular, container-friendly system:
 
 Each agent receives the same prompt via `/api/ask`, responds independently, and contributes to:
 
-- Raw response log
-- Quorum evaluation
-- Consensus summary
+- Raw response log (displayed per-agent in the UI)
+- Semantic quorum evaluation (66% similarity threshold)
+- Dissent analysis (pairwise distances, outlier detection)
+- NCG drift measurement (distance from headless baseline)
 
-All responses are displayed in the frontend UI alongside a computed consensus outcome.
+---
+
+## Adding a New Agent
+
+1. Create a new file in `maestro/agents/` extending `Agent`
+2. Implement `name`, `model`, and `async fetch(prompt) -> str`
+3. Handle missing API keys gracefully (return error string)
+4. Add to `maestro/agents/__init__.py`
+5. Add to the `COUNCIL` list in `backend/orchestrator_foundry.py`
 
 ---
 
@@ -55,20 +75,5 @@ All responses are displayed in the frontend UI alongside a computed consensus ou
 
 - Multilingual agents (French, Spanish, etc.)
 - Image-captioning or visual interpretation models
-- Audio transcription or multimodal comprehension agents
-- Simulated agents for adversarial testing
-
----
-
-## Notes for Devs
-
-- Defined in `maestro/agents/` as modular classes extending a shared base
-- Loaded dynamically into containerized FastAPI app
-- Must conform to response schema:
-```json
-{
-  "agent_name": "sol",
-  "response": "string",
-  "token_usage": { "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0 }
-}
-```
+- Local model support (e.g., llamacpp, Ollama)
+- Simulated adversarial agents for stress testing
