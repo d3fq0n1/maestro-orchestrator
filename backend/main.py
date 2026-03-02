@@ -7,6 +7,7 @@ from pathlib import Path
 from orchestrator_foundry import run_orchestration
 from maestro.api_sessions import router as sessions_router
 from maestro.api_magi import router as magi_router
+from maestro.api_keys import router as keys_router
 
 import os
 
@@ -25,6 +26,7 @@ app.add_middleware(
 # === Mount API routers ===
 app.include_router(sessions_router)
 app.include_router(magi_router)
+app.include_router(keys_router)
 
 # === Request model ===
 class Prompt(BaseModel):
