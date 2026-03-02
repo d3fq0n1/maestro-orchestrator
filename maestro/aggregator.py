@@ -25,13 +25,17 @@ def ensemble_merge(responses):
     return f"Synthesized Answer: {merged}"
 
 
-def aggregate_responses(responses, ncg_drift_report=None):
+def aggregate_responses(responses, ncg_drift_report=None, dissent_report=None):
     """
     Aggregate the list of responses into a unified output with meta-structure.
 
     When an NCG drift report is provided, the output includes diversity
     benchmark data — measuring how far the conversational agents have
     drifted from the headless baseline. This is the silent collapse signal.
+
+    When a dissent report is provided, the output includes internal
+    agreement metrics — how much agents disagreed with each other,
+    which agents are outliers, and the overall dissent level.
     """
     confidence, majority, dissenting = analyze_agreement(responses)
     merged_answer = ensemble_merge(responses)
@@ -43,6 +47,28 @@ def aggregate_responses(responses, ncg_drift_report=None):
         "confidence": confidence,
         "note": "Maestro strives for synthesis, but preserves dissent when perfection cannot be reached.",
     }
+
+    if dissent_report is not None:
+        result["dissent"] = {
+            "internal_agreement": dissent_report.internal_agreement,
+            "dissent_level": dissent_report.dissent_level,
+            "outlier_agents": dissent_report.outlier_agents,
+            "pairwise": [
+                {
+                    "agents": [p.agent_a, p.agent_b],
+                    "distance": p.distance,
+                }
+                for p in dissent_report.pairwise
+            ],
+            "agent_profiles": [
+                {
+                    "agent": p.agent_name,
+                    "mean_distance": p.mean_distance_to_others,
+                    "is_outlier": p.is_outlier,
+                }
+                for p in dissent_report.agent_profiles
+            ],
+        }
 
     if ncg_drift_report is not None:
         result["ncg_benchmark"] = {
