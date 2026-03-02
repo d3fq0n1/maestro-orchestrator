@@ -1,3 +1,62 @@
-# Troubleshooting.Md
+# Troubleshooting
 
-*Documentation content placeholder for `troubleshooting.md`.*
+## Common Issues
+
+### API key errors
+
+Ensure `.env` is configured with valid keys. Copy from `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+Required keys (at minimum one):
+- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `GOOGLE_API_KEY`
+- `OPENROUTER_API_KEY`
+
+### Backend won't start
+
+Verify you have all dependencies installed:
+
+```bash
+pip install -r requirements.txt
+pip install -r backend/requirements.txt
+```
+
+Run with:
+
+```bash
+uvicorn backend.main:app --reload --port 8000
+```
+
+### Frontend can't reach backend
+
+- Ensure the backend is running on port 8000
+- The Vite dev server proxies `/api` requests to the backend automatically (see `frontend/vite.config.ts`)
+- CORS is enabled in the FastAPI backend for local development
+
+### Docker build fails
+
+- Use `--no-cache` if the frontend build seems stale:
+  ```bash
+  docker-compose build --no-cache
+  ```
+- Ensure `.env` exists in the project root
+
+### Rate limit errors
+
+Each API provider has its own rate limits. If an agent returns errors:
+- Check your API key is valid and has sufficient quota
+- Add delays between batch orchestration rounds if needed
+- The system gracefully handles individual agent failures without crashing
+
+### PowerShell scripts (Windows only)
+
+`combo-sync.ps1` and `scaffold.ps1` are Windows-specific utility scripts. On Linux/macOS, use the standard bash commands documented in the setup guides.
+
+---
+
+For architecture details, see [`architecture.md`](./architecture.md).
+For quorum logic, see [`quorum_logic.md`](./quorum_logic.md).

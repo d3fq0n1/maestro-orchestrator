@@ -26,7 +26,7 @@ All agents receive the same prompt simultaneously and respond independently. No 
 - Each agent is initialized with its own API key from the `.env` file.
 - Responses are retrieved asynchronously via HTTP API calls.
 - Output is returned in a structured JSON object with agent name and content.
-- Each response contributes to quorum consensus logic in `orchestrator_foundry.py`.
+- Each response contributes to quorum consensus logic in `maestro/orchestrator.py`.
 
 ---
 
@@ -34,7 +34,7 @@ All agents receive the same prompt simultaneously and respond independently. No 
 
 To modify or extend agent behavior:
 
-- Add or remove agents in `orchestrator_foundry.py`
-- Update agent display emoji in `ui/src/maestroUI.tsx`
+- Add or remove agents in `maestro/agents/`
+- Update agent display emoji in `frontend/src/maestroUI.tsx`
 - Ensure proper `.env` keys are defined for each agent
 - Re-run locally or rebuild the container for changes to take effect

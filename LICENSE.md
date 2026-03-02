@@ -1,5 +1,5 @@
 
-# 🛡️ Maestro-Orchestrator Open-Use License
+# Maestro-Orchestrator Open-Use License
 
 **Version:** v1.0  
 **Last Updated:** 2025-06-05  
@@ -15,7 +15,7 @@ This license permits **non-commercial usage** with attribution and integrity.
 
 ---
 
-## ✅ You Are Free To
+## You Are Free To
 
 - Use, modify, and distribute this software for **non-commercial** purposes
 - Study and build upon the source code
@@ -24,7 +24,7 @@ This license permits **non-commercial usage** with attribution and integrity.
 
 ---
 
-## ❌ You May Not
+## You May Not
 
 - Sell, license, or include this software in **commercial products or services**
 - Use this project or its outputs to train models that are sold or monetized
@@ -33,7 +33,7 @@ This license permits **non-commercial usage** with attribution and integrity.
 
 ---
 
-## 🔁 Conditions
+## Conditions
 
 - Attribution must be clear in any user-facing interface or documentation
 - Derivative works must retain this license and remain open to public inspection
@@ -41,7 +41,7 @@ This license permits **non-commercial usage** with attribution and integrity.
 
 ---
 
-## 💼 For Commercial Use
+## For Commercial Use
 
 If you wish to:
 
@@ -53,7 +53,7 @@ Please refer to the [`commercial_license.md`](./commercial_license.md) and conta
 
 ---
 
-## 💬 Final Note
+## Final Note
 
 This project was born from a desire to protect the integrity of AI reasoning and collective human-machine collaboration. If you believe in those values, you're welcome to build with it.
 

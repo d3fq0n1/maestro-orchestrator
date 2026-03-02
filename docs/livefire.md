@@ -1,6 +1,6 @@
 # Livefire CLI Orchestrator
 
-The `orchestration_livefire.py` script is the primary interface for running Maestro-Orchestrator in a real-time command-line session. It initializes agents, conducts multi-model rounds, records outputs, and applies quorum logic.
+The `backend/orchestration_livefire.py` script is the primary interface for running Maestro-Orchestrator in a real-time command-line session. It initializes agents, conducts multi-model rounds, records outputs, and applies quorum logic.
 
 ---
 
@@ -57,12 +57,10 @@ Developers can uncomment mock agent logic or use stubbed response mode for dry-r
 
 ---
 
-## 🛠️ Future Enhancements (v0.2 Roadmap)
+## 🛠️ Future Enhancements (v0.3 Roadmap)
 
 - Agent-specific error handling
-- Dynamic agent role assignment
-- Replay mode using `.jsonl` logs
-- Web-based orchestration panel (in development)
+- Replay mode using session logs
 - NCG baseline generation alongside livefire sessions for drift analysis
 - Session logs feeding into MAGI for cross-session NCG drift tracking
 

@@ -60,7 +60,7 @@ To begin:
    ```
 4. Launch API:
    ```bash
-   uvicorn app.main:app --reload --port 8000
+   uvicorn backend.main:app --reload --port 8000
    ```
 
 ### Frontend (React + Vite)
@@ -75,7 +75,7 @@ To begin:
    npm run dev
    ```
 
-The frontend will be served at `http://localhost:3000`.
+The frontend will be served at `http://localhost:5173`.
 
 ---
 
@@ -154,8 +154,8 @@ By contributing, you agree that your contributions will be licensed under the pr
 ---
 
 For more context, refer to:
-- [`README.md`](./README.md)
-- [`agents.md`](./docs/agents.md)
-- [`quorum_logic.md`](./docs/quorum_logic.md)
+- [`README.md`](../readme.md)
+- [`agents.md`](./agents.md)
+- [`quorum_logic.md`](./quorum_logic.md)
 
 We’re building a better kind of intelligence—together.

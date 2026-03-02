@@ -57,7 +57,7 @@ Maestro-Orchestrator pluralizes synthetic intelligence by enabling multiple AI a
    ```
 4. Launch API:
    ```bash
-   uvicorn app.main:app --reload --port 8000
+   uvicorn backend.main:app --reload --port 8000
    ```
 
 ### Frontend (React + Vite)
@@ -72,7 +72,7 @@ Maestro-Orchestrator pluralizes synthetic intelligence by enabling multiple AI a
    npm run dev
    ```
 
-The frontend will be served at `http://localhost:3000`.
+The frontend will be served at `http://localhost:5173`.
 
 ---
 

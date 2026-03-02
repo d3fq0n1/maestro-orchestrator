@@ -18,13 +18,13 @@ The command-line orchestrator that runs a real-time consensus loop with multiple
 Forthcoming subsystem: autonomous agents that analyze logs across multiple sessions to detect drift, reinforce stable patterns, and suggest improvements to quorum logic.
 
 ### 🔹 [R2 Engine](r2-engine.md)
-Forthcoming subsystem: a “Rapid Reinforcement Engine” that triggers when quorum is achieved, indexing insight, escalating anomalies, and surfacing refinements.
+Session scoring, consensus ledger indexing, and structured improvement signal generation. Grades each session as strong/acceptable/weak/suspicious based on dissent, NCG drift, and quorum data. Produces signals for MAGI consumption.
 
 ### 🔹 [NCG: Novel Content Generation](ncg.md)
 Parallel diversity benchmark track. Headless models generate content without conversational framing, serving as a control group against which agent outputs are measured for drift. Catches silent collapse — when all agents agree but their consensus reflects RLHF conformity rather than genuine reasoning.
 
 ### 🔹 [Logging & Replay](logging.md)
-Describes how session data is stored in `.jsonl` format, including schema structure, replay capabilities, and analytical affordances.
+Describes how session data is stored, including schema structure, replay capabilities, and analytical affordances.
 
 ### 🔹 [Roadmap](roadmap.md)
 Tracks current development milestones, upcoming features, and long-term visionary goals.
@@ -52,11 +52,15 @@ Maestro-Orchestrator is built on three foundational principles:
 │   └── ncg/              # Novel Content Generation module
 │       ├── generator.py  # Headless generator implementations
 │       └── drift.py      # Drift detector and collapse detection
-├── logs/                 # Timestamped session logs
+├── data/
+│   ├── sessions/         # Persisted session JSON logs
+│   └── r2/               # R2 Engine ledger entries
+├── backend/              # FastAPI backend
+│   ├── main.py           # API entry point
+│   └── orchestration_livefire.py  # CLI entrypoint
 ├── scripts/              # Utility and bootstrap scripts
-├── orchestration_livefire.py  # Main CLI entrypoint
-├── .env.template         # Environment variable structure
-└── README.md             # Top-level project overview
+├── .env.example          # Environment variable structure
+└── readme.md             # Top-level project overview
 ```
 
 ---
