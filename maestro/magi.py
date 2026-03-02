@@ -9,6 +9,7 @@ and session history to find patterns that span many sessions:
   - Is confidence trending up or down?
   - Are certain prompt types triggering silent collapse repeatedly?
   - Is the system converging toward monoculture over time?
+  - Where in Maestro's own code can optimizations be applied?
 
 MAGI produces structured Recommendations — human-readable proposals for
 system-level changes. It does NOT auto-apply changes (per the ethical
@@ -17,8 +18,10 @@ design principle: all interventions must be human-reviewable).
 This is the "rapid recursion" loop:
   1. Observe  — Maestro runs sessions, R2 scores them
   2. Analyze  — MAGI reads the ledger and detects cross-session patterns
-  3. Propose  — MAGI produces recommendations
-  4. Apply    — A human (or future automation layer) acts on recommendations
+  3. Introspect — MAGI maps signals to Maestro's own source code
+  4. Propose  — MAGI produces recommendations (including code optimizations)
+  5. Validate — MAGI_VIR tests proposals in isolated sandbox
+  6. Apply    — A human (or future automation layer) acts on recommendations
 """
 
 from dataclasses import dataclass, field
@@ -32,7 +35,7 @@ from maestro.dissent import DissentAnalyzer
 @dataclass
 class Recommendation:
     """A structured proposal from MAGI for system-level change."""
-    category: str       # "agent", "prompt", "system", "positive"
+    category: str       # "agent", "prompt", "system", "positive", "code_optimization"
     severity: str       # "info", "warning", "critical"
     title: str          # short one-line summary
     description: str    # detailed explanation with evidence
@@ -300,3 +303,129 @@ class Magi:
         if "confidence_declining" in trend_list:
             return "declining"
         return "stable"
+
+    # --- Code optimization analysis ---
+
+    def analyze_with_introspection(
+        self,
+        ledger_limit: int = 50,
+        session_limit: int = 50,
+    ) -> dict:
+        """
+        Extended MAGI analysis that includes code introspection.
+
+        This is the bridge between MAGI's pattern detection and the
+        self-improvement pipeline. It runs the standard MAGI analysis,
+        then uses the code introspection engine to map detected patterns
+        to specific optimization targets in Maestro's source code.
+
+        Returns a dict containing the standard MagiReport plus:
+          - code_targets: list of identified optimization locations
+          - optimization_proposals: generated proposals from the optimizer
+          - introspection_summary: human-readable summary
+        """
+        from maestro.introspect import CodeIntrospector
+        from maestro.optimization import OptimizationEngine
+
+        # Standard MAGI analysis
+        report = self.analyze(ledger_limit, session_limit)
+
+        # Collect improvement signals from ledger
+        ledger_entries = self._r2._load_recent_entries(ledger_limit)
+        all_signals = []
+        for entry in ledger_entries:
+            all_signals.extend(entry.get("improvement_signals", []))
+
+        # Code introspection
+        introspector = CodeIntrospector()
+        introspection = introspector.introspect(
+            improvement_signals=all_signals,
+            ledger_entries=ledger_entries,
+        )
+
+        # Generate optimization proposals
+        optimizer = OptimizationEngine()
+        trends = self._r2.analyze_ledger_trends(limit=ledger_limit)
+        batch = optimizer.generate_proposals(
+            introspection_report=introspection,
+            magi_recommendations=report.recommendations,
+            r2_trends=trends,
+        )
+
+        # Add code optimization recommendations to the report
+        code_recs = self._code_optimization_recommendations(
+            introspection, batch,
+        )
+        report.recommendations.extend(code_recs)
+
+        return {
+            "report": report,
+            "code_targets": [
+                {
+                    "file": t.file_path,
+                    "target": t.target_name,
+                    "category": t.optimization_category,
+                    "rationale": t.rationale,
+                    "complexity": t.complexity_score,
+                    "signals": t.linked_signals,
+                }
+                for t in introspection.code_targets
+            ],
+            "optimization_proposals": [
+                {
+                    "id": p.proposal_id,
+                    "category": p.category,
+                    "priority": p.priority,
+                    "title": p.title,
+                    "target": p.target_name,
+                    "file": p.file_path,
+                    "current": p.current_value,
+                    "proposed": p.proposed_value,
+                }
+                for p in batch.proposals
+            ],
+            "introspection_summary": introspection.summary,
+            "proposal_batch": batch,
+        }
+
+    def _code_optimization_recommendations(
+        self,
+        introspection,
+        batch,
+    ) -> list:
+        """Generate MAGI recommendations for code-level optimizations."""
+        recs = []
+
+        if batch.total_proposals == 0:
+            return recs
+
+        # Summarize by category
+        categories = {}
+        for p in batch.proposals:
+            if p.category not in categories:
+                categories[p.category] = []
+            categories[p.category].append(p)
+
+        for category, proposals in categories.items():
+            high_priority = [p for p in proposals if p.priority in ("high", "critical")]
+            if high_priority:
+                recs.append(Recommendation(
+                    category="code_optimization",
+                    severity="warning" if any(p.priority == "critical" for p in high_priority) else "info",
+                    title=f"Code optimization available: {category} ({len(proposals)} proposals)",
+                    description=(
+                        f"MAGI introspection identified {len(proposals)} "
+                        f"{category} optimization(s) in Maestro's source code. "
+                        f"{len(high_priority)} are high/critical priority. "
+                        f"Top target: {high_priority[0].title}. "
+                        f"Run the self-improvement pipeline to validate these "
+                        f"proposals in a MAGI_VIR sandbox before promotion."
+                    ),
+                    evidence={
+                        "proposal_count": len(proposals),
+                        "high_priority_count": len(high_priority),
+                        "categories": list(categories.keys()),
+                    },
+                ))
+
+        return recs
