@@ -17,6 +17,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install dialog for the startup mode-selection GUI
+RUN apt-get update && apt-get install -y --no-install-recommends dialog \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install backend dependencies
 COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
@@ -26,6 +30,9 @@ COPY backend/ ./backend/
 
 # Copy maestro orchestration package (agents, NCG, R2, sessions, etc.)
 COPY maestro/ ./maestro/
+
+# Copy unified startup wrapper
+COPY entrypoint.py ./entrypoint.py
 
 # Create persistent data directories
 RUN mkdir -p data/sessions data/r2 backend/env
@@ -42,6 +49,6 @@ COPY --from=frontend-builder /app/frontend/dist ./backend/frontend/dist
 
 EXPOSE 8000
 
-# Launch from the backend directory so relative imports resolve correctly
-WORKDIR /app/backend
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Unified entrypoint — presents a mode-selection GUI on first launch.
+# Override with MAESTRO_MODE=web or MAESTRO_MODE=cli to skip the dialog.
+CMD ["python", "entrypoint.py"]
