@@ -81,8 +81,11 @@ The frontend will be served at `http://localhost:5173`.
 To run both backend and frontend together:
 
 ```bash
+cp .env.example .env   # add your API keys
 docker-compose up --build
 ```
+
+The application (UI + API) will be available at `http://localhost:8000`.
 
 ---
 

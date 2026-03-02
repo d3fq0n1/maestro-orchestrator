@@ -30,8 +30,8 @@ npm run dev
 ### Docker (Recommended)
 
 ```bash
+cp .env.example .env   # add your API keys
 docker-compose up --build
 ```
 
-Backend: `http://localhost:8000/api/ask`
-Frontend: `http://localhost:5173`
+Application (UI + API): `http://localhost:8000`

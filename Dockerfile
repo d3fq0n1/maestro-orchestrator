@@ -1,7 +1,7 @@
 # ──────────────────────────────────────────────
 # Stage 1: Build Vite Frontend
 # ──────────────────────────────────────────────
-FROM node:20 AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
@@ -18,22 +18,26 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install backend dependencies
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY backend/requirements.txt ./backend/requirements.txt
+RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# Copy backend logic
-COPY scripts/orchestrator_foundry.py ./orchestrator_foundry.py
-COPY agents/ ./agents/
-COPY .env.template .env
+# Copy backend application
+COPY backend/ ./backend/
 
-# Copy Vite frontend build output to a known path
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+# Copy maestro orchestration package (agents, NCG, R2, sessions, etc.)
+COPY maestro/ ./maestro/
 
-# Debug: Confirm assets are present
-RUN ls -la ./frontend/dist && ls -la ./frontend/dist/assets || echo "⚠️  Assets directory missing"
+# Create persistent data directories
+RUN mkdir -p data/sessions data/r2
 
-# Expose FastAPI port
+# Copy environment template as fallback (override via env_file or -e flags)
+COPY .env.example ./backend/.env
+
+# Copy Vite frontend build output into the path expected by backend/main.py
+COPY --from=frontend-builder /app/frontend/dist ./backend/frontend/dist
+
 EXPOSE 8000
 
-# Launch Maestro backend
-CMD ["uvicorn", "orchestrator_foundry:app", "--host", "0.0.0.0", "--port", "8000"]
+# Launch from the backend directory so relative imports resolve correctly
+WORKDIR /app/backend
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

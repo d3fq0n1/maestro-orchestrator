@@ -6,7 +6,12 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
     env_file:
       - .env
+    volumes:
+      - maestro-sessions:/app/data/sessions
+      - maestro-r2:/app/data/r2
+
+volumes:
+  maestro-sessions:
+  maestro-r2:

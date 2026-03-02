@@ -57,7 +57,7 @@ Frontend will run at:
 
 ---
 
-## 🐳 Docker Deployment (Recommended)
+## Docker Deployment (Recommended)
 
 ### Prerequisites
 - Docker
@@ -66,28 +66,30 @@ Frontend will run at:
 ### Quick Start
 
 ```bash
+cp .env.example .env   # add your API keys
 docker-compose up --build
 ```
 
-This builds both the backend (Uvicorn) and frontend (Vite) in a production-ready containerized environment.
+The application (UI + API) will be available at `http://localhost:8000`.
 
 ---
 
 ### Docker File Summary
 
-- **`Dockerfile`**:
-  - Multi-stage build
-  - Installs Python backend and builds static frontend
-  - Uses Uvicorn to serve FastAPI
+- **`Dockerfile`** (root):
+  - Multi-stage build: Stage 1 builds the Vite frontend, Stage 2 sets up the Python backend and copies the built frontend as static assets
+  - Copies `backend/`, `maestro/`, and built frontend into the container
+  - Uses Uvicorn to serve FastAPI (which also serves the static UI)
 
 - **`docker-compose.yml`**:
-  - Defines `web` service for backend
-  - Mounts frontend static files
-  - Maps port `8000:8000` for external access
+  - Defines `maestro` service
+  - Loads API keys from `.env`
+  - Maps port `8000:8000`
+  - Uses named volumes for session and R2 data persistence
 
 ---
 
-## 🔒 Environment Configuration
+## Environment Configuration
 
 Copy `.env.example` to `.env` and fill out:
 
@@ -95,7 +97,7 @@ Copy `.env.example` to `.env` and fill out:
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=...
 GOOGLE_API_KEY=...
-DEBUG=True
+OPENROUTER_API_KEY=...
 ```
 
 In production, make sure to:
