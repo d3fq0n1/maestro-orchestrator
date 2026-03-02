@@ -6,9 +6,10 @@ Web-UI can trigger improvement cycles, inspect proposals, and
 review validation results.
 """
 
+import asyncio
 from dataclasses import asdict
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from maestro.self_improve import SelfImprovementEngine
 from maestro.magi import Magi
@@ -38,7 +39,7 @@ async def run_improvement_cycle(compute_node: str = "local"):
     MAGI_VIR validation → Promote/Reject
     """
     engine = SelfImprovementEngine(compute_node=compute_node)
-    cycle = engine.run_cycle()
+    cycle = await asyncio.to_thread(engine.run_cycle)
     return asdict(cycle)
 
 
@@ -49,7 +50,7 @@ async def run_analysis_only():
     Returns proposals and code targets for review.
     """
     engine = SelfImprovementEngine()
-    return engine.run_analysis_only()
+    return await asyncio.to_thread(engine.run_analysis_only)
 
 
 @router.get("/cycle/{cycle_id}")
@@ -58,7 +59,7 @@ async def get_cycle(cycle_id: str):
     engine = SelfImprovementEngine()
     cycle = engine.load_cycle(cycle_id)
     if cycle is None:
-        return {"error": "Cycle not found"}
+        raise HTTPException(status_code=404, detail="Cycle not found")
     return cycle
 
 
@@ -69,7 +70,7 @@ async def introspect_with_magi():
     Returns standard MAGI report plus code optimization targets.
     """
     magi = Magi()
-    result = magi.analyze_with_introspection()
+    result = await asyncio.to_thread(magi.analyze_with_introspection)
     report = result["report"]
     return {
         "sessions_analyzed": report.sessions_analyzed,

@@ -32,11 +32,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from maestro.magi import Magi, MagiReport
+from maestro.magi import Magi, MagiReport, _run_introspection_pipeline
 from maestro.r2 import R2Engine
 from maestro.session import SessionLogger
-from maestro.introspect import CodeIntrospector, IntrospectionReport
-from maestro.optimization import OptimizationEngine, ProposalBatch
 from maestro.magi_vir import MagiVIR, VIRReport, ComputeNodeRegistry
 
 
@@ -104,8 +102,6 @@ class SelfImprovementEngine:
 
         # Components
         self._magi = Magi(r2=self._r2, session_logger=self._sessions)
-        self._introspector = CodeIntrospector()
-        self._optimizer = OptimizationEngine()
 
     def run_cycle(self) -> ImprovementCycle:
         """
@@ -130,26 +126,16 @@ class SelfImprovementEngine:
             cycle.magi_report = self._serialize_magi_report(magi_report)
             cycle.phase = "introspection"
 
-            # Phase 2: Code introspection — map signals to source
-            # Collect all improvement signals from the R2 ledger
-            ledger_entries = self._r2._load_recent_entries(50)
-            all_signals = []
-            for entry in ledger_entries:
-                all_signals.extend(entry.get("improvement_signals", []))
-
-            introspection = self._introspector.introspect(
-                improvement_signals=all_signals,
+            # Phases 2-3: Code introspection + proposal generation
+            # Uses shared pipeline to avoid duplication with Magi.analyze_with_introspection()
+            ledger_entries = self._r2.load_recent_entries(50)
+            introspection, batch = _run_introspection_pipeline(
+                r2=self._r2,
                 ledger_entries=ledger_entries,
+                magi_recommendations=magi_report.recommendations,
             )
             cycle.introspection_summary = introspection.summary
             cycle.phase = "proposal"
-
-            # Phase 3: Generate optimization proposals
-            batch = self._optimizer.generate_proposals(
-                introspection_report=introspection,
-                magi_recommendations=magi_report.recommendations,
-                r2_trends=self._r2.analyze_ledger_trends(),
-            )
             cycle.proposal_count = batch.total_proposals
             cycle.proposals = [asdict(p) for p in batch.proposals]
 
@@ -196,7 +182,7 @@ class SelfImprovementEngine:
 
         except Exception as e:
             cycle.phase = "failed"
-            cycle.outcome = "pending"
+            cycle.outcome = "failed"
             cycle.metadata["error"] = str(e)
             cycle.metadata["error_type"] = type(e).__name__
 
@@ -210,20 +196,11 @@ class SelfImprovementEngine:
         Useful for inspection and planning.
         """
         magi_report = self._magi.analyze()
-        ledger_entries = self._r2._load_recent_entries(50)
-        all_signals = []
-        for entry in ledger_entries:
-            all_signals.extend(entry.get("improvement_signals", []))
-
-        introspection = self._introspector.introspect(
-            improvement_signals=all_signals,
+        ledger_entries = self._r2.load_recent_entries(50)
+        introspection, batch = _run_introspection_pipeline(
+            r2=self._r2,
             ledger_entries=ledger_entries,
-        )
-
-        batch = self._optimizer.generate_proposals(
-            introspection_report=introspection,
             magi_recommendations=magi_report.recommendations,
-            r2_trends=self._r2.analyze_ledger_trends(),
         )
 
         return {
@@ -283,7 +260,6 @@ class SelfImprovementEngine:
     @staticmethod
     def _serialize_magi_report(report: MagiReport) -> dict:
         """Serialize a MagiReport for storage."""
-        from dataclasses import asdict as dc_asdict
         return {
             "sessions_analyzed": report.sessions_analyzed,
             "ledger_entries_analyzed": report.ledger_entries_analyzed,
@@ -294,7 +270,7 @@ class SelfImprovementEngine:
             "collapse_frequency": report.collapse_frequency,
             "recurring_signals": report.recurring_signals,
             "recommendation_count": len(report.recommendations),
-            "recommendations": [dc_asdict(r) for r in report.recommendations],
+            "recommendations": [asdict(r) for r in report.recommendations],
         }
 
     @staticmethod

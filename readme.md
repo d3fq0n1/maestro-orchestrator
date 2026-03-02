@@ -37,6 +37,8 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - **Dissent Analysis** -- Pairwise semantic distance between agents, outlier detection, and cross-session trend tracking
 - **R2 Engine (Rapid Recursion)** -- Session scoring, consensus ledger indexing, and structured improvement signals for MAGI
 - **MAGI (Meta-Agent Governance)** -- Cross-session pattern analysis with human-reviewable recommendations
+- **Self-Improvement Pipeline** -- MAGI/R2-driven code optimization: introspection, proposal generation, MAGI_VIR sandboxed validation, and promote/reject lifecycle
+- **MAGI_VIR (Virtual Instance Runtime)** -- Isolated sandbox for testing optimization proposals before promotion
 - **API Key Management** -- In-app key configuration, validation, and secure `.env` persistence
 - **Session History** -- Persistent JSON logging of every orchestration session
 - **React/Vite Frontend** -- Full analysis dashboard (R2 grade, quorum bar, dissent, NCG drift, session browser)
@@ -196,6 +198,18 @@ Set or update an API key for a provider.
 ### `POST /api/keys/validate`
 Validate all configured API keys against their respective endpoints.
 
+### `GET /api/self-improve`
+Self-improvement status and recent cycles.
+
+### `POST /api/self-improve/cycle`
+Trigger a full self-improvement cycle (MAGI → Introspect → Propose → Validate → Promote/Reject).
+
+### `POST /api/self-improve/analyze`
+Run analysis + introspection without VIR validation.
+
+### `GET /api/self-improve/introspect`
+MAGI analysis with code introspection targets and optimization proposals.
+
 ---
 
 ## Documentation
@@ -205,6 +219,7 @@ Validate all configured API keys against their respective endpoints.
 - [`ncg.md`](./docs/ncg.md) -- Novel Content Generation and drift detection
 - [`r2-engine.md`](./docs/r2-engine.md) -- Rapid Recursion & Reinforcement Engine
 - [`magi.md`](./docs/magi.md) -- Meta-Agent Governance and Insight
+- [`self-improvement-pipeline.md`](./docs/self-improvement-pipeline.md) -- Self-improvement pipeline (introspection, proposals, VIR validation)
 - [`quorum_logic.md`](./docs/quorum_logic.md) -- Semantic quorum consensus
 - [`deployment.md`](./docs/deployment.md) -- Deployment guide
 - [`quickstart.md`](./docs/quickstart.md) -- Quick start guide
@@ -240,7 +255,9 @@ Follow: [substack.com/@defqon1](https://substack.com/@defqon1)
 - Token-level drift analysis via logprobs (OpenAI bridge available now, others pending)
 - NCG feedback loops -- reshape prompts based on where drift is detected
 - Cross-session NCG baselines that track what "normal" looks like over time
-- MAGI automation layer (opt-in auto-apply for low-risk recommendations)
+- MAGI automation layer (opt-in auto-apply for validated low-risk proposals from the self-improvement pipeline)
+- Remote compute node MAGI_VIR validation (distributed testing across Maestro nodes)
+- Web-UI integration for self-improvement cycle monitoring and proposal review
 - Local model agent support (e.g., llamacpp)
 - Launch public demo endpoint
 - Extend to decentralized quorum network

@@ -7,7 +7,6 @@ Tests for the self-improvement pipeline:
   - MAGI code-optimization-aware analysis
 """
 
-import os
 import shutil
 import tempfile
 import unittest
@@ -157,8 +156,8 @@ class TestCodeIntrospector(unittest.TestCase):
             {"signal_type": "suspicious_consensus", "affected_agents": [], "data": {}},
         ]
         report = self.introspector.introspect(improvement_signals=signals)
-        # Targets should be deduplicated by (file_path, target_name)
-        target_keys = [(t.file_path, t.target_name) for t in report.code_targets]
+        # Targets should be deduplicated by (file_path, target_name, optimization_category)
+        target_keys = [(t.file_path, t.target_name, t.optimization_category) for t in report.code_targets]
         self.assertEqual(len(target_keys), len(set(target_keys)))
 
 
@@ -736,7 +735,7 @@ class TestSelfImprovementEngine(unittest.TestCase):
         self.assertIn(cycle.phase, ("analysis", "introspection", "proposal",
                                      "validation", "complete", "failed"))
         self.assertIn(cycle.outcome, ("pending", "promoted", "rejected",
-                                       "needs_review", "no_proposals"))
+                                       "needs_review", "no_proposals", "failed"))
 
 
 # ===========================================================================

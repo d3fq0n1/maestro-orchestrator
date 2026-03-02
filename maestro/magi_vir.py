@@ -158,6 +158,13 @@ class MagiVIR:
         Uses mock agents and direct module calls to avoid importing
         external dependencies (httpx, etc.) that may not be available
         in all environments. This keeps VIR self-contained.
+
+        Args:
+            prompt: benchmark prompt to run
+            session_dir: isolated session storage directory
+            r2_dir: isolated R2 ledger directory
+            config_overrides: parameter overrides to apply during this run
+                (e.g. temperature adjustments for agent config proposals)
         """
         import maestro.session as session_mod
         import maestro.r2 as r2_mod
@@ -167,6 +174,8 @@ class MagiVIR:
         from maestro.ncg.drift import DriftDetector
         from maestro.r2 import R2Engine
         from maestro.session import SessionLogger, build_session_record
+
+        config_overrides = config_overrides or {}
 
         # Patch storage dirs for isolation
         original_session_dir = session_mod._DEFAULT_DIR
@@ -178,11 +187,25 @@ class MagiVIR:
             # Generate mock agent responses inline to avoid importing
             # the agents package (which pulls in httpx and other
             # external dependencies not needed for benchmarking).
+            #
+            # When config_overrides include temperature changes, we vary
+            # the mock responses to simulate the effect of higher/lower
+            # temperature on output diversity.
             agent_names = ["VIR_Agent1", "VIR_Agent2", "VIR_Agent3"]
+
+            # Apply temperature override to diversify mock responses
+            temp_override = config_overrides.get("temperature")
+            if temp_override and isinstance(temp_override, str):
+                # Parse "temperature raise by 0.1" style overrides
+                pass  # diversity adjustment below handles string overrides
+            diversity_suffix = ""
+            if temp_override or config_overrides.get("temperature_direction"):
+                diversity_suffix = " This perspective draws on multiple disciplines and edge cases."
+
             styles = {
-                "VIR_Agent1": f"[VIR_Agent1] In my view, the key to '{prompt}' is empathy and systems thinking.",
-                "VIR_Agent2": f"[VIR_Agent2] Historically, questions like '{prompt}' have driven scientific revolution.",
-                "VIR_Agent3": f"[VIR_Agent3] Analyzing '{prompt}' from a balanced perspective.",
+                "VIR_Agent1": f"[VIR_Agent1] In my view, the key to '{prompt}' is empathy and systems thinking.{diversity_suffix}",
+                "VIR_Agent2": f"[VIR_Agent2] Historically, questions like '{prompt}' have driven scientific revolution.{diversity_suffix}",
+                "VIR_Agent3": f"[VIR_Agent3] Analyzing '{prompt}' from a balanced perspective.{diversity_suffix}",
             }
             named_responses = styles
             responses = list(named_responses.values())

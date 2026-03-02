@@ -25,7 +25,6 @@ This is the "rapid recursion" loop:
 """
 
 from dataclasses import dataclass, field
-from collections import Counter
 
 from maestro.r2 import R2Engine
 from maestro.session import SessionLogger
@@ -57,6 +56,44 @@ class MagiReport:
     recurring_signals: dict         # {signal_type: count}
 
 
+def _run_introspection_pipeline(
+    r2: R2Engine,
+    ledger_entries: list,
+    magi_recommendations: list,
+    ledger_limit: int = 50,
+):
+    """
+    Shared introspection + proposal generation pipeline.
+
+    Used by both Magi.analyze_with_introspection() and
+    SelfImprovementEngine.run_cycle() to avoid duplicating
+    the signal-collection → introspect → propose logic.
+
+    Returns (IntrospectionReport, ProposalBatch).
+    """
+    from maestro.introspect import CodeIntrospector
+    from maestro.optimization import OptimizationEngine
+
+    all_signals = []
+    for entry in ledger_entries:
+        all_signals.extend(entry.get("improvement_signals", []))
+
+    introspector = CodeIntrospector()
+    introspection = introspector.introspect(
+        improvement_signals=all_signals,
+        ledger_entries=ledger_entries,
+    )
+
+    optimizer = OptimizationEngine()
+    batch = optimizer.generate_proposals(
+        introspection_report=introspection,
+        magi_recommendations=magi_recommendations,
+        r2_trends=r2.analyze_ledger_trends(limit=ledger_limit),
+    )
+
+    return introspection, batch
+
+
 class Magi:
     """
     Meta-agent governance layer. Reads R2 ledger and session history
@@ -77,7 +114,7 @@ class Magi:
         """
         # --- Gather data ---
         trends = self._r2.analyze_ledger_trends(limit=ledger_limit)
-        ledger_entries = self._r2._load_recent_entries(ledger_limit)
+        ledger_entries = self._r2.load_recent_entries(ledger_limit)
         session_summaries = self._sessions.list_sessions(limit=session_limit)
 
         # --- Cross-session agent health ---
@@ -330,33 +367,31 @@ class Magi:
         # Standard MAGI analysis
         report = self.analyze(ledger_limit, session_limit)
 
-        # Collect improvement signals from ledger
-        ledger_entries = self._r2._load_recent_entries(ledger_limit)
-        all_signals = []
-        for entry in ledger_entries:
-            all_signals.extend(entry.get("improvement_signals", []))
-
-        # Code introspection
-        introspector = CodeIntrospector()
-        introspection = introspector.introspect(
-            improvement_signals=all_signals,
+        # Run introspection pipeline (shared with SelfImprovementEngine)
+        ledger_entries = self._r2.load_recent_entries(ledger_limit)
+        introspection, batch = _run_introspection_pipeline(
+            r2=self._r2,
             ledger_entries=ledger_entries,
-        )
-
-        # Generate optimization proposals
-        optimizer = OptimizationEngine()
-        trends = self._r2.analyze_ledger_trends(limit=ledger_limit)
-        batch = optimizer.generate_proposals(
-            introspection_report=introspection,
             magi_recommendations=report.recommendations,
-            r2_trends=trends,
+            ledger_limit=ledger_limit,
         )
 
         # Add code optimization recommendations to the report
+        # (use a copy to avoid mutating the original report's list)
         code_recs = self._code_optimization_recommendations(
             introspection, batch,
         )
-        report.recommendations.extend(code_recs)
+        report = MagiReport(
+            sessions_analyzed=report.sessions_analyzed,
+            ledger_entries_analyzed=report.ledger_entries_analyzed,
+            recommendations=report.recommendations + code_recs,
+            confidence_trend=report.confidence_trend,
+            mean_confidence=report.mean_confidence,
+            grade_distribution=report.grade_distribution,
+            agent_health=report.agent_health,
+            collapse_frequency=report.collapse_frequency,
+            recurring_signals=report.recurring_signals,
+        )
 
         return {
             "report": report,

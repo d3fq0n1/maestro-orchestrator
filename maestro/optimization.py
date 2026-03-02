@@ -178,6 +178,7 @@ class OptimizationEngine:
         Returns:
             ProposalBatch containing all generated proposals
         """
+        r2_trends = r2_trends or {}
         proposals = []
 
         # Strategy 1: Threshold tuning from signal-mapped code targets
@@ -200,6 +201,15 @@ class OptimizationEngine:
             introspection_report.complexity_hotspots,
             magi_recommendations or [],
         ))
+
+        # Strategy 5: Trend-driven priority escalation from R2 trends
+        # If R2 detects declining confidence or recurring signals, escalate
+        # matching proposals to higher priority.
+        if r2_trends.get("trends") and "confidence_declining" in r2_trends["trends"]:
+            for p in proposals:
+                if p.priority == "medium":
+                    p.priority = "high"
+                    p.metadata["escalated_by"] = "confidence_declining_trend"
 
         # Deduplicate by (file_path, target_name, change_type)
         seen = set()

@@ -85,10 +85,14 @@ The full self-improvement cycle:
 
 1. **Observe** — Maestro nodes + NCG run a session
 2. **Analyze** — Dissent measures internal agreement, NCG measures external drift, R2 scores the session
-3. **Propose** — R2 produces structured improvement signals; MAGI reads these to propose code-level changes
-4. **Apply** — Changes are "rapidly recursed" back into the system
+3. **Introspect** — MAGI maps R2 signals to specific code locations in Maestro's source via AST analysis
+4. **Propose** — R2 produces structured improvement signals; MAGI reads these to produce optimization proposals (threshold tuning, agent config, architecture refactoring)
+5. **Validate** — MAGI_VIR tests proposals in an isolated sandbox instance
+6. **Apply** — Validated changes are promoted after human review (or future opt-in automation)
 
-R2 is step 2–3: the bridge between observation and action.
+R2 is steps 2–3: the bridge between observation and action. Its improvement signals drive the entire self-improvement pipeline.
+
+See [`self-improvement-pipeline.md`](./self-improvement-pipeline.md) for the complete pipeline documentation.
 
 ---
 
@@ -165,4 +169,5 @@ total = r2.count()
 
 - [`ncg.md`](./ncg.md) — Novel Content Generation and drift detection
 - [`magi.md`](./magi.md) — Meta-Agent Governance (consumes R2 signals)
+- [`self-improvement-pipeline.md`](./self-improvement-pipeline.md) — Self-improvement pipeline (introspection, proposals, VIR validation)
 - [`architecture.md`](./architecture.md) — System overview

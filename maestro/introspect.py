@@ -22,8 +22,6 @@ consumes to generate actual change proposals.
 """
 
 import ast
-import os
-import inspect
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -483,11 +481,11 @@ class CodeIntrospector:
             all_targets.extend(targets)
         all_targets.extend(token_targets)
 
-        # Deduplicate by (file_path, target_name)
+        # Deduplicate by (file_path, target_name, optimization_category)
         seen = set()
         unique_targets = []
         for t in all_targets:
-            key = (t.file_path, t.target_name)
+            key = (t.file_path, t.target_name, t.optimization_category)
             if key not in seen:
                 seen.add(key)
                 unique_targets.append(t)
