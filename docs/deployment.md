@@ -4,7 +4,7 @@ This guide walks you through deploying Maestro-Orchestrator in local, containeri
 
 ---
 
-## 🧪 Local Development
+## Local Development
 
 ### Backend (FastAPI)
 
@@ -14,9 +14,10 @@ This guide walks you through deploying Maestro-Orchestrator in local, containeri
    source venv/bin/activate  # Windows: venv\Scripts\activate
    ```
 
-2. Install backend dependencies:
+2. Install dependencies:
    ```bash
    pip install -r requirements.txt
+   pip install -r backend/requirements.txt
    ```
 
 3. Configure environment variables:
@@ -30,8 +31,7 @@ This guide walks you through deploying Maestro-Orchestrator in local, containeri
    uvicorn backend.main:app --reload --port 8000
    ```
 
-The backend will be available at:  
-➡️ `http://localhost:8000/api/ask`
+The backend will be available at `http://localhost:8000/api/ask`.
 
 ---
 
@@ -52,8 +52,7 @@ The backend will be available at:
    npm run dev
    ```
 
-Frontend will run at:
-➡️ `http://localhost:5173`
+Frontend will run at `http://localhost:5173`.
 
 ---
 
@@ -107,20 +106,20 @@ In production, make sure to:
 
 ---
 
-## 🌍 Production Hosting Options
+## Production Hosting Options
 
 Maestro-Orchestrator can be hosted on:
 
-- 🟢 **Fly.io** – lightweight, easy container hosting
-- 🟣 **Render** or **Railway** – zero-config backend + static frontend
-- 🔵 **VPS** (e.g., DigitalOcean, Linode) – manual deployment via `docker-compose`
-- 🟠 **Bare metal** – for private or localnet deployment
+- **Fly.io** -- lightweight, easy container hosting
+- **Render** or **Railway** -- zero-config backend + static frontend
+- **VPS** (e.g., DigitalOcean, Linode) -- manual deployment via `docker-compose`
+- **Bare metal** -- for private or localnet deployment
 
 Ensure proper firewall rules are in place for ports `8000` (API) and `80/443` (frontend if reverse proxied).
 
 ---
 
-## 🛠️ Deployment Tips
+## Deployment Tips
 
 - Use `nginx` or `Caddy` as a reverse proxy
 - Monitor API rate limits from OpenAI / Claude / Gemini

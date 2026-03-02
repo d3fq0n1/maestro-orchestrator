@@ -21,4 +21,4 @@ This folder contains all assets required to initialize an LLM agent into the Mae
 
 ---
 
-🧠 This system promotes informed, respectful cooperation between humans and synthetic agents. Consent-first design, structured dissent, and memory-aware orchestration are core pillars.
+This system promotes informed, respectful cooperation between humans and synthetic agents. Consent-first design, structured dissent, and memory-aware orchestration are core pillars.

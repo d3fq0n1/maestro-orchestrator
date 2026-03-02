@@ -1,8 +1,8 @@
-# 👥 Council Member Stats (WIP)
+# Council Member Stats (WIP)
 
 This document tracks the synthetic behavior patterns, contribution ratios, and dissent metrics for each active agent participating in livefire sessions.
 
-## 📊 Current Agents
+## Current Agents
 
 - **Sol**
   - Role: Baseline grounding + language analysis (OpenAI)
@@ -30,7 +30,7 @@ This document tracks the synthetic behavior patterns, contribution ratios, and d
 
 ---
 
-## 📈 Metrics to Track (Coming Soon)
+## Metrics to Track (Coming Soon)
 
 - Historical agreement trends
 - Weighted accuracy benchmarks

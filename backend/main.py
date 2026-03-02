@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from pathlib import Path
 from orchestrator_foundry import run_orchestration
+from maestro.api_sessions import router as sessions_router
 
 import os
 
@@ -19,6 +20,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# === Mount session history API ===
+app.include_router(sessions_router)
 
 # === Request model ===
 class Prompt(BaseModel):
@@ -41,13 +45,13 @@ async def ask(prompt: Prompt):
         print(f"[ERROR] {e}")
         return {
             "responses": {
-                "Sol": "⚠️ Error processing request.",
+                "Sol": "Error processing request.",
                 "Aria": "",
                 "Prism": "",
                 "TempAgent": ""
             },
             "quorum": {
-                "consensus": "❌ Failed",
+                "consensus": "Failed",
                 "votes": {}
             }
         }
@@ -55,7 +59,7 @@ async def ask(prompt: Prompt):
 # === Static UI Mount (Vite production build) ===
 ui_path = Path(__file__).parent / "frontend" / "dist"
 if not ui_path.exists():
-    raise RuntimeError(f"⚠️ UI build output not found at: {ui_path}")
+    raise RuntimeError(f"UI build output not found at: {ui_path}")
 
 app.mount("/", StaticFiles(directory=ui_path, html=True), name="static")
 

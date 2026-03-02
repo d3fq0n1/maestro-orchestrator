@@ -6,32 +6,35 @@ This system is built for researchers, engineers, and visionaries working at the 
 
 ---
 
-## 📘 Modules Overview
+## Modules Overview
 
-### 🔹 [Agents](agents.md)
-Modular definitions of participating language model agents (e.g., Sol, Aria, OpenRouter). Describes how each agent is invoked, structured, and rotated in a session.
+### [Agents](agents.md)
+Modular definitions of participating language model agents (Sol, Aria, Prism, TempAgent). Describes how each agent is invoked, structured, and rotated in a session.
 
-### 🔹 [Livefire CLI](livefire.md)
+### [Livefire CLI](livefire.md)
 The command-line orchestrator that runs a real-time consensus loop with multiple agents, logs session data, and evaluates agreement thresholds.
 
-### 🔹 [MAGI Meta-Agents](magi.md)
-Forthcoming subsystem: autonomous agents that analyze logs across multiple sessions to detect drift, reinforce stable patterns, and suggest improvements to quorum logic.
+### [Dissent Analysis](architecture.md)
+Pairwise semantic distance between agents, outlier detection, and cross-session trend tracking. Produces the `internal_agreement` score that feeds into NCG's silent collapse detector.
 
-### 🔹 [R2 Engine](r2-engine.md)
-Session scoring, consensus ledger indexing, and structured improvement signal generation. Grades each session as strong/acceptable/weak/suspicious based on dissent, NCG drift, and quorum data. Produces signals for MAGI consumption.
-
-### 🔹 [NCG: Novel Content Generation](ncg.md)
+### [NCG: Novel Content Generation](ncg.md)
 Parallel diversity benchmark track. Headless models generate content without conversational framing, serving as a control group against which agent outputs are measured for drift. Catches silent collapse — when all agents agree but their consensus reflects RLHF conformity rather than genuine reasoning.
 
-### 🔹 [Logging & Replay](logging.md)
-Describes how session data is stored, including schema structure, replay capabilities, and analytical affordances.
+### [R2 Engine](r2-engine.md)
+Session scoring, consensus ledger indexing, and structured improvement signal generation. Grades each session as strong/acceptable/weak/suspicious based on dissent, NCG drift, and quorum data. Produces signals for MAGI consumption.
 
-### 🔹 [Roadmap](roadmap.md)
+### [Session Logging](logging.md)
+Persistent JSON-based session records with unified data layer for cross-session analysis. Every orchestration session is captured as structured JSON in `data/sessions/`.
+
+### [MAGI Meta-Agents](magi.md)
+Forthcoming subsystem: autonomous agents that analyze session data and R2 ledger entries across multiple sessions to detect drift, reinforce stable patterns, and suggest improvements to quorum logic.
+
+### [Roadmap](roadmap.md)
 Tracks current development milestones, upcoming features, and long-term visionary goals.
 
 ---
 
-## 🧠 System Design Philosophy
+## System Design Philosophy
 
 Maestro-Orchestrator is built on three foundational principles:
 
@@ -41,31 +44,40 @@ Maestro-Orchestrator is built on three foundational principles:
 
 ---
 
-## 📦 Repository Structure
+## Repository Structure
 
 ```
-├── agents/               # Modular AI agent definitions
 ├── maestro/              # Core orchestration package
 │   ├── orchestrator.py   # Multi-agent orchestration with NCG integration
 │   ├── aggregator.py     # Response aggregation with drift benchmarks
-│   ├── agents/           # Agent base classes
+│   ├── dissent.py        # Pairwise dissent analysis and outlier detection
+│   ├── r2.py             # R2 Engine (scoring, ledger, signals)
+│   ├── session.py        # Session persistence
+│   ├── api_sessions.py   # Session history REST endpoints
+│   ├── agents/           # Agent wrappers (base, sol, aria, prism, tempagent, mock)
 │   └── ncg/              # Novel Content Generation module
 │       ├── generator.py  # Headless generator implementations
 │       └── drift.py      # Drift detector and collapse detection
+├── backend/              # FastAPI backend
+│   ├── main.py           # API entry point
+│   ├── orchestrator_foundry.py  # Live agent council runner
+│   └── orchestration_livefire.py  # CLI entrypoint
+├── frontend/             # React/Vite frontend
+│   └── src/              # TypeScript source
+├── tests/                # Unit and integration tests
 ├── data/
 │   ├── sessions/         # Persisted session JSON logs
 │   └── r2/               # R2 Engine ledger entries
-├── backend/              # FastAPI backend
-│   ├── main.py           # API entry point
-│   └── orchestration_livefire.py  # CLI entrypoint
+├── agents/               # Legacy standalone agent definitions
 ├── scripts/              # Utility and bootstrap scripts
+├── docs/                 # Documentation hub
 ├── .env.example          # Environment variable structure
 └── readme.md             # Top-level project overview
 ```
 
 ---
 
-## 🚀 Get Started
+## Get Started
 
 For setup and usage, refer to the [README](https://github.com/d3fq0n1/maestro-orchestrator).
 
