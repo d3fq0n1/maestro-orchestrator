@@ -1,10 +1,13 @@
 import asyncio
 import os
+import shutil
+import tempfile
 import unittest
 from maestro.orchestrator import run_orchestration
 from maestro.agents import Agent, MockAgent, Sol, Aria, Prism, TempAgent
 from maestro.ncg.generator import MockHeadlessGenerator
 from maestro.ncg.drift import DriftDetector, DriftReport
+from maestro.session import SessionLogger, SessionRecord, build_session_record
 
 
 class TestAgentInterface(unittest.TestCase):
@@ -81,7 +84,7 @@ class TestMaestroOrchestration(unittest.TestCase):
 
     def test_mock_responses(self):
         prompt = "What is the meaning of life?"
-        result = run_orchestration(prompt)
+        result = run_orchestration(prompt, session_logging=False)
 
         self.assertIn("responses", result)
         self.assertEqual(len(result["responses"]), 2)
@@ -100,7 +103,7 @@ class TestMaestroOrchestration(unittest.TestCase):
 
     def test_orchestration_with_ncg(self):
         prompt = "What is the meaning of life?"
-        result = run_orchestration(prompt, ncg_enabled=True)
+        result = run_orchestration(prompt, ncg_enabled=True, session_logging=False)
 
         final = result["final_output"]
         self.assertIn("ncg_benchmark", final)
@@ -116,7 +119,7 @@ class TestMaestroOrchestration(unittest.TestCase):
 
     def test_orchestration_ncg_disabled(self):
         prompt = "What is the meaning of life?"
-        result = run_orchestration(prompt, ncg_enabled=False)
+        result = run_orchestration(prompt, ncg_enabled=False, session_logging=False)
 
         final = result["final_output"]
         self.assertNotIn("ncg_benchmark", final)
@@ -191,6 +194,148 @@ class TestDriftDetector(unittest.TestCase):
         detector = DriftDetector()
         distance = detector._semantic_distance("hello world", "hello world")
         self.assertEqual(distance, 0.0)
+
+
+class TestSessionLogger(unittest.TestCase):
+    """Verify session persistence: write, read, list, delete."""
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self.logger = SessionLogger(storage_dir=self._tmpdir)
+
+    def tearDown(self):
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def _make_record(self, prompt="test prompt"):
+        return build_session_record(
+            prompt=prompt,
+            agent_responses={"Sol": "response A", "Aria": "response B"},
+            final_output={
+                "consensus": "merged",
+                "majority_view": "response A",
+                "minority_view": None,
+                "confidence": "High",
+                "note": "test",
+            },
+            ncg_enabled=False,
+        )
+
+    def test_save_and_load(self):
+        record = self._make_record()
+        self.logger.save(record)
+
+        loaded = self.logger.load(record.session_id)
+        self.assertEqual(loaded.session_id, record.session_id)
+        self.assertEqual(loaded.prompt, "test prompt")
+        self.assertEqual(loaded.agent_responses["Sol"], "response A")
+        self.assertEqual(loaded.agents_used, ["Sol", "Aria"])
+
+    def test_list_sessions(self):
+        for i in range(3):
+            self.logger.save(self._make_record(f"prompt {i}"))
+
+        summaries = self.logger.list_sessions()
+        self.assertEqual(len(summaries), 3)
+        for s in summaries:
+            self.assertIn("session_id", s)
+            self.assertIn("timestamp", s)
+            self.assertIn("prompt", s)
+
+    def test_list_sessions_limit_offset(self):
+        for i in range(5):
+            self.logger.save(self._make_record(f"prompt {i}"))
+
+        page = self.logger.list_sessions(limit=2, offset=1)
+        self.assertEqual(len(page), 2)
+
+    def test_count(self):
+        self.assertEqual(self.logger.count(), 0)
+        self.logger.save(self._make_record())
+        self.assertEqual(self.logger.count(), 1)
+
+    def test_delete(self):
+        record = self._make_record()
+        self.logger.save(record)
+        self.assertEqual(self.logger.count(), 1)
+
+        deleted = self.logger.delete(record.session_id)
+        self.assertTrue(deleted)
+        self.assertEqual(self.logger.count(), 0)
+
+    def test_delete_nonexistent(self):
+        self.assertFalse(self.logger.delete("nonexistent-id"))
+
+    def test_load_nonexistent_raises(self):
+        with self.assertRaises(FileNotFoundError):
+            self.logger.load("nonexistent-id")
+
+    def test_session_record_has_uuid_and_timestamp(self):
+        record = self._make_record()
+        self.assertTrue(len(record.session_id) > 0)
+        self.assertIn("T", record.timestamp)  # ISO format
+
+    def test_ncg_benchmark_persisted(self):
+        record = build_session_record(
+            prompt="test",
+            agent_responses={"Sol": "a"},
+            final_output={
+                "consensus": "m",
+                "majority_view": "a",
+                "minority_view": None,
+                "confidence": "High",
+                "note": "test",
+                "ncg_benchmark": {
+                    "ncg_model": "mock-headless-v1",
+                    "mean_drift": 0.42,
+                    "silent_collapse": False,
+                },
+            },
+            ncg_enabled=True,
+        )
+        self.logger.save(record)
+        loaded = self.logger.load(record.session_id)
+        self.assertEqual(loaded.ncg_benchmark["mean_drift"], 0.42)
+
+    def test_list_all_ids(self):
+        records = [self._make_record(f"p{i}") for i in range(3)]
+        for r in records:
+            self.logger.save(r)
+        ids = self.logger.list_all_ids()
+        self.assertEqual(len(ids), 3)
+
+
+class TestOrchestrationSessionIntegration(unittest.TestCase):
+    """Verify the orchestrator writes session records when enabled."""
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        # Patch the default storage dir so tests don't pollute real data
+        import maestro.session as session_mod
+        self._original_dir = session_mod._DEFAULT_DIR
+        session_mod._DEFAULT_DIR = __import__("pathlib").Path(self._tmpdir)
+
+    def tearDown(self):
+        import maestro.session as session_mod
+        session_mod._DEFAULT_DIR = self._original_dir
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def test_orchestration_creates_session_file(self):
+        result = run_orchestration("test prompt", session_logging=True)
+        self.assertIn("session_id", result)
+        self.assertIsNotNone(result["session_id"])
+
+        logger = SessionLogger(storage_dir=self._tmpdir)
+        self.assertEqual(logger.count(), 1)
+
+        loaded = logger.load(result["session_id"])
+        self.assertEqual(loaded.prompt, "test prompt")
+
+    def test_orchestration_session_logging_disabled(self):
+        result = run_orchestration("test prompt", session_logging=False)
+        self.assertIsNone(result["session_id"])
+
+        logger = SessionLogger(storage_dir=self._tmpdir)
+        self.assertEqual(logger.count(), 0)
 
 
 if __name__ == "__main__":

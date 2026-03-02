@@ -1,11 +1,21 @@
 ## [Unreleased]
 
+### Added
+
+- Session history logging (`maestro/session.py`) — every orchestration session persisted to `data/sessions/` as structured JSON
+- `SessionLogger` class with save, load, list, delete, and count operations
+- `SessionRecord` dataclass capturing prompt, agent responses, consensus, NCG benchmark, and metadata
+- `build_session_record()` convenience function for orchestrator integration
+- Session history REST API (`maestro/api_sessions.py`) — `GET /api/sessions` and `GET /api/sessions/{id}`
+- Orchestrator now returns `session_id` in its output
+- Tests for session persistence, orchestrator integration, and edge cases
+
 ### Planned for 0.3.0
 
+- Dissent analysis module (operating on session history data layer)
 - R2 Engine for scoring and consensus reinforcement
 - Immutable Snapshot Ledger
 - MAGI loop for meta-agent audits and drift detection
-- Unified session layer between CLI and UI
 - Capsule history anchoring and meta-analysis
 
 ---

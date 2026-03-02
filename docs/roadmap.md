@@ -16,18 +16,19 @@
 - **CLI Fallback** – Standalone session runner (`orchestration_livefire.py`)
 - **License Split** – Custom open-use license and commercial terms clarified
 - **NCG Module** – Novel Content Generation with headless generators, drift detection, and silent collapse prevention
+- **Session History Logging** – Persistent JSON-based session records with unified data layer for cross-session analysis
+- **Module Isolation** – Agent logic refactored into swappable, testable components with shared async interface
 
 ---
 
 ## Active Development (v0.3 Goals)
 
-- **Dissent Analysis** – Track and visualize disagreements in agent outputs
+- **Dissent Analysis** – Track and visualize disagreements in agent outputs (building on session history data layer)
+- **R2 Engine** – Scoring, consensus reinforcement, and real-time dissent detection (building on dissent analysis)
 - **Reinforcement Loop** – Feed consensus outcomes into fine-tuning or snapshot logs
 - **UI Enhancements** – Add tooltips, loading indicators, and error handling
-- **Session History Logging** – Persist and replay orchestration sessions
 - **Drift Detection** – Meta-agent layer to compare outputs over time for stability (NCG semantic tier operational, token-level tier in progress)
 - **Token-Level NCG Analysis** – Bridge from conversational metadata to logprob-level drift measurement (OpenAI logprobs integration built, pending for Anthropic/Google)
-- **Module Isolation** – Refactor agent logic into swappable, testable components
 
 ---
 

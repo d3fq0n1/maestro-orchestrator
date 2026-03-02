@@ -3,9 +3,15 @@ import asyncio
 from maestro.agents.mock import MockAgent
 from maestro.aggregator import aggregate_responses
 from maestro.ncg import MockHeadlessGenerator, DriftDetector
+from maestro.session import SessionLogger, build_session_record
 
 
-async def run_orchestration_async(prompt: str, agents: list = None, ncg_enabled: bool = True) -> dict:
+async def run_orchestration_async(
+    prompt: str,
+    agents: list = None,
+    ncg_enabled: bool = True,
+    session_logging: bool = True,
+) -> dict:
     """
     Orchestrates multiple agents, aggregates responses, and runs the NCG
     diversity benchmark when enabled.
@@ -17,6 +23,9 @@ async def run_orchestration_async(prompt: str, agents: list = None, ncg_enabled:
     The drift detector compares the two tracks to catch silent collapse:
     when all conversational agents agree but have drifted from what an
     unconstrained model would produce.
+
+    When session_logging is True, the full session is persisted to disk
+    for later analysis by dissent analysis and R2.
     """
     if agents is None:
         agents = [
@@ -59,12 +68,30 @@ async def run_orchestration_async(prompt: str, agents: list = None, ncg_enabled:
     print("\nAggregating responses...")
     final_output = aggregate_responses(responses, ncg_drift_report)
 
+    # --- Session persistence ---
+    session_id = None
+    if session_logging:
+        logger = SessionLogger()
+        record = build_session_record(
+            prompt=prompt,
+            agent_responses=named_responses,
+            final_output=final_output,
+            ncg_enabled=ncg_enabled,
+            agents_used=[a.name for a in agents],
+        )
+        logger.save(record)
+        session_id = record.session_id
+        print(f"Session logged: {session_id}")
+
     return {
         "responses": responses,
         "final_output": final_output,
+        "session_id": session_id,
     }
 
 
-def run_orchestration(prompt: str, ncg_enabled: bool = True) -> dict:
+def run_orchestration(prompt: str, ncg_enabled: bool = True, session_logging: bool = True) -> dict:
     """Synchronous wrapper for backward compatibility with tests and CLI."""
-    return asyncio.run(run_orchestration_async(prompt, ncg_enabled=ncg_enabled))
+    return asyncio.run(run_orchestration_async(
+        prompt, ncg_enabled=ncg_enabled, session_logging=session_logging,
+    ))
