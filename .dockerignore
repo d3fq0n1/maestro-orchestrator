@@ -28,7 +28,6 @@ data/r2/*.json
 *.pdf
 *.png
 images/
-invitations/
 docs/
 *.md
 !backend/requirements.txt
