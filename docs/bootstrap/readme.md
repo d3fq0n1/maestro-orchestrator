@@ -25,4 +25,4 @@ This folder enables interoperable, ethical orchestration of parallel agents acro
 
 ---
 
-💡 Tip: Want to automate this in a local or cloud VM? See the long-term vision section in `bootstrap-solace.md`.
+Tip: Want to automate this in a local or cloud VM? See the long-term vision section in `bootstrap-solace.md`.

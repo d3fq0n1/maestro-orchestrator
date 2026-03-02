@@ -1,4 +1,4 @@
-# 🎨 UI Guide: Maestro-Orchestrator
+# UI Guide: Maestro-Orchestrator
 
 ## Overview
 
@@ -6,7 +6,7 @@ This guide outlines the structure and behavior of the Maestro-Orchestrator front
 
 ---
 
-## 🖥️ Stack
+## Stack
 
 * **Framework:** React (Vite)
 * **Styling:** TailwindCSS
@@ -15,7 +15,7 @@ This guide outlines the structure and behavior of the Maestro-Orchestrator front
 
 ---
 
-## 🧭 Layout
+## Layout
 
 * **Prompt Input Field:**
 
@@ -39,18 +39,18 @@ This guide outlines the structure and behavior of the Maestro-Orchestrator front
 
 ---
 
-## 🔁 Behavior Flow
+## Behavior Flow
 
 ```text
-User types → Clicks Submit → Loading state
-→ Agent responses stream in (one per card)
-→ Quorum logic analyzed
-→ Consensus + Dissent rendered
+User types -> Clicks Submit -> Loading state
+-> Agent responses stream in (one per card)
+-> Quorum logic analyzed
+-> Consensus + Dissent rendered
 ```
 
 ---
 
-## 💡 Features
+## Features
 
 * **Live Render:** UI updates incrementally as each agent replies
 * **Emoji Mapping:** Helps humanize model identity
@@ -59,17 +59,17 @@ User types → Clicks Submit → Loading state
 
 ---
 
-## 🛠️ Planned Improvements
+## Planned Improvements
 
 * Session history viewer (linked CLI + UI timeline)
 * Response voting & reinforcement (via R2 Engine)
-* NCG drift visualization — display semantic distance from headless baseline per agent, flag silent collapse
+* NCG drift visualization -- display semantic distance from headless baseline per agent, flag silent collapse
 * Mobile layout refinements
 * Loading animation per agent
 
 ---
 
-## 🚧 Dev Notes
+## Dev Notes
 
 To launch UI:
 

@@ -1,8 +1,8 @@
-# 🧠 Maestro-Orchestrator Session Summary
+# Maestro-Orchestrator Session Summary
 
 This document captures the design, execution, and results of the latest quorum session using `orchestration_livefire.py`.
 
-## 🎯 Session Objective
+## Session Objective
 
 Prompt:
 ```
@@ -13,7 +13,7 @@ Goal: Test quorum-based orchestration logic with multiple agents and validate st
 
 ---
 
-## 🛠️ Configuration
+## Configuration
 
 - **Agents Active**:
   - `sol` (OpenAI)
@@ -34,7 +34,7 @@ python orchestration_livefire.py --prompt "Should AI have voting rights?"
 
 ---
 
-## 📊 Quorum Logic
+## Quorum Logic
 
 - Minimum 2/3 agreement required for "consensus"
 - Agent responses are collected and compared:
@@ -43,7 +43,7 @@ python orchestration_livefire.py --prompt "Should AI have voting rights?"
 
 ---
 
-## 🗃️ Logging Artifacts
+## Logging Artifacts
 
 - **Session Log**: `data/sessions/` (structured JSON per session)
 - **Summaries**:
@@ -56,7 +56,7 @@ All sessions are timestamped and contain agent responses, consensus outcome, and
 
 ---
 
-## ✅ Outcome
+## Outcome
 
 The test confirmed that:
 - Agent keys were loaded correctly
@@ -66,7 +66,7 @@ The test confirmed that:
 
 ---
 
-## 📌 Next Steps
+## Next Steps
 
 - Integrate Web UI into session runner
 - Launch MAGI (meta-agent group inference) for trend auditing

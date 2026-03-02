@@ -4,11 +4,11 @@ The `backend/orchestration_livefire.py` script is the primary interface for runn
 
 ---
 
-## 🚀 How It Works
+## How It Works
 
 ### 1. Session Initialization
 
-- Loads agents from the `agents/` directory.
+- Loads agents from `maestro/agents/` (Sol, Aria, Prism, TempAgent).
 - Reads environment variables from `.env` (e.g., API keys).
 - Begins an interactive CLI prompt.
 
@@ -18,11 +18,11 @@ Each cycle includes:
 - User input
 - Agent response generation
 - Consensus evaluation
-- Logging of all activity to timestamped `.jsonl`
+- Session persistence to `data/sessions/` as structured JSON
 
 ---
 
-## 🧠 Quorum Logic
+## Quorum Logic
 
 By default:
 - 66% agreement is required for a consensus.
@@ -31,36 +31,27 @@ By default:
 
 ---
 
-## 📂 Output Format
+## Output Format
 
-Session logs are written to:
+Sessions are persisted as individual JSON files in `data/sessions/`:
 
-```bash
-logs/session_YYYY-MM-DD_HHMM.jsonl
+```
+data/sessions/<session_id>.json
 ```
 
-Each entry contains:
-```json
-{
-  "role": "aria",
-  "prompt": "What is the future of AI?",
-  "response": "...",
-  "timestamp": "2025-06-02T14:32:00Z"
-}
-```
+Each session record contains the prompt, all agent responses, consensus output, NCG benchmark data, and metadata. See [`logging.md`](./logging.md) for the full schema.
 
 ---
 
-## 🧪 Testing Mode
+## Testing Mode
 
-Developers can uncomment mock agent logic or use stubbed response mode for dry-runs without real API costs.
+Developers can use the `MockAgent` class in `maestro/agents/mock.py` for dry-runs without real API costs.
 
 ---
 
-## 🛠️ Future Enhancements (v0.3 Roadmap)
+## Future Enhancements (v0.3 Roadmap)
 
 - Agent-specific error handling
 - Replay mode using session logs
 - NCG baseline generation alongside livefire sessions for drift analysis
 - Session logs feeding into MAGI for cross-session NCG drift tracking
-

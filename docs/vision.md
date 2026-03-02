@@ -1,5 +1,5 @@
 
-# 🌌 VISION.md
+# VISION
 
 ## Purpose
 
