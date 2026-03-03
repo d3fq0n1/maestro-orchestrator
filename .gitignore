@@ -35,6 +35,9 @@ venv/
 # Session and Ledger Data
 data/sessions/*.json
 data/r2/*.json
+data/rollbacks/
+data/improvements/*.json
+data/runtime_config.json
 maestro_session.json
 
 # OS-specific files
