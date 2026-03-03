@@ -10,19 +10,23 @@ It ties together all the components:
   4. Optimization proposals → generates concrete change proposals
   5. MAGI_VIR validation → tests proposals in isolated sandbox
   6. Promotion/rejection → records results and updates proposal status
+  7. Code injection → applies validated proposals to the running system
+     (opt-in, guarded, reversible)
 
 The loop can run in two modes:
   - On-demand: triggered by a human or API call
   - Continuous: runs after every N sessions (configurable)
 
-The self-improvement engine never applies changes to the running system
-without validation. The promotion step records validated proposals in
-a persistent log. Actual code application requires human review (or
-future opt-in automation).
+When auto-injection is enabled (MAESTRO_AUTO_INJECT=true), validated
+proposals are applied to the running system after VIR validation with
+a post-injection smoke test.  If the smoke test fails, the entire
+batch is automatically rolled back.  When disabled (the default), the
+system behaves exactly as before — proposals are recorded but never
+applied.
 
 This is the "rapid recursion" that the whitepaper describes: the system
 observes its own behavior, identifies where it can improve, tests those
-improvements in isolation, and proposes the changes for promotion.
+improvements in isolation, and applies the changes — closing the loop.
 """
 
 import json
@@ -61,6 +65,12 @@ class ImprovementCycle:
                                 # "needs_review", "no_proposals"
     promoted_proposals: list = field(default_factory=list)
     rejected_proposals: list = field(default_factory=list)
+
+    # Injection (Phase 7)
+    auto_injected: bool = False
+    injections: list = field(default_factory=list)   # list of InjectionResult dicts
+    rollback_triggered: bool = False
+    smoke_test_grade: Optional[str] = None
 
     # Metadata
     compute_node: str = "local"
@@ -180,6 +190,10 @@ class SelfImprovementEngine:
                     "recommendation": vir_report.recommendation,
                 }
 
+            # Phase 6: Code injection (opt-in)
+            if vir_report.recommendation == "promote":
+                self._try_auto_inject(cycle, batch)
+
         except Exception as e:
             cycle.phase = "failed"
             cycle.outcome = "failed"
@@ -189,6 +203,107 @@ class SelfImprovementEngine:
         cycle.duration_ms = int((time.monotonic() - start) * 1000)
         self._persist_cycle(cycle)
         return cycle
+
+    def _try_auto_inject(self, cycle: ImprovementCycle, batch):
+        """
+        Phase 6: If auto-injection is enabled and VIR recommends
+        promotion, apply validated proposals to the running system.
+
+        Runs a smoke test after injection and auto-rolls-back on
+        degradation.
+        """
+        from maestro.applicator import CodeInjector
+        from maestro.injection_guard import InjectionGuard
+
+        guard = InjectionGuard()
+        if not guard.is_enabled():
+            return  # auto-inject not enabled — nothing to do
+
+        cycle.phase = "injection"
+        injector = CodeInjector(guard=guard)
+
+        results = injector.apply_batch(
+            batch.proposals, cycle_id=cycle.cycle_id,
+        )
+        cycle.auto_injected = True
+        cycle.injections = [
+            {
+                "proposal_id": r.proposal_id,
+                "applied": r.applied,
+                "injection_type": r.injection_type,
+                "rollback_id": r.rollback_id,
+                "error": r.error,
+            }
+            for r in results
+        ]
+
+        any_applied = any(r.applied for r in results)
+        if not any_applied:
+            cycle.phase = "complete"
+            return
+
+        # Smoke test
+        passed, grade = guard.smoke_test()
+        cycle.smoke_test_grade = grade
+
+        if not passed:
+            # Auto-rollback the entire cycle
+            rollback_results = injector.rollback_cycle(cycle.cycle_id)
+            cycle.rollback_triggered = True
+            cycle.metadata["rollback_reason"] = (
+                f"Smoke test failed: grade '{grade}' below minimum"
+            )
+            cycle.metadata["rollback_results"] = [
+                {"rollback_id": rid, "success": ok}
+                for rid, ok in rollback_results
+            ]
+
+        cycle.phase = "complete"
+
+    def inject_cycle(self, cycle_id: str) -> dict:
+        """
+        Manually inject proposals from a previously validated cycle.
+
+        This is the human-in-the-loop path: review a cycle's proposals
+        in the UI, then trigger injection via API.
+        """
+        from maestro.applicator import CodeInjector
+        from maestro.injection_guard import InjectionGuard
+        from maestro.optimization import OptimizationProposal
+
+        cycle_data = self.load_cycle(cycle_id)
+        if cycle_data is None:
+            return {"error": "Cycle not found"}
+
+        if cycle_data.get("outcome") not in ("promoted", "needs_review"):
+            return {"error": f"Cycle outcome is '{cycle_data.get('outcome')}', not injectable"}
+
+        proposals = []
+        for p in cycle_data.get("proposals", []):
+            proposals.append(OptimizationProposal(**{
+                k: v for k, v in p.items()
+                if k in OptimizationProposal.__dataclass_fields__
+            }))
+
+        guard = InjectionGuard()
+        injector = CodeInjector(guard=guard)
+        results = injector.apply_batch(proposals, cycle_id=cycle_id)
+
+        return {
+            "cycle_id": cycle_id,
+            "injections": [
+                {
+                    "proposal_id": r.proposal_id,
+                    "applied": r.applied,
+                    "injection_type": r.injection_type,
+                    "rollback_id": r.rollback_id,
+                    "error": r.error,
+                }
+                for r in results
+            ],
+            "applied_count": sum(1 for r in results if r.applied),
+            "skipped_count": sum(1 for r in results if not r.applied),
+        }
 
     def run_analysis_only(self) -> dict:
         """

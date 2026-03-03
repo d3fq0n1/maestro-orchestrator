@@ -3,7 +3,8 @@ Self-Improvement API — REST endpoints for the rapid recursion pipeline.
 
 Exposes the self-improvement engine through HTTP endpoints so the
 Web-UI can trigger improvement cycles, inspect proposals, and
-review validation results.
+review validation results.  Also provides injection and rollback
+endpoints for the code-injection system.
 """
 
 import asyncio
@@ -14,6 +15,9 @@ from fastapi import APIRouter, HTTPException
 from maestro.self_improve import SelfImprovementEngine
 from maestro.magi import Magi
 from maestro.magi_vir import ComputeNodeRegistry, ComputeNode
+from maestro.applicator import CodeInjector
+from maestro.rollback import RollbackLog
+from maestro.injection_guard import InjectionGuard
 
 
 router = APIRouter(prefix="/api/self-improve", tags=["self-improve"])
@@ -112,3 +116,74 @@ async def register_compute_node(
     )
     registry.register(node)
     return asdict(node)
+
+
+# ======================================================================
+# Code Injection & Rollback endpoints
+# ======================================================================
+
+@router.post("/inject/{cycle_id}")
+async def inject_cycle(cycle_id: str):
+    """
+    Manually inject proposals from a previously validated cycle.
+
+    This is the human-in-the-loop path: review a cycle's proposals,
+    then trigger injection via this endpoint.
+    """
+    engine = SelfImprovementEngine()
+    result = await asyncio.to_thread(engine.inject_cycle, cycle_id)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@router.post("/rollback/{rollback_id}")
+async def rollback_injection(rollback_id: str):
+    """Roll back a single injection by its rollback ID."""
+    injector = CodeInjector()
+    success = injector.rollback(rollback_id)
+    if not success:
+        raise HTTPException(
+            status_code=404,
+            detail="Rollback entry not found or already rolled back",
+        )
+    return {"rollback_id": rollback_id, "status": "rolled_back"}
+
+
+@router.post("/rollback-cycle/{cycle_id}")
+async def rollback_cycle(cycle_id: str):
+    """Roll back all active injections from a given improvement cycle."""
+    injector = CodeInjector()
+    results = injector.rollback_cycle(cycle_id)
+    if not results:
+        raise HTTPException(
+            status_code=404,
+            detail="No active injections found for this cycle",
+        )
+    return {
+        "cycle_id": cycle_id,
+        "rollbacks": [
+            {"rollback_id": rid, "success": ok} for rid, ok in results
+        ],
+    }
+
+
+@router.get("/injections")
+async def list_active_injections():
+    """List all active (non-rolled-back) injections."""
+    log = RollbackLog()
+    active = log.get_active()
+    return {
+        "active_count": len(active),
+        "injections": active,
+    }
+
+
+@router.get("/rollbacks")
+async def list_rollback_history(limit: int = 50):
+    """Full rollback history (newest first)."""
+    log = RollbackLog()
+    return {
+        "total_active": log.count_active(),
+        "history": log.list_all(limit=limit),
+    }
