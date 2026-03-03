@@ -13,6 +13,15 @@
 - Dissent analysis module (`maestro/dissent.py`) — pairwise semantic distance, outlier detection, cross-session trend analysis
 - R2 Engine (`maestro/r2.py`) — session scoring, consensus ledger indexing, and improvement signal generation
 - Cross-session trend analysis detects confidence trends, recurring signals, and repeated suspicious consensus
+- Code Injection Engine (`maestro/applicator.py`) — applies validated proposals to the running system via three modes: runtime parameter mutation, AST-based source patching, and config overlay writes
+- Rollback & Snapshot System (`maestro/rollback.py`) — append-only ledger with per-injection snapshots; supports single-entry and full-cycle rollback
+- Injection Safety Guards (`maestro/injection_guard.py`) — category whitelist, bounds enforcement, rate limiting, post-injection smoke test with automatic rollback on degradation
+- Auto-injection opt-in gate via `MAESTRO_AUTO_INJECT=true` environment variable (disabled by default)
+- Self-improvement Phase 6 (Code Injection) and Phase 7 (Smoke Test/Rollback) in `SelfImprovementEngine`
+- Manual injection endpoint: `POST /api/self-improve/inject/{cycle_id}`
+- Rollback endpoints: `POST /api/self-improve/rollback/{rollback_id}`, `POST /api/self-improve/rollback-cycle/{cycle_id}`
+- Injection query endpoints: `GET /api/self-improve/injections`, `GET /api/self-improve/rollbacks`
+- Code injection test suite (`tests/test_code_injection.py`) — 40 tests covering injection, rollback, guards, and integration
 
 ### Removed
 

@@ -150,6 +150,8 @@ By contributing, you agree that your contributions will be licensed under the pr
 ---
 
 For more context, refer to:
-- [`README.md`](./README.md)
-- [`agents.md`](./docs/agents.md)
-- [`quorum_logic.md`](./docs/quorum_logic.md)
+- [`readme.md`](./readme.md)
+- [`docs/architecture.md`](./docs/architecture.md)
+- [`docs/agents.md`](./docs/agents.md)
+- [`docs/quorum_logic.md`](./docs/quorum_logic.md)
+- [`docs/self-improvement-pipeline.md`](./docs/self-improvement-pipeline.md)

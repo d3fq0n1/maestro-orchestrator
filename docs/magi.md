@@ -112,9 +112,10 @@ The full self-improvement cycle:
 4. **Introspect** -- MAGI maps signals to Maestro's own source code via AST analysis and signal-to-code rules
 5. **Propose** -- MAGI produces structured Recommendations and concrete optimization proposals (threshold tuning, agent config, architecture refactoring)
 6. **Validate** -- MAGI_VIR tests proposals in an isolated sandbox on a separate compute node
-7. **Apply** -- A human reviews validated proposals and acts on recommendations
+7. **Inject** -- Validated proposals are applied to the running system (opt-in auto-injection, or manual trigger via API)
+8. **Verify** -- Post-injection smoke test; automatic rollback if system health degrades
 
-MAGI is steps 3-5: the bridge between accumulated observation and proposed action. See [`self-improvement-pipeline.md`](./self-improvement-pipeline.md) for the full pipeline documentation.
+MAGI is steps 3-5: the bridge between accumulated observation and proposed action. Steps 7-8 are handled by the Code Injection Engine (`maestro/applicator.py`) with safety guards (`maestro/injection_guard.py`). See [`self-improvement-pipeline.md`](./self-improvement-pipeline.md) for the full pipeline documentation.
 
 ---
 
@@ -122,7 +123,7 @@ MAGI is steps 3-5: the bridge between accumulated observation and proposed actio
 
 MAGI is read-only by design. It never modifies the R2 ledger, session records, or orchestrator configuration. All recommendations are proposals that require human review. This prevents the emergence of unseen control structures within the orchestrator.
 
-The self-improvement pipeline extends this principle: optimization proposals are never auto-applied. They are validated in an isolated MAGI_VIR sandbox and must be explicitly promoted. Even validated proposals require human approval (or future opt-in automation) before being applied to the running system.
+The self-improvement pipeline extends this principle: optimization proposals are validated in an isolated MAGI_VIR sandbox before promotion. Auto-injection is opt-in (`MAESTRO_AUTO_INJECT=true`) and disabled by default. When enabled, injected changes are smoke-tested and automatically rolled back if system health degrades. Every injection is reversible and auditable.
 
 Every MAGI analysis is reproducible: given the same ledger and session data, it produces the same recommendations.
 

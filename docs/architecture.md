@@ -59,9 +59,12 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 - **Code Introspection Engine** (`maestro/introspect.py`): Three-tier source analysis — static AST parsing with complexity metrics, signal-to-code mapping rules, and token-level behavior analysis from R2 ledger data
 - **Optimization Engine** (`maestro/optimization.py`): Translates introspection results into structured `OptimizationProposal` objects with threshold strategies, temperature strategies, and architecture refactoring rules
 - **MAGI_VIR** (`maestro/magi_vir.py`): Virtual Instance Runtime — sandboxed testing environment that runs benchmark prompts through baseline and optimized configurations, compares results, and produces promotion/rejection recommendations
-- **Self-Improvement Orchestrator** (`maestro/self_improve.py`): Top-level coordinator for the rapid recursion loop: MAGI → Introspect → Propose → Validate (VIR) → Promote/Reject
+- **Self-Improvement Orchestrator** (`maestro/self_improve.py`): Top-level coordinator for the rapid recursion loop: MAGI → Introspect → Propose → Validate (VIR) → Promote/Reject → Inject
+- **Code Injection Engine** (`maestro/applicator.py`): Applies validated proposals to the running system via three paths — runtime parameter mutation (in-memory `setattr`), AST-based source patching (persistent across restarts), and config overlay writes (`data/runtime_config.json`). Every injection is paired with a rollback snapshot
+- **Rollback System** (`maestro/rollback.py`): Append-only ledger at `data/rollbacks/log.json` recording every injected change. Source patches are backed up as `.bak` files. Supports single-entry rollback and full-cycle rollback
+- **Injection Guard** (`maestro/injection_guard.py`): Safety rails for the injection system — category whitelist (blocks `architecture` and `pipeline` by default), bounds enforcement at injection time, rate limiting (default 5/hour), and post-injection smoke test with automatic rollback on grade degradation
 - **Compute Node Registry**: JSON-based registry for distributed validation across multiple Maestro nodes
-- All proposals require human approval; no changes are auto-applied
+- Auto-injection is opt-in (`MAESTRO_AUTO_INJECT=true`); when disabled (the default), proposals are recorded but never applied
 
 ### Unified Startup Wrapper (`entrypoint.py`)
 - Single Docker entrypoint that presents a dialog-based GUI on container launch
@@ -120,10 +123,13 @@ entrypoint.py                # Unified startup wrapper (dialog GUI for mode sele
   optimization.py            # Optimization proposal system (strategies, proposals)
   magi_vir.py                # MAGI Virtual Instance Runtime (sandboxed validation)
   self_improve.py            # Self-improvement orchestrator (rapid recursion loop)
+  applicator.py              # Code injection engine (runtime, source patch, config overlay)
+  rollback.py                # Rollback & snapshot system (append-only ledger)
+  injection_guard.py         # Injection safety guards (whitelist, bounds, rate limit, smoke test)
   api_sessions.py            # Session history REST API
   api_magi.py                # MAGI analysis REST API
   api_keys.py                # Key management REST API
-  api_self_improve.py        # Self-improvement pipeline REST API
+  api_self_improve.py        # Self-improvement + injection REST API
   agents/                    # Agent wrappers (base, sol, aria, prism, tempagent, mock)
   ncg/                       # Novel Content Generation (generator, drift)
 /frontend
@@ -136,11 +142,14 @@ entrypoint.py                # Unified startup wrapper (dialog GUI for mode sele
   test_keyring.py             # Key management tests
   test_startup.py             # Startup wrapper and CLI tests
   test_self_improvement.py    # Self-improvement pipeline tests (49 tests)
+  test_code_injection.py      # Code injection, rollback, and guard tests (40 tests)
 /data
   sessions/                   # Persisted session JSON logs
   r2/                         # R2 Engine ledger entries
   improvements/               # Self-improvement cycle records
   compute_nodes/              # Compute node registry
+  rollbacks/                  # Injection rollback ledger and source backups
+  runtime_config.json         # Runtime config overlay (created by config injections)
 Dockerfile                    # Multi-stage build (frontend + backend + dialog)
 docker-compose.yml
 .env.example
@@ -205,6 +214,13 @@ Self-improvement (on demand):
        |
        v
   VIR Report -> Promote / Reject / Needs Review -> data/improvements/
+       |
+       v  (opt-in, when MAESTRO_AUTO_INJECT=true)
+  Code Injection (runtime / source patch / config overlay)
+       |
+       v
+  Smoke Test -> pass: keep changes
+             -> fail: auto-rollback -> data/rollbacks/
 ```
 
 ---
@@ -227,6 +243,11 @@ Self-improvement (on demand):
 | GET | `/api/self-improve/introspect` | MAGI analysis with code introspection |
 | GET | `/api/self-improve/nodes` | List available compute nodes |
 | POST | `/api/self-improve/nodes` | Register a new compute node |
+| POST | `/api/self-improve/inject/{cycle_id}` | Manually inject proposals from a validated cycle |
+| POST | `/api/self-improve/rollback/{rollback_id}` | Roll back a single injection |
+| POST | `/api/self-improve/rollback-cycle/{cycle_id}` | Roll back all injections from a cycle |
+| GET | `/api/self-improve/injections` | List all active (non-rolled-back) injections |
+| GET | `/api/self-improve/rollbacks` | Full rollback history |
 
 ---
 
@@ -237,9 +258,8 @@ Self-improvement (on demand):
 - Cross-session NCG baselines tracking what "normal" output looks like over time
 - Local model agent support (e.g., llamacpp)
 - Real-time debate log and public-facing consensus ledger
-- MAGI automation layer (opt-in auto-apply for validated low-risk proposals)
 - Remote compute node MAGI_VIR validation (full pipeline on distributed nodes)
-- Web-UI integration for self-improvement cycle monitoring and proposal review
+- Web-UI integration for self-improvement cycle monitoring, proposal review, and injection controls
 
 ---
 
