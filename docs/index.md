@@ -32,6 +32,9 @@ Persistent JSON-based session records with unified data layer for cross-session 
 ### [Quorum Logic](quorum_logic.md)
 Semantic similarity clustering for consensus detection with 66% supermajority threshold.
 
+### [Self-Improvement Pipeline](self-improvement-pipeline.md)
+Complete rapid recursion loop: MAGI analysis, code introspection (AST + signal mapping), optimization proposals, MAGI_VIR sandboxed validation, and promote/reject lifecycle. All proposals require human approval.
+
 ---
 
 ## System Design Philosophy
@@ -55,9 +58,15 @@ maestro/                  # Core orchestration package
   magi.py                 # MAGI meta-agent governance and recommendations
   session.py              # Session persistence
   keyring.py              # API key management
+  cli.py                  # Interactive CLI (REPL)
+  introspect.py           # Code introspection engine (AST, signal mapping)
+  optimization.py         # Optimization proposal system
+  magi_vir.py             # Virtual Instance Runtime (sandboxed validation)
+  self_improve.py         # Self-improvement orchestrator
   api_sessions.py         # Session history REST API
   api_magi.py             # MAGI analysis REST API
   api_keys.py             # Key management REST API
+  api_self_improve.py     # Self-improvement pipeline REST API
   agents/                 # Agent wrappers (base, sol, aria, prism, tempagent, mock)
   ncg/                    # Novel Content Generation (generator, drift)
 backend/                  # FastAPI backend
@@ -70,6 +79,7 @@ tests/                    # Unit and integration tests
 data/
   sessions/               # Persisted session JSON logs
   r2/                     # R2 Engine ledger entries
+  improvements/           # Self-improvement cycle records
 docs/                     # Documentation hub
 Dockerfile                # Multi-stage Docker build
 docker-compose.yml        # Docker Compose orchestration
@@ -81,11 +91,14 @@ docker-compose.yml        # Docker Compose orchestration
 ## Additional Documentation
 
 - [Architecture](architecture.md)
+- [Self-Improvement Pipeline](self-improvement-pipeline.md)
 - [Deployment Guide](deployment.md)
 - [Quickstart](quickstart.md)
 - [Setup Guide](setup_guide.md)
 - [Troubleshooting](troubleshooting.md)
 - [UI Guide](ui-guide.md)
+- [Roadmap](roadmap.md)
+- [Vision](vision.md)
 
 ---
 

@@ -52,10 +52,6 @@ Each API provider has its own rate limits. If an agent returns errors:
 - Add delays between batch orchestration rounds if needed
 - The system gracefully handles individual agent failures without crashing
 
-### PowerShell scripts (Windows only)
-
-`combo-sync.ps1` and `scaffold.ps1` are Windows-specific utility scripts. On Linux/macOS, use the standard bash commands documented in the setup guides.
-
 ---
 
 For architecture details, see [`architecture.md`](./architecture.md).
