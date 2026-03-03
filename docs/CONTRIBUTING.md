@@ -110,14 +110,6 @@ The application (UI + API) will be available at `http://localhost:8000`.
   pytest tests/
   ```
 
-### Frontend
-
-- Use `jest` and `react-testing-library`:
-  ```bash
-  cd frontend
-  npm test
-  ```
-
 Ensure all tests pass before submitting PRs.
 
 ---
@@ -149,8 +141,8 @@ Ensure all tests pass before submitting PRs.
 
 By contributing, you agree that your contributions will be licensed under the project's terms.
 
-- [LICENSE.md](LICENSE.md) (custom license)
-- [commercial_license.md](commercial_license.md) (for use terms)
+- [LICENSE.md](../LICENSE.md) (custom license)
+- [commercial_license.md](../commercial_license.md) (for use terms)
 
 ---
 

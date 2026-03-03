@@ -146,6 +146,6 @@ If Maestro resonates with you — as a builder, critic, philosopher, policy-make
 Maestro is a provocation. Let’s see who answers.
 
 **GitHub**: [github.com/d3fq0n1/maestro-orchestrator](https://github.com/d3fq0n1/maestro-orchestrator)  
-**Substack**: [defqon1.substack.com](https://defqon1.substack.com)
+**Substack**: [substack.com/@defqon1](https://substack.com/@defqon1)
 
 ---

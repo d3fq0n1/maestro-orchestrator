@@ -12,7 +12,7 @@
 - **FastAPI Backend** -- Exposes `/api/ask` endpoint for live prompt orchestration
 - **React Web UI** -- Full analysis display: R2 grades, quorum bar, dissent, NCG, session history
 - **Full Containerization** -- Docker support for one-step deployment of backend + frontend
-- **CLI Fallback** -- Standalone session runner (`orchestration_livefire.py`)
+- **Interactive CLI** -- Full orchestration pipeline in the terminal (`maestro/cli.py`)
 - **License Split** -- Custom open-use license and commercial terms clarified
 - **NCG Module** -- Novel Content Generation with headless generators, drift detection, and silent collapse prevention
 - **Session History Logging** -- Persistent JSON-based session records with unified data layer for cross-session analysis
