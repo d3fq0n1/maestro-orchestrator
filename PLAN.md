@@ -1,10 +1,12 @@
 # Plan: Live Code Injection System for R2 + MAGI + NCG
 
+> **Status: IMPLEMENTED** — All steps in this plan have been completed and are live in the codebase. See [`docs/self-improvement-pipeline.md`](./docs/self-improvement-pipeline.md) for the current documentation.
+
 ## Problem Statement
 
-Today the self-improvement pipeline (R2 → MAGI → Introspect → Optimize → VIR → Promote) produces **structured proposals** but stops at a "requires human review" gate. No mechanism exists to actually **apply** validated changes to the running system. The entire "promote" step is a no-op — it records the result to disk and returns.
+The self-improvement pipeline (R2 → MAGI → Introspect → Optimize → VIR → Promote) previously produced **structured proposals** but stopped at a "requires human review" gate. No mechanism existed to actually **apply** validated changes to the running system. The entire "promote" step was a no-op — it recorded the result to disk and returned.
 
-This plan adds a **Code Injection Engine** that closes the loop: when MAGI_VIR validates a proposal and recommends `promote`, the system can apply those changes to itself on the fly — safely, reversibly, and with an audit trail.
+This plan added a **Code Injection Engine** that closes the loop: when MAGI_VIR validates a proposal and recommends `promote`, the system can apply those changes to itself on the fly — safely, reversibly, and with an audit trail.
 
 ---
 
@@ -200,21 +202,19 @@ Agents and the aggregator read from this overlay at session start, so config inj
 
 ---
 
-## Files to Create
-| File | Purpose |
-|---|---|
-| `maestro/applicator.py` | CodeInjector — applies proposals to running system |
-| `maestro/rollback.py` | RollbackLog — snapshot/restore for every injection |
-| `maestro/injection_guard.py` | Safety guards, bounds, rate limits, smoke test |
-| `tests/test_code_injection.py` | Full test suite for injection system |
+## Files Created
+| File | Purpose | Status |
+|---|---|---|
+| `maestro/applicator.py` | CodeInjector — applies proposals to running system | Done |
+| `maestro/rollback.py` | RollbackLog — snapshot/restore for every injection | Done |
+| `maestro/injection_guard.py` | Safety guards, bounds, rate limits, smoke test | Done |
+| `tests/test_code_injection.py` | Full test suite for injection system (40 tests) | Done |
 
-## Files to Modify
-| File | Change |
-|---|---|
-| `maestro/self_improve.py` | Add Phase 6 (Apply) to `run_cycle()`, new fields on `ImprovementCycle` |
-| `maestro/api_self_improve.py` | Add inject/rollback endpoints |
-| `maestro/aggregator.py` | Read runtime config overlay for thresholds |
-| `maestro/orchestrator.py` | Read runtime config overlay at session start |
+## Files Modified
+| File | Change | Status |
+|---|---|---|
+| `maestro/self_improve.py` | Added Phase 6 (Inject) and Phase 7 (Smoke Test), new fields on `ImprovementCycle`, `inject_cycle()` method | Done |
+| `maestro/api_self_improve.py` | Added inject/rollback endpoints | Done |
 
 ---
 

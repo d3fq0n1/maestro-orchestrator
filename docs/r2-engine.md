@@ -88,7 +88,8 @@ The full self-improvement cycle:
 3. **Introspect** — MAGI maps R2 signals to specific code locations in Maestro's source via AST analysis
 4. **Propose** — R2 produces structured improvement signals; MAGI reads these to produce optimization proposals (threshold tuning, agent config, architecture refactoring)
 5. **Validate** — MAGI_VIR tests proposals in an isolated sandbox instance
-6. **Apply** — Validated changes are promoted after human review (or future opt-in automation)
+6. **Inject** — Validated changes are applied to the running system (opt-in auto-injection via `MAESTRO_AUTO_INJECT=true`, or manual trigger via API). When disabled (the default), proposals are recorded for human review
+7. **Verify** — Post-injection smoke test; automatic rollback on degradation
 
 R2 is steps 2–3: the bridge between observation and action. Its improvement signals drive the entire self-improvement pipeline.
 
