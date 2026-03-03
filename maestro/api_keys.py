@@ -31,6 +31,7 @@ class SetKeyRequest(BaseModel):
 async def get_keys():
     """List all provider keys with masked values and configuration status."""
     statuses = list_keys()
+    any_configured = any(s.configured for s in statuses)
     return {
         "keys": [
             {
@@ -39,9 +40,11 @@ async def get_keys():
                 "env_var": s.env_var,
                 "configured": s.configured,
                 "masked_value": s.masked_value,
+                "signup_url": s.signup_url,
             }
             for s in statuses
         ],
+        "any_configured": any_configured,
     }
 
 

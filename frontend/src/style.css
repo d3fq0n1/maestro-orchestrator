@@ -426,6 +426,16 @@ code {
   font-size: 0.9rem;
 }
 
+.key-signup-link {
+  font-size: 0.72rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.key-signup-link:hover {
+  text-decoration: underline;
+}
+
 .key-env-var {
   font-size: 0.72rem;
   color: var(--text-muted);
