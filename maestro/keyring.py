@@ -25,24 +25,28 @@ PROVIDERS = {
         "label": "OpenAI",
         "prefix": "sk-",
         "test_url": "https://api.openai.com/v1/models",
+        "signup_url": "https://platform.openai.com/api-keys",
     },
     "anthropic": {
         "env_var": "ANTHROPIC_API_KEY",
         "label": "Anthropic",
         "prefix": "sk-ant-",
         "test_url": "https://api.anthropic.com/v1/models",
+        "signup_url": "https://console.anthropic.com/settings/keys",
     },
     "google": {
         "env_var": "GOOGLE_API_KEY",
         "label": "Google",
         "prefix": "AI",
         "test_url": "https://generativelanguage.googleapis.com/v1beta/models",
+        "signup_url": "https://aistudio.google.com/apikey",
     },
     "openrouter": {
         "env_var": "OPENROUTER_API_KEY",
         "label": "OpenRouter",
         "prefix": "sk-or-",
         "test_url": "https://openrouter.ai/api/v1/models",
+        "signup_url": "https://openrouter.ai/keys",
     },
 }
 
@@ -55,6 +59,7 @@ class KeyStatus:
     env_var: str
     configured: bool
     masked_value: str
+    signup_url: str = ""
     valid: bool | None = None  # None = not tested yet
     error: str | None = None
 
@@ -109,6 +114,7 @@ def list_keys() -> list[KeyStatus]:
             env_var=info["env_var"],
             configured=configured,
             masked_value=mask_key(raw) if configured else "",
+            signup_url=info.get("signup_url", ""),
         ))
     return statuses
 

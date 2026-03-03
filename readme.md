@@ -61,34 +61,16 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 
 ### 1. Docker (recommended)
 ```bash
-cp .env.example .env   # add your API keys
+git clone https://github.com/d3fq0n1/maestro-orchestrator.git
+cd maestro-orchestrator
 docker-compose up --build
 ```
 
-On startup, a mode-selection dialog will appear:
+Open [http://localhost:8000](http://localhost:8000). On first launch the API Key settings panel opens automatically -- paste at least one provider key and you're ready to go.
 
-```
-┌── Maestro-Orchestrator ────────────────────────┐
-│ Welcome to Maestro-Orchestrator.               │
-│                                                │
-│ Select how you would like to run the system:   │
-│                                                │
-│   web  —  Web-UI (dashboard on port 8000)      │
-│   cli  —  Interactive command-line interface    │
-└────────────────────────────────────────────────┘
-```
+No `.env` file is required. Keys are saved through the Web-UI and persist across container restarts.
 
-- **Web-UI**: Launches the full React dashboard + API on [http://localhost:8000](http://localhost:8000)
-- **CLI**: Opens an interactive terminal for running prompts through the full pipeline
-
-To skip the dialog, set the `MAESTRO_MODE` environment variable:
-```bash
-# Always launch Web-UI (useful for headless / CI deployments)
-MAESTRO_MODE=web docker-compose up --build
-
-# Always launch CLI
-docker-compose run maestro   # with MAESTRO_MODE=cli in .env
-```
+> **CLI mode:** Set `MAESTRO_MODE=cli` in a `.env` file or pass it as an environment variable to use the interactive terminal REPL instead.
 
 ### 2. Local development
 ```bash

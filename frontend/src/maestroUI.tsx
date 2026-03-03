@@ -75,6 +75,7 @@ interface KeyInfo {
   env_var: string;
   configured: boolean;
   masked_value: string;
+  signup_url?: string;
   valid?: boolean | null;
   error?: string | null;
 }
@@ -388,6 +389,11 @@ function ApiKeySettings({ visible, onClose }: { visible: boolean; onClose: () =>
             <div key={k.provider} className="key-row">
               <div className="key-row-header">
                 <span className="key-label">{k.label}</span>
+                {k.signup_url && (
+                  <a className="key-signup-link" href={k.signup_url} target="_blank" rel="noopener noreferrer">
+                    Get a key
+                  </a>
+                )}
                 <span className="key-env-var">{k.env_var}</span>
                 <span
                   className={`key-status ${k.configured ? (k.valid === true ? "status-valid" : k.valid === false ? "status-invalid" : "status-configured") : "status-missing"}`}
@@ -472,6 +478,19 @@ export default function MaestroUI() {
   const [history, setHistory] = useState<OrchestratorResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Auto-open the settings panel on first load when no keys are configured.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/keys");
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.any_configured) setSettingsOpen(true);
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   const sendPrompt = async () => {
     if (!prompt.trim() || loading) return;

@@ -44,6 +44,10 @@ COPY .env.example ./backend/env/.env
 # Point keyring at the volume-backed env file so keys survive rebuilds
 ENV MAESTRO_ENV_FILE=/app/backend/env/.env
 
+# Default to Web-UI so the container starts without an interactive dialog.
+# Override with MAESTRO_MODE=cli to use the terminal REPL instead.
+ENV MAESTRO_MODE=web
+
 # Copy Vite frontend build output into the path expected by backend/main.py
 COPY --from=frontend-builder /app/frontend/dist ./backend/frontend/dist
 

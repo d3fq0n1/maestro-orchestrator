@@ -1,25 +1,21 @@
 # Maestro-Orchestrator Quickstart
 
 ## Prerequisites
-- Python 3.10+
-- API keys for at least one provider (OpenAI, Anthropic, Google, or OpenRouter)
+- Docker & Docker Compose
 
 ## Docker (Recommended)
 
 ```bash
-cp .env.example .env   # add your API keys
+git clone https://github.com/d3fq0n1/maestro-orchestrator.git
+cd maestro-orchestrator
 docker-compose up --build
 ```
 
-A startup dialog will appear — choose **Web-UI** or **CLI**:
+Open [http://localhost:8000](http://localhost:8000). The API Key settings panel opens automatically on first launch -- paste at least one provider key and start querying the council.
 
-- **Web-UI**: Full React dashboard + API at `http://localhost:8000`
-- **CLI**: Interactive terminal for running prompts through the orchestration pipeline
+Keys are saved through the Web-UI and persist across container restarts. No `.env` file is needed.
 
-To skip the dialog and go straight to Web-UI mode:
-```bash
-MAESTRO_MODE=web docker-compose up --build
-```
+> **CLI mode:** `MAESTRO_MODE=cli docker-compose run maestro`
 
 ## Local Development
 
