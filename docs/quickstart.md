@@ -8,14 +8,16 @@
 ```bash
 git clone https://github.com/d3fq0n1/maestro-orchestrator.git
 cd maestro-orchestrator
-make setup
+python setup.py        # works on Windows, macOS, and Linux
 ```
+
+On macOS/Linux you can also use `make setup`.
 
 The setup script builds the container, waits for the health check to pass, and opens your browser to `http://localhost:8000`. The API Key settings panel opens automatically on first launch -- paste at least one provider key and start querying the council.
 
 Keys are saved through the Web-UI and persist across container restarts. No `.env` file is needed.
 
-After initial setup, use `make up` / `make down` to start and stop the container. Run `make` to see all available commands.
+After initial setup, use `docker compose up -d` / `docker compose down` to start and stop the container (or `make up` / `make down` on macOS/Linux).
 
 > **CLI mode:** `MAESTRO_MODE=cli docker compose up --build`
 
@@ -27,10 +29,11 @@ After initial setup, use `make up` / `make down` to start and stop the container
 git clone https://github.com/d3fq0n1/maestro-orchestrator.git
 cd maestro-orchestrator
 python -m venv venv
-source venv/bin/activate
+source venv/bin/activate        # macOS/Linux
+# .\venv\Scripts\activate       # Windows (PowerShell)
 pip install -r requirements.txt
-cp .env.example .env  # add your API keys
-make dev               # starts backend + frontend together
+cp .env.example .env            # add your API keys
+python setup.py --dev           # starts backend + frontend together
 ```
 
 Or start services individually:
