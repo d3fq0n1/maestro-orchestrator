@@ -91,9 +91,4 @@ See [`ncg.md`](./ncg.md) for details.
 
 ## Future Enhancements
 
-- LLM-based response comparator (contextual evaluation)
-- Dissent weighting (MAGI tracks per-agent outlier rates across sessions)
-- Self-voting agents (models critique peer responses)
-- Public consensus ledger (decentralized append-only record)
-- NCG-informed quorum scoring (weight consensus by drift distance from headless baseline)
-- Embedding-based clustering upgrade (use full sentence embeddings instead of token overlap for higher accuracy)
+See [`roadmap.md`](./roadmap.md) for the full project roadmap. Quorum-related plans include NCG-informed quorum scoring, embedding-based clustering upgrades, and a public consensus ledger.

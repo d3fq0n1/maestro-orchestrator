@@ -90,7 +90,4 @@ All agents also use `return_exceptions=True` in `asyncio.gather` (handled in `or
 
 ## Future Agents
 
-- Multilingual agents (French, Spanish, etc.)
-- Image-captioning or visual interpretation models
-- Local model support (e.g., llamacpp, Ollama)
-- Simulated adversarial agents for stress testing
+See [`roadmap.md`](./roadmap.md) for planned agent enhancements including multilingual agents, local model support (llamacpp, Ollama), and adversarial stress-testing agents.

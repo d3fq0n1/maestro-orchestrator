@@ -240,9 +240,7 @@ Full rollback history.
 - [`magi.md`](./docs/magi.md) -- Meta-Agent Governance and Insight
 - [`self-improvement-pipeline.md`](./docs/self-improvement-pipeline.md) -- Self-improvement pipeline (introspection, proposals, VIR validation, code injection)
 - [`quorum_logic.md`](./docs/quorum_logic.md) -- Semantic quorum consensus
-- [`quickstart.md`](./docs/quickstart.md) -- Quick start guide
-- [`deployment.md`](./docs/deployment.md) -- Deployment guide
-- [`setup_guide.md`](./docs/setup_guide.md) -- Setup guide
+- [`deployment.md`](./docs/deployment.md) -- Setup & deployment guide
 - [`troubleshooting.md`](./docs/troubleshooting.md) -- Troubleshooting
 - [`ui-guide.md`](./docs/ui-guide.md) -- UI guide
 
@@ -272,13 +270,6 @@ Follow: [substack.com/@defqon1](https://substack.com/@defqon1)
 
 ---
 
-## Future Work
+## Roadmap
 
-- Token-level drift analysis via logprobs (OpenAI bridge available now, others pending)
-- NCG feedback loops -- reshape prompts based on where drift is detected
-- Cross-session NCG baselines that track what "normal" looks like over time
-- Remote compute node MAGI_VIR validation (distributed testing across Maestro nodes)
-- Web-UI integration for self-improvement cycle monitoring, proposal review, and injection controls
-- Local model agent support (e.g., llamacpp)
-- Launch public demo endpoint
-- Extend to decentralized quorum network
+See [`docs/roadmap.md`](./docs/roadmap.md) for planned milestones and future direction.

@@ -265,15 +265,23 @@ Self-improvement (on demand):
 
 ---
 
-## Planned Extensions
+## Testing Mode
 
-- Token-level NCG drift analysis via logprobs across all supported models
-- NCG feedback loops that reshape prompts based on detected drift
-- Cross-session NCG baselines tracking what "normal" output looks like over time
-- Local model agent support (e.g., llamacpp)
-- Real-time debate log and public-facing consensus ledger
-- Remote compute node MAGI_VIR validation (full pipeline on distributed nodes)
-- Web-UI integration for self-improvement cycle monitoring, proposal review, and injection controls
+Developers can use the `MockAgent` class in `maestro/agents/mock.py` for dry-runs without real API costs. The test suite in `tests/test_orchestration.py` uses mock agents exclusively.
+
+To call the API directly:
+
+```bash
+curl -X POST http://localhost:8000/api/ask \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "What are the ethical concerns of autonomous systems?"}'
+```
+
+---
+
+## Roadmap
+
+See [`roadmap.md`](./roadmap.md) for planned extensions and future milestones.
 
 ---
 

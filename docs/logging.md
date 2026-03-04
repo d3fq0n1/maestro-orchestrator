@@ -69,15 +69,6 @@ R2 scored sessions are additionally indexed to `data/r2/` as ledger entries. Eac
 
 ---
 
-## Replay Possibility
-
-Planned future functionality:
-- Reconstruct entire sessions from stored records
-- Re-analyze outputs under new logic rules
-- Feed sessions to MAGI or other analysis engines
-
----
-
 ## Log Safety
 
 Session files can contain sensitive API-driven responses. Avoid sharing session data publicly without sanitization.
