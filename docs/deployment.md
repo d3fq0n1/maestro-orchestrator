@@ -74,22 +74,24 @@ This opens a REPL where you can type prompts and see the full orchestration pipe
 ### Quick Start
 
 ```bash
-make setup
+python setup.py          # works on Windows, macOS, and Linux
 ```
+
+On macOS/Linux you can also use `make setup`.
 
 This builds the container, waits for the health check to pass, and opens your browser to `http://localhost:8000`. No `.env` file is required -- API keys can be configured through the Web-UI and persist across container restarts.
 
 ### Common Commands
 
-| Command | What it does |
-|---------|-------------|
-| `make setup` | First-time build + start + open browser |
-| `make up` | Start the container (detached) |
-| `make down` | Stop the container |
-| `make logs` | Tail container logs |
-| `make status` | Show container and health status |
-| `make build` | Rebuild image without cache |
-| `make clean` | Stop and remove all data volumes |
+| Task | `make` (macOS/Linux) | Direct command (all platforms) |
+|------|---------------------|-------------------------------|
+| First-time setup | `make setup` | `python setup.py` |
+| Start container | `make up` | `docker compose up -d --build` |
+| Stop container | `make down` | `docker compose down` |
+| Tail logs | `make logs` | `docker compose logs -f` |
+| Container status | `make status` | `docker compose ps` |
+| Rebuild (no cache) | `make build` | `docker compose build --no-cache` |
+| Remove all data | `make clean` | `docker compose down -v` |
 
 ### CLI Mode
 
@@ -104,7 +106,8 @@ MAESTRO_MODE=cli docker compose up --build
 The container includes a built-in health check that polls `GET /api/health`. Docker reports the container as `healthy` once the API is ready to accept requests. You can check status with:
 
 ```bash
-make status
+docker compose ps
+# or on macOS/Linux: make status
 ```
 
 ---
@@ -124,9 +127,9 @@ make status
   - `restart: unless-stopped` for crash recovery
   - Named volumes for session, R2, and key persistence
 
-- **`Makefile`**: Common operations (setup, up, down, logs, status, build, clean, dev)
+- **`Makefile`**: Common operations for macOS/Linux (setup, up, down, logs, status, build, clean, dev)
 
-- **`setup.sh`**: One-command setup script (dep check, build, health wait, browser open)
+- **`setup.py`**: Cross-platform setup script (dep check, build, health wait, browser open). Works on Windows, macOS, and Linux
 
 ---
 

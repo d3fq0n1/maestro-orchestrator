@@ -18,7 +18,7 @@ help:
 
 # First-time setup: build, start, wait for healthy, open browser
 setup:
-	@bash setup.sh
+	@python3 setup.py || python setup.py
 
 # Start in detached mode
 up:

@@ -66,6 +66,11 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 ```bash
 git clone https://github.com/d3fq0n1/maestro-orchestrator.git
 cd maestro-orchestrator
+python setup.py            # Windows, macOS, Linux — just needs Python + Docker
+```
+
+On macOS/Linux you can also use:
+```bash
 make setup
 ```
 
@@ -75,15 +80,15 @@ No `.env` file is required. Keys are saved through the Web-UI and persist across
 
 ### Common commands
 
-| Command | What it does |
-|---------|-------------|
-| `make setup` | First-time build + start + open browser |
-| `make up` | Start the container (detached) |
-| `make down` | Stop the container |
-| `make logs` | Tail container logs |
-| `make status` | Show container and health status |
-| `make clean` | Stop and remove all data volumes |
-| `make dev` | Start local dev servers (no Docker) |
+| Task | `make` (macOS/Linux) | Direct command (all platforms) |
+|------|---------------------|-------------------------------|
+| First-time setup | `make setup` | `python setup.py` |
+| Start container | `make up` | `docker compose up -d --build` |
+| Stop container | `make down` | `docker compose down` |
+| Tail logs | `make logs` | `docker compose logs -f` |
+| Container status | `make status` | `docker compose ps` |
+| Remove all data | `make clean` | `docker compose down -v` |
+| Local dev (no Docker) | `make dev` | `python setup.py --dev` |
 
 > **CLI mode:** Set `MAESTRO_MODE=cli` in a `.env` file or pass it as an environment variable to use the interactive terminal REPL instead.
 
@@ -92,10 +97,11 @@ No `.env` file is required. Keys are saved through the Web-UI and persist across
 git clone https://github.com/d3fq0n1/maestro-orchestrator.git
 cd maestro-orchestrator
 python -m venv venv
-source venv/bin/activate  # or .\venv\Scripts\activate on Windows
+source venv/bin/activate        # macOS/Linux
+# .\venv\Scripts\activate       # Windows (PowerShell)
 pip install -r requirements.txt
-cp .env.example .env      # add your API keys
-make dev                   # starts backend + frontend together
+cp .env.example .env            # add your API keys
+python setup.py --dev           # starts backend + frontend together
 ```
 
 Or start services individually:
