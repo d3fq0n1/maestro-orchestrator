@@ -89,9 +89,11 @@ The orchestrator runs both tracks in sequence: conversational agents first, then
 
 | Generator | Model | Logprobs | Status |
 |-----------|-------|----------|--------|
-| `MockHeadlessGenerator` | mock-headless-v1 | No | Available (testing) |
-| `OpenAIHeadlessGenerator` | gpt-3.5-turbo+ | Yes | Available (needs API key) |
-| `AnthropicHeadlessGenerator` | claude-sonnet | No | Available (needs API key) |
+| `MockHeadlessGenerator` | `mock-headless-v1` | No | Always available (testing/fallback) |
+| `OpenAIHeadlessGenerator` | `gpt-4o-mini` | Yes | Available (needs `OPENAI_API_KEY`) |
+| `AnthropicHeadlessGenerator` | `claude-haiku-4-5-20251001` | No | Available (needs `ANTHROPIC_API_KEY`) |
+
+Generator selection order: OpenAI (if key present) → Anthropic (if key present) → Mock. Any generator failure falls back to `MockHeadlessGenerator` automatically.
 
 The key contract for all generators: **no system prompt, no assistant framing, no conversational scaffolding**. Just the prompt and the weights.
 

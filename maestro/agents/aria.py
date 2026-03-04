@@ -4,12 +4,12 @@ from .base import Agent
 
 
 class Aria(Agent):
-    """Anthropic Claude agent. Contextual analyst, ethical anchor."""
+    """Anthropic Claude Sonnet 4.6 agent. Contextual analyst, ethical anchor."""
 
     name = "Aria"
-    model = "claude-3-opus-20240229"
+    model = "claude-sonnet-4-6"
 
-    def __init__(self, model: str = "claude-3-opus-20240229", timeout: float = 45, max_tokens: int = 2048):
+    def __init__(self, model: str = "claude-sonnet-4-6", timeout: float = 45, max_tokens: int = 2048):
         self.model = model
         self.timeout = timeout
         self.max_tokens = max_tokens
@@ -43,9 +43,18 @@ class Aria(Agent):
                 )
                 res.raise_for_status()
                 return res.json()["content"][0]["text"]
+            except httpx.TimeoutException:
+                print(f"[{self.name} Timeout] Request timed out after {self.timeout}s.")
+                return f"[{self.name}] Timeout"
+            except httpx.ConnectError as e:
+                print(f"[{self.name} ConnectError] Could not reach Anthropic API: {e}")
+                return f"[{self.name}] Connection failed"
             except httpx.HTTPStatusError as e:
                 print(f"[{self.name} HTTPStatusError] {e.response.status_code}: {e.response.text}")
                 return f"[{self.name}] HTTP {e.response.status_code}"
+            except (KeyError, IndexError) as e:
+                print(f"[{self.name} ParseError] Unexpected response structure: {e}")
+                return f"[{self.name}] Malformed response"
             except Exception as e:
                 print(f"[{self.name} Error] {type(e).__name__}: {e}")
                 return f"[{self.name}] Failed"

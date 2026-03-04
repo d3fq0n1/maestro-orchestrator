@@ -376,8 +376,14 @@ class R2Engine:
         return entry
 
     def load_entry(self, entry_id: str) -> dict:
-        """Load a single ledger entry by ID."""
+        """Load a single ledger entry by ID.
+
+        Raises FileNotFoundError if the entry doesn't exist.
+        Raises json.JSONDecodeError if the file is corrupted.
+        """
         filepath = self._dir / f"{entry_id}.json"
+        if not filepath.exists():
+            raise FileNotFoundError(f"R2 ledger entry not found: {entry_id}")
         return json.loads(filepath.read_text())
 
     def list_entries(self, limit: int = 50) -> list:

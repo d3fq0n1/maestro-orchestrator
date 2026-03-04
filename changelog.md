@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.4.0] - 2026-03-04
+
+### Changed
+
+- **Sol** model updated: `gpt-4` → `gpt-4o` (faster, more capable, multimodal-capable)
+- **Aria** model updated: `claude-3-opus-20240229` → `claude-sonnet-4-6` (current-generation Anthropic model)
+- **Prism** model updated: `models/gemini-1.5-pro-latest` → `models/gemini-2.0-flash` (latest Google model, lower latency)
+- **TempAgent** model updated: `mistralai/mistral-7b-instruct` → `meta-llama/llama-3.3-70b-instruct` (significantly stronger diversity anchor)
+- **NCG OpenAI headless generator** updated: `gpt-3.5-turbo` → `gpt-4o-mini` (better quality baseline at similar cost)
+- **NCG Anthropic headless generator** updated: `claude-sonnet-4-20250514` → `claude-haiku-4-5-20251001` (lightweight, fast, appropriate for headless baseline role)
+
+### Fixed (Error Handling)
+
+- **All agents** (`sol.py`, `aria.py`, `prism.py`, `tempagent.py`): Added `httpx.TimeoutException` and `httpx.ConnectError` specific exception handlers before the generic `except Exception`. Added `KeyError`/`IndexError` handling for malformed API responses. All failure paths return typed error strings — no silent failures.
+- **orchestrator.py**: `asyncio.gather` now uses `return_exceptions=True`. Unhandled agent exceptions are caught, logged, and converted to error-string responses so a single agent failure never aborts the pipeline. NCG track failures are caught and logged; the track is skipped rather than raising. Session persistence and R2 indexing failures are caught and logged; the user-facing response is always returned.
+- **ncg/generator.py** (`OpenAIHeadlessGenerator`, `AnthropicHeadlessGenerator`): Both generators now wrap their entire API call path in `try/except`. Any exception falls back to `MockHeadlessGenerator` automatically. Anthropic generator now sets an explicit `timeout=30` on the `requests.post` call. Empty content responses are detected and fall back to mock.
+- **api_magi.py**: MAGI analysis endpoint now wrapped in `try/except`; returns `HTTP 500` with descriptive detail on failure instead of propagating unhandled exceptions.
+- **api_sessions.py**: `list_sessions` wrapped in `try/except` with `HTTP 500` on failure. `get_session` now catches `json.JSONDecodeError` separately and returns `HTTP 422` for corrupted session files.
+- **api_self_improve.py**: All 10 endpoints now wrapped in `try/except` with typed `HTTP 500` responses. `HTTPException` instances are re-raised to preserve intentional 400/404 status codes.
+- **session.py** (`SessionLogger.load`): Explicit `FileNotFoundError` check with descriptive message before attempting JSON parse. `json.JSONDecodeError` now propagates cleanly to the API layer.
+- **r2.py** (`R2Ledger.load_entry`): Explicit `FileNotFoundError` check before read. `json.JSONDecodeError` now propagates cleanly.
+- **backend/main.py**: Error log now includes exception type (`{type(e).__name__}: {str(e)}`) for easier debugging. Added inline comment documenting the CORS `allow_origins=["*"]` default and how to restrict it for production.
+
+### Documentation
+
+- `readme.md`: Agent Council table updated with current model IDs. Version badge updated to v0.4.
+- `docs/agents.md`: Agent council table updated with model IDs. New **Error Handling Contract** section documents the full exception hierarchy every agent follows.
+- `docs/architecture.md`: Agent layer section updated with current model IDs. Orchestrator section updated to document `return_exceptions=True` and non-fatal pipeline stages. NCG section updated with generator selection order and fallback behavior.
+
+---
+
 ## [0.3.0] - 2026-03
 
 ### Added

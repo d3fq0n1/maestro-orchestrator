@@ -4,10 +4,10 @@ from .base import Agent
 
 
 class Prism(Agent):
-    """Google Gemini agent. Pattern matcher, precision analysis."""
+    """Google Gemini 2.0 Flash agent. Pattern matcher, precision analysis."""
 
     name = "Prism"
-    model = "models/gemini-1.5-pro-latest"
+    model = "models/gemini-2.0-flash"
 
     SAFETY_SETTINGS = [
         {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
@@ -16,7 +16,7 @@ class Prism(Agent):
         {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
     ]
 
-    def __init__(self, model: str = "models/gemini-1.5-pro-latest", timeout: float = 60):
+    def __init__(self, model: str = "models/gemini-2.0-flash", timeout: float = 60):
         self.model = model
         self.timeout = timeout
 
@@ -65,9 +65,18 @@ class Prism(Agent):
                 print(f"[{self.name} Error] Malformed response: {data}")
                 return f"[{self.name}] Malformed response"
 
+            except httpx.TimeoutException:
+                print(f"[{self.name} Timeout] Request timed out after {self.timeout}s.")
+                return f"[{self.name}] Timeout"
+            except httpx.ConnectError as e:
+                print(f"[{self.name} ConnectError] Could not reach Google API: {e}")
+                return f"[{self.name}] Connection failed"
             except httpx.HTTPStatusError as e:
                 print(f"[{self.name} HTTPStatusError] {e.response.status_code}: {e.response.text}")
                 return f"[{self.name}] HTTP {e.response.status_code}"
+            except (KeyError, IndexError) as e:
+                print(f"[{self.name} ParseError] Unexpected response structure: {e}")
+                return f"[{self.name}] Malformed response"
             except Exception as e:
                 print(f"[{self.name} Error] {type(e).__name__}: {e}")
                 return f"[{self.name}] Failed"

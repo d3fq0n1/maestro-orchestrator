@@ -70,8 +70,11 @@ class SessionLogger:
         Load a single session by ID.
 
         Raises FileNotFoundError if the session doesn't exist.
+        Raises json.JSONDecodeError if the file is corrupted.
         """
         filepath = self._dir / f"{session_id}.json"
+        if not filepath.exists():
+            raise FileNotFoundError(f"Session not found: {session_id}")
         data = json.loads(filepath.read_text())
         return SessionRecord(**data)
 
