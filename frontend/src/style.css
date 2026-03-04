@@ -293,6 +293,61 @@ body {
 
 .error-text {
   color: var(--color-err);
+  font-size: 0.88rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(239, 68, 68, 0.08);
+  border-left: 3px solid var(--color-err);
+  border-radius: 0 4px 4px 0;
+}
+
+/* ── Agent warnings (per-agent error banners) ─────────────────── */
+
+.agent-warnings {
+  border-bottom-color: var(--color-warn);
+}
+
+.agent-warning-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 4px;
+  margin-bottom: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.agent-warning-warn {
+  background: rgba(234, 179, 8, 0.08);
+  border-left: 3px solid var(--color-warn);
+}
+
+.agent-warning-error {
+  background: rgba(239, 68, 68, 0.08);
+  border-left: 3px solid var(--color-err);
+}
+
+.agent-warning-title {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.agent-warning-detail {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+/* ── Agent card error state ───────────────────────────────────── */
+
+.agent-card-error {
+  opacity: 0.55;
+  border-left: 2px solid var(--color-err);
+}
+
+.agent-error-tag {
+  background: var(--color-err);
+  font-size: 0.62rem;
+  margin-left: 0.4rem;
+  vertical-align: middle;
 }
 
 .note-text {

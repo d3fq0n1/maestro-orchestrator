@@ -4,10 +4,10 @@ from .base import Agent
 
 
 class Prism(Agent):
-    """Google Gemini 2.0 Flash agent. Pattern matcher, precision analysis."""
+    """Google Gemini 2.5 Flash agent. Pattern matcher, precision analysis."""
 
     name = "Prism"
-    model = "models/gemini-2.0-flash"
+    model = "models/gemini-2.5-flash"
 
     SAFETY_SETTINGS = [
         {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
@@ -16,7 +16,7 @@ class Prism(Agent):
         {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
     ]
 
-    def __init__(self, model: str = "models/gemini-2.0-flash", timeout: float = 60):
+    def __init__(self, model: str = "models/gemini-2.5-flash", timeout: float = 60):
         self.model = model
         self.timeout = timeout
 

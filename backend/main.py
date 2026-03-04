@@ -55,6 +55,7 @@ async def ask(prompt: Prompt):
         final = result.get("final_output", {})
         return {
             "responses": result.get("named_responses", {}),
+            "agent_errors": result.get("agent_errors", []),
             "session_id": result.get("session_id"),
             "consensus": final.get("consensus"),
             "confidence": final.get("confidence"),

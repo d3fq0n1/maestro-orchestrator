@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 from maestro.agents.mock import MockAgent
 from maestro.aggregator import aggregate_responses
@@ -6,6 +7,47 @@ from maestro.dissent import DissentAnalyzer
 from maestro.ncg import MockHeadlessGenerator, DriftDetector
 from maestro.r2 import R2Engine
 from maestro.session import SessionLogger, build_session_record
+
+
+# Patterns that indicate an agent returned an error instead of real content.
+# These match the error-string conventions used by all agent implementations.
+_ERROR_PATTERN = re.compile(
+    r"^\[.+?\] (?:HTTP \d{3}|Timeout|Connection failed|Failed|API Key Missing|Malformed response|Content filtered.*)"
+)
+
+
+def _is_agent_error(response: str) -> bool:
+    """Return True if the response string is an agent error sentinel."""
+    return bool(_ERROR_PATTERN.match(response))
+
+
+def _classify_agent_error(agent_name: str, response: str) -> dict:
+    """Return a structured error dict for a failed agent response."""
+    code_match = re.search(r"HTTP (\d{3})", response)
+    if code_match:
+        code = int(code_match.group(1))
+        return {"agent": agent_name, "code": code, "kind": _http_error_kind(code), "raw": response}
+    if "Timeout" in response:
+        return {"agent": agent_name, "code": None, "kind": "timeout", "raw": response}
+    if "Connection failed" in response:
+        return {"agent": agent_name, "code": None, "kind": "connection", "raw": response}
+    if "API Key Missing" in response:
+        return {"agent": agent_name, "code": None, "kind": "auth", "raw": response}
+    if "Content filtered" in response:
+        return {"agent": agent_name, "code": None, "kind": "filtered", "raw": response}
+    return {"agent": agent_name, "code": None, "kind": "unknown", "raw": response}
+
+
+def _http_error_kind(code: int) -> str:
+    if code == 401 or code == 403:
+        return "auth"
+    if code == 404:
+        return "not_found"
+    if code == 429:
+        return "rate_limit"
+    if 500 <= code < 600:
+        return "server"
+    return "http"
 
 
 async def run_orchestration_async(
@@ -67,20 +109,33 @@ async def run_orchestration_async(
     )
 
     named_responses = {}
+    agent_errors = []
     for agent, response in zip(agents, results):
         if isinstance(response, BaseException):
             error_msg = f"[{agent.name}] Unhandled exception: {type(response).__name__}: {response}"
             print(error_msg)
-            named_responses[agent.name] = f"[{agent.name}] Failed"
+            error_resp = f"[{agent.name}] Failed"
+            named_responses[agent.name] = error_resp
+            agent_errors.append(_classify_agent_error(agent.name, error_resp))
         else:
             print(f"{agent.name} responded: {response}")
             named_responses[agent.name] = response
+            if _is_agent_error(response):
+                agent_errors.append(_classify_agent_error(agent.name, response))
 
-    responses = list(named_responses.values())
+    # Separate clean (non-error) responses for metrics so errored agents
+    # don't pollute dissent analysis, NCG drift, or aggregation scores.
+    clean_responses = {
+        name: resp for name, resp in named_responses.items()
+        if not _is_agent_error(resp)
+    }
+    responses = list(clean_responses.values()) if clean_responses else list(named_responses.values())
 
     # --- Dissent analysis (internal agreement between agents) ---
+    # Only feed clean responses so error strings don't skew agreement scores.
     dissent_analyzer = DissentAnalyzer()
-    dissent_report = dissent_analyzer.analyze(prompt, named_responses)
+    dissent_input = clean_responses if clean_responses else named_responses
+    dissent_report = dissent_analyzer.analyze(prompt, dissent_input)
     print(f"\nDissent level: {dissent_report.dissent_level} "
           f"(agreement: {dissent_report.internal_agreement})")
     if dissent_report.outlier_agents:
@@ -101,7 +156,7 @@ async def run_orchestration_async(
             ncg_drift_report = detector.analyze(
                 prompt=prompt,
                 ncg_output=ncg_output,
-                conversational_outputs=named_responses,
+                conversational_outputs=clean_responses if clean_responses else named_responses,
                 internal_agreement=dissent_report.internal_agreement,
             )
 
@@ -178,6 +233,7 @@ async def run_orchestration_async(
     return {
         "responses": responses,
         "named_responses": named_responses,
+        "agent_errors": agent_errors,
         "final_output": final_output,
         "session_id": session_id,
     }

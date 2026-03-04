@@ -45,8 +45,16 @@ interface R2Data {
   entry_id: string;
 }
 
+interface AgentError {
+  agent: string;
+  code: number | null;
+  kind: "auth" | "not_found" | "rate_limit" | "server" | "http" | "timeout" | "connection" | "filtered" | "unknown";
+  raw: string;
+}
+
 interface OrchestratorResponse {
   responses: Record<string, string>;
+  agent_errors?: AgentError[];
   session_id?: string;
   consensus?: string;
   confidence?: string;
@@ -96,15 +104,104 @@ function pct(n: number): string {
   return `${(n * 100).toFixed(1)}%`;
 }
 
+/* ── Error helpers ────────────────────────────────────────────── */
+
+function agentErrorMessage(err: AgentError): { title: string; detail: string; severity: "warn" | "error" } {
+  switch (err.kind) {
+    case "rate_limit":
+      return {
+        title: `${err.agent}: Rate limited (429)`,
+        detail: "The upstream API is throttling requests. Wait a moment and retry.",
+        severity: "warn",
+      };
+    case "not_found":
+      return {
+        title: `${err.agent}: Model not found (404)`,
+        detail: "The requested model or endpoint does not exist. Check the model name or API configuration.",
+        severity: "error",
+      };
+    case "auth":
+      return {
+        title: `${err.agent}: Authentication failed${err.code ? ` (${err.code})` : ""}`,
+        detail: "The API key is missing or invalid. Open Settings to update it.",
+        severity: "error",
+      };
+    case "server":
+      return {
+        title: `${err.agent}: Server error (${err.code})`,
+        detail: "The upstream API returned a server error. This is usually temporary.",
+        severity: "warn",
+      };
+    case "timeout":
+      return {
+        title: `${err.agent}: Request timed out`,
+        detail: "The upstream API did not respond in time. Try again or increase the timeout.",
+        severity: "warn",
+      };
+    case "connection":
+      return {
+        title: `${err.agent}: Connection failed`,
+        detail: "Could not reach the upstream API. Check your network or the service status.",
+        severity: "error",
+      };
+    case "filtered":
+      return {
+        title: `${err.agent}: Content filtered`,
+        detail: "The upstream API blocked the content due to safety filters.",
+        severity: "warn",
+      };
+    case "http":
+      return {
+        title: `${err.agent}: HTTP ${err.code}`,
+        detail: "An unexpected HTTP error occurred.",
+        severity: "warn",
+      };
+    default:
+      return {
+        title: `${err.agent}: Failed`,
+        detail: err.raw,
+        severity: "error",
+      };
+  }
+}
+
 /* ── Components ──────────────────────────────────────────────── */
 
-function AgentResponses({ responses }: { responses: Record<string, string> }) {
+function AgentWarnings({ errors }: { errors: AgentError[] }) {
+  if (!errors.length) return null;
+
+  return (
+    <div className="section agent-warnings">
+      <h3>
+        Agent Issues
+        <span className="tag warn-tag">{errors.length} agent{errors.length > 1 ? "s" : ""}</span>
+      </h3>
+      <p className="muted">
+        These agents returned errors and were excluded from metrics to avoid polluting results.
+      </p>
+      {errors.map((err, i) => {
+        const msg = agentErrorMessage(err);
+        return (
+          <div key={i} className={`agent-warning-item agent-warning-${msg.severity}`}>
+            <span className="agent-warning-title">{msg.title}</span>
+            <span className="agent-warning-detail">{msg.detail}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AgentResponses({ responses, errorAgents }: { responses: Record<string, string>; errorAgents?: Set<string> }) {
+  const isError = (agent: string) => errorAgents?.has(agent);
+
   return (
     <div className="section">
       <h3>Agent Responses</h3>
       {Object.entries(responses).map(([agent, text]) => (
-        <div key={agent} className="agent-card">
+        <div key={agent} className={`agent-card${isError(agent) ? " agent-card-error" : ""}`}>
           <span className="agent-name">{agent}</span>
+          {isError(agent) && <span className="tag agent-error-tag">error</span>}
           <p className="agent-text">{text || "(no response)"}</p>
         </div>
       ))}
@@ -501,11 +598,35 @@ export default function MaestroUI() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const status = res.status;
+        let userMessage: string;
+        if (status === 404) {
+          userMessage = "Endpoint not found (404). The backend may be misconfigured or still starting.";
+        } else if (status === 429) {
+          userMessage = "Too many requests (429). The server is rate-limiting. Please wait a moment and try again.";
+        } else if (status === 401 || status === 403) {
+          userMessage = `Authentication error (${status}). Check your API keys in Settings.`;
+        } else if (status >= 500) {
+          userMessage = `Server error (${status}). The backend encountered an internal error. Check the logs.`;
+        } else if (status === 422) {
+          userMessage = "Invalid request (422). The prompt may be too long or contain unsupported characters.";
+        } else {
+          userMessage = `Request failed with HTTP ${status}.`;
+        }
+        setHistory((prev) => [{ responses: {}, error: userMessage }, ...prev]);
+        return;
+      }
       const data: OrchestratorResponse = await res.json();
       setHistory((prev) => [data, ...prev]);
     } catch (err) {
-      setHistory((prev) => [{ responses: {}, error: String(err) }, ...prev]);
+      let userMessage: string;
+      if (err instanceof TypeError && String(err).includes("fetch")) {
+        userMessage = "Network error: could not reach the backend. Is the server running?";
+      } else {
+        userMessage = `Unexpected error: ${String(err)}`;
+      }
+      setHistory((prev) => [{ responses: {}, error: userMessage }, ...prev]);
     } finally {
       setPrompt("");
       setLoading(false);
@@ -551,22 +672,27 @@ export default function MaestroUI() {
 
       <SessionHistory />
 
-      {history.map((entry, idx) => (
-        <div key={idx} className="result-card">
-          {entry.error ? (
-            <p className="error-text">{entry.error}</p>
-          ) : (
-            <>
-              {entry.note && <p className="note-text">{entry.note}</p>}
-              {entry.r2 && <R2Section r2={entry.r2} />}
-              <ConsensusBar data={entry} />
-              {entry.dissent && <DissentSection dissent={entry.dissent} />}
-              {entry.ncg_benchmark && <NcgSection ncg={entry.ncg_benchmark} />}
-              <AgentResponses responses={entry.responses} />
-            </>
-          )}
-        </div>
-      ))}
+      {history.map((entry, idx) => {
+        const agentErrors = entry.agent_errors ?? [];
+        const errorAgentNames = new Set(agentErrors.map((e) => e.agent));
+        return (
+          <div key={idx} className="result-card">
+            {entry.error ? (
+              <p className="error-text">{entry.error}</p>
+            ) : (
+              <>
+                {entry.note && <p className="note-text">{entry.note}</p>}
+                {agentErrors.length > 0 && <AgentWarnings errors={agentErrors} />}
+                {entry.r2 && <R2Section r2={entry.r2} />}
+                <ConsensusBar data={entry} />
+                {entry.dissent && <DissentSection dissent={entry.dissent} />}
+                {entry.ncg_benchmark && <NcgSection ncg={entry.ncg_benchmark} />}
+                <AgentResponses responses={entry.responses} errorAgents={errorAgentNames} />
+              </>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
