@@ -16,12 +16,11 @@ NCG catches **silent collapse** (agents all agreeing on something shaped by conf
 ## Architecture
 
 ```
-Conversational track:  Sol ───┐
-                       Aria ───┼── compare among ── R2 (internal dissent)
-                      Prism ───┘
-                                     │
-                                     ▼
-NCG track:          headless ─── compare against ── DriftDetector
+Conversational track:    Sol ───────┐
+                        Aria ───────┼── compare among ── R2 (internal dissent)
+                       Prism ───────┤                           │
+                   TempAgent ───────┘                           ▼
+                                             NCG track: headless ─── DriftDetector
 ```
 
 NCG runs as a parallel track. A headless generator produces content for the same prompt without conversational framing — no system prompt, no personality, no alignment shaping. The drift detector then measures the distance between the headless baseline and each conversational agent's output.

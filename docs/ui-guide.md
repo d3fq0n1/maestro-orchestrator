@@ -2,14 +2,14 @@
 
 ## Overview
 
-This guide outlines the structure and behavior of the Maestro-Orchestrator frontend, built with React, Vite, and TailwindCSS.
+This guide outlines the structure and behavior of the Maestro-Orchestrator frontend, built with React and Vite.
 
 ---
 
 ## Stack
 
 * **Framework:** React (Vite)
-* **Styling:** TailwindCSS
+* **Styling:** CSS (`frontend/src/style.css`)
 * **Language:** TypeScript
 * **Location:** `frontend/src/maestroUI.tsx`
 
