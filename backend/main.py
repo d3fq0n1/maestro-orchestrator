@@ -31,6 +31,11 @@ app.include_router(magi_router)
 app.include_router(keys_router)
 app.include_router(self_improve_router)
 
+# === Health check ===
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
+
 # === Request model ===
 class Prompt(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=10000)
