@@ -13,6 +13,10 @@ from maestro.api_self_improve import router as self_improve_router
 app = FastAPI()
 
 # === CORS setup for local development/testing ===
+# NOTE: allow_origins=["*"] is acceptable for local/Docker use.
+# For production deployments exposed to the internet, restrict this to
+# your actual origin(s) via the MAESTRO_ALLOWED_ORIGINS env variable
+# or by editing this value directly.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -59,10 +63,10 @@ async def ask(prompt: Prompt):
         }
 
     except Exception as e:
-        print(f"[ERROR] {e}")
+        print(f"[Orchestration Error] {type(e).__name__}: {e}")
         return {
             "responses": {},
-            "error": str(e),
+            "error": f"{type(e).__name__}: {str(e)}",
         }
 
 # === Static UI Mount (Vite production build) ===

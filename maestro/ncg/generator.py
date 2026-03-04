@@ -83,7 +83,7 @@ class OpenAIHeadlessGenerator(HeadlessGenerator):
     conversational-level metadata and token-level analysis.
     """
 
-    def __init__(self, model: str = "gpt-3.5-turbo", temperature: float = 1.0):
+    def __init__(self, model: str = "gpt-4o-mini", temperature: float = 1.0):
         self._model = model
         self.temperature = temperature
 
@@ -96,48 +96,52 @@ class OpenAIHeadlessGenerator(HeadlessGenerator):
         if not api_key:
             return MockHeadlessGenerator().generate(prompt)
 
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key)
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
 
-        # No system prompt. No role framing. Just the raw prompt as user input.
-        # Temperature at 1.0 by default — we want the full distribution,
-        # not the compressed high-confidence peak.
-        response = client.chat.completions.create(
-            model=self._model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=self.temperature,
-            logprobs=True,
-            top_logprobs=5,
-        )
+            # No system prompt. No role framing. Just the raw prompt as user input.
+            # Temperature at 1.0 by default — we want the full distribution,
+            # not the compressed high-confidence peak.
+            response = client.chat.completions.create(
+                model=self._model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=self.temperature,
+                logprobs=True,
+                top_logprobs=5,
+            )
 
-        choice = response.choices[0]
-        content = choice.message.content.strip()
+            choice = response.choices[0]
+            content = choice.message.content.strip()
 
-        # Extract token-level signal when available
-        token_data = []
-        if choice.logprobs and choice.logprobs.content:
-            for token_info in choice.logprobs.content:
-                token_data.append({
-                    "token": token_info.token,
-                    "logprob": token_info.logprob,
-                    "top_alternatives": [
-                        {"token": alt.token, "logprob": alt.logprob}
-                        for alt in (token_info.top_logprobs or [])
-                    ],
-                })
+            # Extract token-level signal when available
+            token_data = []
+            if choice.logprobs and choice.logprobs.content:
+                for token_info in choice.logprobs.content:
+                    token_data.append({
+                        "token": token_info.token,
+                        "logprob": token_info.logprob,
+                        "top_alternatives": [
+                            {"token": alt.token, "logprob": alt.logprob}
+                            for alt in (token_info.top_logprobs or [])
+                        ],
+                    })
 
-        return {
-            "content": content,
-            "model": self.model_id,
-            "metadata": {
-                "token_count": response.usage.completion_tokens if response.usage else len(content.split()),
-                "prompt_tokens": response.usage.prompt_tokens if response.usage else None,
-                "logprobs_available": len(token_data) > 0,
-                "logprobs": token_data if token_data else None,
-                "framing": "none",
-                "temperature": self.temperature,
-            },
-        }
+            return {
+                "content": content,
+                "model": self.model_id,
+                "metadata": {
+                    "token_count": response.usage.completion_tokens if response.usage else len(content.split()),
+                    "prompt_tokens": response.usage.prompt_tokens if response.usage else None,
+                    "logprobs_available": len(token_data) > 0,
+                    "logprobs": token_data if token_data else None,
+                    "framing": "none",
+                    "temperature": self.temperature,
+                },
+            }
+        except Exception as e:
+            print(f"[OpenAIHeadlessGenerator Error] {type(e).__name__}: {e} -- falling back to mock")
+            return MockHeadlessGenerator().generate(prompt)
 
 
 class AnthropicHeadlessGenerator(HeadlessGenerator):
@@ -149,7 +153,7 @@ class AnthropicHeadlessGenerator(HeadlessGenerator):
     a system prompt removes the personality/alignment shaping layer.
     """
 
-    def __init__(self, model: str = "claude-sonnet-4-20250514", temperature: float = 1.0):
+    def __init__(self, model: str = "claude-haiku-4-5-20251001", temperature: float = 1.0):
         self._model = model
         self.temperature = temperature
 
@@ -162,38 +166,48 @@ class AnthropicHeadlessGenerator(HeadlessGenerator):
         if not api_key:
             return MockHeadlessGenerator().generate(prompt)
 
-        import requests
-        headers = {
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        }
-        data = {
-            "model": self._model,
-            "max_tokens": 1024,
-            "temperature": self.temperature,
-            "messages": [{"role": "user", "content": prompt}],
-        }
-
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers=headers,
-            json=data,
-        )
-        json_data = response.json()
-
-        content_parts = json_data.get("content", [])
-        content = "".join(part.get("text", "") for part in content_parts)
-        usage = json_data.get("usage", {})
-
-        return {
-            "content": content,
-            "model": self.model_id,
-            "metadata": {
-                "token_count": usage.get("output_tokens"),
-                "prompt_tokens": usage.get("input_tokens"),
-                "logprobs_available": False,
-                "framing": "none",
+        try:
+            import requests
+            headers = {
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            }
+            data = {
+                "model": self._model,
+                "max_tokens": 1024,
                 "temperature": self.temperature,
-            },
-        }
+                "messages": [{"role": "user", "content": prompt}],
+            }
+
+            response = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers=headers,
+                json=data,
+                timeout=30,
+            )
+            response.raise_for_status()
+            json_data = response.json()
+
+            content_parts = json_data.get("content", [])
+            content = "".join(part.get("text", "") for part in content_parts)
+            usage = json_data.get("usage", {})
+
+            if not content:
+                print(f"[AnthropicHeadlessGenerator Warning] Empty content in response: {json_data}")
+                return MockHeadlessGenerator().generate(prompt)
+
+            return {
+                "content": content,
+                "model": self.model_id,
+                "metadata": {
+                    "token_count": usage.get("output_tokens"),
+                    "prompt_tokens": usage.get("input_tokens"),
+                    "logprobs_available": False,
+                    "framing": "none",
+                    "temperature": self.temperature,
+                },
+            }
+        except Exception as e:
+            print(f"[AnthropicHeadlessGenerator Error] {type(e).__name__}: {e} -- falling back to mock")
+            return MockHeadlessGenerator().generate(prompt)

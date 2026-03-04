@@ -7,9 +7,9 @@ class TempAgent(Agent):
     """OpenRouter agent. Rotating external model for diversity testing."""
 
     name = "TempAgent"
-    model = "mistralai/mistral-7b-instruct"
+    model = "meta-llama/llama-3.3-70b-instruct"
 
-    def __init__(self, model: str = "mistralai/mistral-7b-instruct", timeout: float = 30):
+    def __init__(self, model: str = "meta-llama/llama-3.3-70b-instruct", timeout: float = 30):
         self.model = model
         self.timeout = timeout
 
@@ -40,9 +40,18 @@ class TempAgent(Agent):
                 )
                 res.raise_for_status()
                 return res.json()["choices"][0]["message"]["content"]
+            except httpx.TimeoutException:
+                print(f"[{self.name} Timeout] Request timed out after {self.timeout}s.")
+                return f"[{self.name}] Timeout"
+            except httpx.ConnectError as e:
+                print(f"[{self.name} ConnectError] Could not reach OpenRouter API: {e}")
+                return f"[{self.name}] Connection failed"
             except httpx.HTTPStatusError as e:
                 print(f"[{self.name} HTTPStatusError] {e.response.status_code}: {e.response.text}")
                 return f"[{self.name}] HTTP {e.response.status_code}"
+            except (KeyError, IndexError) as e:
+                print(f"[{self.name} ParseError] Unexpected response structure: {e}")
+                return f"[{self.name}] Malformed response"
             except Exception as e:
                 print(f"[{self.name} Error] {type(e).__name__}: {e}")
                 return f"[{self.name}] Failed"

@@ -1,7 +1,7 @@
 
 # Maestro-Orchestrator
 
-![Version](https://img.shields.io/badge/version-v0.3-blue)
+![Version](https://img.shields.io/badge/version-v0.4-blue)
 ![License](https://img.shields.io/badge/license-Custom%20Open%20Use-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-green)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)
@@ -31,7 +31,7 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 ## Features
 
 - **FastAPI Backend** -- Live orchestration logic via `/api/ask`
-- **Multi-Agent Council** -- Models: Sol (OpenAI), Aria (Claude), Prism (Gemini), TempAgent (OpenRouter)
+- **Multi-Agent Council** -- Models: Sol (GPT-4o), Aria (Claude Sonnet 4.6), Prism (Gemini 2.0 Flash), TempAgent (Llama 3.3 70B via OpenRouter)
 - **Semantic Quorum Consensus** -- 66% similarity-cluster agreement with dissent preservation
 - **NCG (Novel Content Generation)** -- Headless baseline track that detects silent model collapse and RLHF conformity drift
 - **Dissent Analysis** -- Pairwise semantic distance between agents, outlier detection, and cross-session trend tracking
@@ -109,12 +109,12 @@ Frontend dev server: `http://localhost:5173`
 
 ## Agent Council
 
-| Agent         | Provider           | Description                                   |
-|---------------|--------------------|-----------------------------------------------|
-| **Sol**       | OpenAI (GPT-4)     | Natural language programmer and scribe        |
-| **Aria**      | Claude (Anthropic) | Reflective moral and abstract reasoning agent |
-| **Prism**     | Gemini (Google)    | Analytical and pattern-driven                 |
-| **TempAgent** | OpenRouter         | Rotating agent for external model testing     |
+| Agent         | Provider                          | Model                           | Description                                   |
+|---------------|-----------------------------------|---------------------------------|-----------------------------------------------|
+| **Sol**       | OpenAI                            | `gpt-4o`                        | Natural language programmer and scribe        |
+| **Aria**      | Anthropic                         | `claude-sonnet-4-6`             | Reflective moral and abstract reasoning agent |
+| **Prism**     | Google                            | `models/gemini-2.0-flash`       | Analytical and pattern-driven                 |
+| **TempAgent** | OpenRouter                        | `meta-llama/llama-3.3-70b-instruct` | Rotating agent for external model testing |
 
 Agent implementations live in `maestro/agents/`. Each agent extends the shared base class in `maestro/agents/base.py` and implements an async `fetch(prompt) -> str` interface.
 

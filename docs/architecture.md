@@ -9,7 +9,7 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 ### Orchestrator (Python / FastAPI)
 - Receives user prompts via RESTful POST `/api/ask`
 - Loads active agent configurations (Sol, Aria, Prism, TempAgent)
-- Sends prompts to all agents concurrently via live API calls
+- Sends prompts to all agents concurrently via `asyncio.gather(return_exceptions=True)` — a single agent failure never aborts the pipeline
 - Runs the full analysis pipeline on every request:
   1. Dissent analysis (internal agreement between agents)
   2. NCG headless baseline and drift detection
@@ -17,11 +17,17 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
   4. R2 scoring, signal detection, and ledger indexing
   5. Session persistence
 - Returns structured JSON with agent responses, consensus, dissent metrics, NCG benchmark, and R2 grade
+- Session persistence and R2 indexing failures are caught and logged but never fail the user-facing response
 
 ### Agent Layer
-- Each agent is an abstraction wrapping an API model (Sol/OpenAI, Aria/Anthropic, Prism/Gemini, TempAgent/OpenRouter)
+- Each agent is an abstraction wrapping an API model:
+  - **Sol** — OpenAI (`gpt-4o`)
+  - **Aria** — Anthropic (`claude-sonnet-4-6`)
+  - **Prism** — Google (`models/gemini-2.0-flash`)
+  - **TempAgent** — OpenRouter (`meta-llama/llama-3.3-70b-instruct`)
 - All agents implement a shared async `fetch(prompt) -> str` interface
 - Agents receive the same raw prompt; the analysis pipeline measures their actual behavior rather than assigning explicit roles
+- Every agent follows a consistent error handling contract: missing keys, timeouts, connection failures, HTTP errors, and malformed responses all return typed error strings rather than raising — the pipeline is never aborted by a single agent failure
 
 ### Quorum Logic Module
 - Uses **semantic similarity clustering** to determine agreement (pairwise distance < 0.5 threshold)
@@ -32,12 +38,14 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 ### NCG Module (Novel Content Generation)
 - Runs a parallel headless generation track alongside conversational agents
 - Headless generators produce content without system prompts, personality framing, or RLHF scaffolding
+- Default generator selection (priority order): `OpenAIHeadlessGenerator` (`gpt-4o-mini`) if OpenAI key present, else `AnthropicHeadlessGenerator` (`claude-haiku-4-5-20251001`), else `MockHeadlessGenerator`
 - Drift detector measures semantic distance between headless baseline and each agent's output
 - Flags **silent collapse** when agents agree but have drifted from unconstrained baseline
 - Two analysis tiers:
   - Semantic drift (embedding distance, available for all models)
   - Token-level drift (logprob analysis, available for models that expose logprobs)
 - Output feeds into the aggregator as `ncg_benchmark` data
+- Generator failures fall back to `MockHeadlessGenerator` automatically — the NCG track never blocks the pipeline
 
 ### R2 Engine (Rapid Recursion & Reinforcement)
 - Scores every session on a 4-grade scale: strong, acceptable, weak, suspicious
