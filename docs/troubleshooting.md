@@ -22,7 +22,6 @@ Verify you have all dependencies installed:
 
 ```bash
 pip install -r requirements.txt
-pip install -r backend/requirements.txt
 ```
 
 Run with:

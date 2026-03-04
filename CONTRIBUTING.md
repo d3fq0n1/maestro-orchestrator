@@ -106,13 +106,6 @@ The application (UI + API) will be available at `http://localhost:8000`.
 pytest tests/
 ```
 
-### Frontend
-
-```bash
-cd frontend
-npm test
-```
-
 Ensure all tests pass before submitting PRs.
 
 ---

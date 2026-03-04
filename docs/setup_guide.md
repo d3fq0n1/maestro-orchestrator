@@ -4,7 +4,7 @@ For complete setup instructions, see:
 
 - [Quickstart](./quickstart.md) -- minimal steps to get running
 - [Deployment Guide](./deployment.md) -- local, Docker, and production deployment
-- [Developer Guide](./Maestro%20Orchestrator%20Developer%20Guide.md) -- full developer reference
+- [Architecture](./architecture.md) -- system architecture and data flow
 
 ## Quick Reference
 

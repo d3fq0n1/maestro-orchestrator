@@ -14,8 +14,8 @@ Modular definitions of participating language model agents (Sol, Aria, Prism, Te
 ### [Livefire Orchestration](livefire.md)
 The live orchestration pipeline that runs real-time API calls through the full analysis stack: dissent, NCG drift, semantic quorum, R2 scoring, and session persistence.
 
-### [Dissent Analysis](architecture.md)
-Pairwise semantic distance between agents, outlier detection, and cross-session trend tracking. Produces the `internal_agreement` score that feeds into NCG's silent collapse detector.
+### [System Architecture](architecture.md)
+Modular architecture overview covering the orchestration pipeline, agent layer, quorum logic, NCG, R2 Engine, MAGI governance, self-improvement pipeline, CLI, frontend UI, and Docker deployment.
 
 ### [NCG: Novel Content Generation](ncg.md)
 Parallel diversity benchmark track. Headless models generate content without conversational framing, serving as a control group against which agent outputs are measured for drift. Catches silent collapse -- when all agents agree but their consensus reflects RLHF conformity rather than genuine reasoning.
@@ -80,6 +80,7 @@ data/
   sessions/               # Persisted session JSON logs
   r2/                     # R2 Engine ledger entries
   improvements/           # Self-improvement cycle records
+  compute_nodes/          # Compute node registry
 docs/                     # Documentation hub
 Dockerfile                # Multi-stage Docker build
 docker-compose.yml        # Docker Compose orchestration

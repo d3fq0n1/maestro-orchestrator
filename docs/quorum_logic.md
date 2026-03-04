@@ -62,16 +62,16 @@ Only Sol, Aria, and Prism align — **consensus is reached** (3/4).
 ```json
 {
   "responses": {
-    "sol": "...",
-    "aria": "...",
-    "prism": "...",
-    "tempagent": "..."
+    "Sol": "...",
+    "Aria": "...",
+    "Prism": "...",
+    "TempAgent": "..."
   },
-  "consensus": {
-    "agreement_ratio": 0.75,
-    "agreed": true,
-    "summary": "Consensus reached on ethical concerns."
-  }
+  "consensus": "Synthesized Answer: ...",
+  "confidence": "High",
+  "agreement_ratio": 0.75,
+  "quorum_met": true,
+  "quorum_threshold": 0.66
 }
 ```
 
