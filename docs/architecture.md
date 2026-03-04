@@ -103,10 +103,13 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 
 ### Docker
 - Multi-stage Dockerfile: Stage 1 builds the Vite frontend, Stage 2 sets up Python with `backend/` and `maestro/` packages, installs `dialog`, then copies the built frontend as static assets served by FastAPI
-- Unified startup via `entrypoint.py` — presents mode selection on first launch
-- Single service via `docker-compose.yml` with `stdin_open: true` and `tty: true` for interactive mode
-- `.env` support for API keys and runtime configuration (including `MAESTRO_MODE`)
-- Named volumes for persistent session and R2 data
+- Built-in `HEALTHCHECK` polling `GET /api/health` with 30s start period
+- Unified startup via `entrypoint.py` — defaults to Web-UI mode
+- Single service via `docker-compose.yml` with `restart: unless-stopped` for crash recovery
+- `.env` file is optional (`required: false`) — API keys can be configured via the Web-UI at runtime
+- Named volumes for persistent session, R2, and key data
+- `Makefile` with common operations (setup, up, down, logs, status, build, clean, dev)
+- `setup.sh` one-command setup script (dep check, build, health wait, browser open)
 
 ---
 
@@ -158,8 +161,10 @@ entrypoint.py                # Unified startup wrapper (dialog GUI for mode sele
   compute_nodes/              # Compute node registry
   rollbacks/                  # Injection rollback ledger and source backups
   runtime_config.json         # Runtime config overlay (created by config injections)
-Dockerfile                    # Multi-stage build (frontend + backend + dialog)
-docker-compose.yml
+Dockerfile                    # Multi-stage build (frontend + backend + dialog + healthcheck)
+docker-compose.yml            # Single service with healthcheck, optional .env, restart policy
+Makefile                      # Common operations (setup, up, down, logs, status, clean, dev)
+setup.sh                      # One-command setup (build, health wait, browser open)
 .env.example
 ```
 
@@ -237,6 +242,7 @@ Self-improvement (on demand):
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/api/health` | Health check (returns `{"status": "ok"}`) |
 | POST | `/api/ask` | Run orchestration with full analysis pipeline |
 | GET | `/api/sessions` | List session history (paginated) |
 | GET | `/api/sessions/{id}` | Get full session record |

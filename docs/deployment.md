@@ -69,33 +69,43 @@ This opens a REPL where you can type prompts and see the full orchestration pipe
 
 ### Prerequisites
 - Docker
-- Docker Compose
+- Docker Compose v2+
 
 ### Quick Start
 
 ```bash
-cp .env.example .env   # add your API keys
-docker-compose up --build
+make setup
 ```
 
-On startup, a mode-selection dialog will appear asking you to choose **Web-UI** or **CLI** mode. Choose the mode you want and press Enter.
+This builds the container, waits for the health check to pass, and opens your browser to `http://localhost:8000`. No `.env` file is required -- API keys can be configured through the Web-UI and persist across container restarts.
 
-- **Web-UI**: The dashboard + API will be available at `http://localhost:8000`
-- **CLI**: An interactive terminal opens for running prompts directly
+### Common Commands
 
-### Skipping the Startup Dialog
+| Command | What it does |
+|---------|-------------|
+| `make setup` | First-time build + start + open browser |
+| `make up` | Start the container (detached) |
+| `make down` | Stop the container |
+| `make logs` | Tail container logs |
+| `make status` | Show container and health status |
+| `make build` | Rebuild image without cache |
+| `make clean` | Stop and remove all data volumes |
 
-Set the `MAESTRO_MODE` environment variable to bypass the dialog:
+### CLI Mode
+
+Set the `MAESTRO_MODE` environment variable to launch the interactive terminal REPL:
 
 ```bash
-# Always launch Web-UI (recommended for headless / CI / production)
-MAESTRO_MODE=web docker-compose up --build
-
-# Always launch CLI
-docker-compose run maestro   # with MAESTRO_MODE=cli in .env
+MAESTRO_MODE=cli docker compose up --build
 ```
 
-When no TTY is attached (e.g., `docker-compose up` without `-it`), the system defaults to Web-UI automatically.
+### Health Check
+
+The container includes a built-in health check that polls `GET /api/health`. Docker reports the container as `healthy` once the API is ready to accept requests. You can check status with:
+
+```bash
+make status
+```
 
 ---
 
@@ -104,20 +114,29 @@ When no TTY is attached (e.g., `docker-compose up` without `-it`), the system de
 - **`Dockerfile`** (root):
   - Multi-stage build: Stage 1 builds the Vite frontend, Stage 2 sets up the Python backend and copies the built frontend as static assets
   - Installs `dialog` for the ncurses startup GUI
-  - Copies `backend/`, `maestro/`, `entrypoint.py`, and built frontend into the container
+  - Includes a `HEALTHCHECK` instruction that polls `/api/health`
   - Uses `entrypoint.py` as the default CMD (unified startup wrapper)
 
 - **`docker-compose.yml`**:
-  - Defines `maestro` service with `stdin_open: true` and `tty: true` for interactive mode
-  - Loads API keys from `.env`
+  - `.env` file is optional (`required: false`) -- keys can be set via the Web-UI
   - Maps port `8000:8000`
-  - Uses named volumes for session and R2 data persistence
+  - Health check with 30s start period
+  - `restart: unless-stopped` for crash recovery
+  - Named volumes for session, R2, and key persistence
+
+- **`Makefile`**: Common operations (setup, up, down, logs, status, build, clean, dev)
+
+- **`setup.sh`**: One-command setup script (dep check, build, health wait, browser open)
 
 ---
 
 ## Environment Configuration
 
-Copy `.env.example` to `.env` and fill out:
+API keys can be configured in two ways:
+
+1. **Web-UI** (recommended): Paste keys in the settings panel on first launch. Keys persist in a Docker volume across restarts.
+
+2. **`.env` file**: Copy `.env.example` to `.env` and fill in your keys. This is optional -- the container starts without it.
 
 ```env
 OPENAI_API_KEY=sk-...
@@ -151,7 +170,7 @@ Ensure proper firewall rules are in place for ports `8000` (API) and `80/443` (f
 - Use `nginx` or `Caddy` as a reverse proxy
 - Monitor API rate limits from OpenAI / Claude / Gemini
 - Rotate API keys securely and store them in `.env`
-- Use `--no-cache` with Docker builds if frontend isn’t updating
+- Use `make build` (or `docker compose build --no-cache`) if frontend isn’t updating
 
 ---
 

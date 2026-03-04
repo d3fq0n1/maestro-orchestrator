@@ -38,11 +38,14 @@ uvicorn backend.main:app --reload --port 8000
 
 ### Docker build fails
 
-- Use `--no-cache` if the frontend build seems stale:
-  ```bash
-  docker-compose build --no-cache
-  ```
-- Ensure `.env` exists in the project root
+- Use `make build` (or `docker compose build --no-cache`) if the frontend build seems stale
+- The `.env` file is optional -- if you have one, ensure it has valid syntax
+
+### Container won't start or isn't healthy
+
+- Check logs: `make logs`
+- Check health: `make status`
+- The health check polls `GET /api/health` -- if it fails, the backend may not be starting correctly
 
 ### Rate limit errors
 
