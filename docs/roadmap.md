@@ -1,7 +1,7 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v0.3
-**Last Updated:** 2026-03-02
+**Current Version:** v0.4
+**Last Updated:** 2026-03-04
 **Maintainer:** defcon
 
 ---
@@ -29,14 +29,16 @@
 - **Compute Node Registry** -- JSON-based registry for distributed MAGI_VIR validation across multiple Maestro nodes
 - **Self-Improvement API** -- REST endpoints for triggering cycles, reviewing proposals, and managing compute nodes (`/api/self-improve/*`)
 - **Self-Improvement CLI Commands** -- `/improve`, `/introspect`, `/cycles` commands in the interactive CLI
+- **MAGI Automation Layer** -- Opt-in auto-apply for validated low-risk proposals via `MAESTRO_AUTO_INJECT=true`; category whitelist, bounds enforcement, rate limiting, post-injection smoke test with automatic rollback
+- **Model Updates (v0.4)** -- All four council agents updated to current-generation models (gpt-4o, claude-sonnet-4-6, gemini-2.0-flash, llama-3.3-70b-instruct); NCG headless generators updated (gpt-4o-mini, claude-haiku-4-5-20251001)
+- **Comprehensive Error Handling (v0.4)** -- All agents, orchestrator, API endpoints, and session/R2 persistence wrapped with typed exception handlers; no silent failures anywhere in the pipeline
 
 ---
 
-## Active Development (v0.4 Goals)
+## Active Development (v0.5 Goals)
 
 - **Token-Level NCG Analysis** -- Bridge from conversational metadata to logprob-level drift measurement across all providers (OpenAI logprobs integration built, pending for Anthropic/Google)
 - **NCG Feedback Loops** -- Reshape prompts based on drift signals before they reach conversational agents
-- **MAGI Automation Layer** -- Opt-in auto-apply for validated low-risk proposals (e.g., threshold adjustments that pass MAGI_VIR validation)
 - **Reinforcement Loop** -- Feed consensus outcomes into fine-tuning or snapshot logs
 - **Remote Compute Node Validation** -- Full MAGI_VIR validation on remote Maestro nodes via the compute node registry
 

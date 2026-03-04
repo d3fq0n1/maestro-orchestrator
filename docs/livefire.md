@@ -53,6 +53,5 @@ python -m pytest tests/ -v
 
 ## Future Enhancements
 
-- Agent-specific error handling and retry logic
 - Replay mode using stored session logs
 - Cross-session NCG baselines tracking drift over time
