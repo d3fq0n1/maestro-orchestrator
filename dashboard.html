@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maestro — Council Dashboard</title>
+  <style>
+    /* ── Reset & base ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #1c2128;
+      --border:    #30363d;
+      --border2:   #21262d;
+      --text:      #c9d1d9;
+      --text-muted:#7d8590;
+      --text-dim:  #484f58;
+      --ok:        #3fb950;
+      --warn:      #d29922;
+      --err:       #f85149;
+      --crit:      #ff7b72;
+      --info:      #58a6ff;
+      --purple:    #bc8cff;
+      --accent:    #1f6feb;
+      --radius:    6px;
+      --radius-lg: 10px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    a { color: var(--info); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    code, .mono {
+      font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, monospace;
+      font-size: 12px;
+    }
+
+    button {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface2);
+      color: var(--text);
+      padding: 4px 12px;
+      font-size: 12px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    button:hover { background: #2d333b; border-color: #6e7681; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    input, textarea {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: 6px 10px;
+      font-size: 13px;
+      width: 100%;
+      outline: none;
+      font-family: inherit;
+    }
+    input:focus, textarea:focus { border-color: var(--info); }
+
+    /* ── Layout ────────────────────────────────────────────────── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── Header ────────────────────────────────────────────────── */
+    #header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    #header .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+    }
+
+    #header .logo .icon {
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, #1f6feb, #bc8cff);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+
+    #header .version {
+      font-size: 11px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1px 8px;
+      color: var(--text-muted);
+    }
+
+    #header .spacer { flex: 1; }
+
+    #conn-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    #conn-indicator .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      transition: background 0.3s;
+    }
+    #conn-indicator.online .dot { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+    #conn-indicator.offline .dot { background: var(--err); }
+
+    #refresh-info {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    #header .header-btns {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 500;
+    }
+    .btn-primary:hover { background: #388bfd; border-color: #388bfd; }
+
+    /* ── Main grid ─────────────────────────────────────────────── */
+    #main {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── Section titles ────────────────────────────────────────── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title .rule {
+      flex: 1;
+      height: 1px;
+      background: var(--border2);
+    }
+
+    /* ── Status cards row ──────────────────────────────────────── */
+    #status-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stat-card .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .stat-card .stat-value {
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-card .stat-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .stat-card.ok    { border-left: 3px solid var(--ok); }
+    .stat-card.warn  { border-left: 3px solid var(--warn); }
+    .stat-card.err   { border-left: 3px solid var(--err); }
+    .stat-card.info  { border-left: 3px solid var(--info); }
+    .stat-card.purp  { border-left: 3px solid var(--purple); }
+
+    /* ── Agent grid ─────────────────────────────────────────────── */
+    #agent-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 900px) {
+      #agent-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 550px) {
+      #agent-grid { grid-template-columns: 1fr; }
+    }
+
+    .agent-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+    .agent-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .agent-card.ok::before    { background: var(--ok); }
+    .agent-card.warn::before  { background: var(--warn); }
+    .agent-card.err::before   { background: var(--err); }
+    .agent-card.unknown::before { background: var(--text-dim); }
+
+    .agent-card .agent-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .agent-card .agent-badge {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .agent-card .agent-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .agent-card .agent-model {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .agent-card .status-pill {
+      margin-left: auto;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .pill-ok    { background: rgba(63,185,80,.18); color: var(--ok); }
+    .pill-warn  { background: rgba(210,153,34,.18); color: var(--warn); }
+    .pill-err   { background: rgba(248,81,73,.18); color: var(--err); }
+    .pill-dim   { background: rgba(125,133,144,.12); color: var(--text-dim); }
+
+    .agent-card .agent-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .agent-card .agent-stats span { color: var(--text); font-weight: 500; }
+
+    /* ── API Keys panel ─────────────────────────────────────────── */
+    #keys-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    #keys-panel-header {
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border2);
+      cursor: pointer;
+      user-select: none;
+    }
+    #keys-panel-header:hover { background: var(--surface2); }
+    #keys-panel-header .toggle-icon {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text-muted);
+      transition: transform 0.2s;
+    }
+    #keys-panel-header.open .toggle-icon { transform: rotate(90deg); }
+
+    #keys-panel-body {
+      display: none;
+      padding: 16px;
+      gap: 10px;
+      flex-direction: column;
+    }
+    #keys-panel-body.open { display: flex; }
+
+    .key-row {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .key-row-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .key-provider { font-weight: 600; font-size: 13px; min-width: 80px; }
+    .key-envvar { font-size: 11px; color: var(--text-muted); font-family: ui-monospace, monospace; }
+    .key-masked {
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .key-actions-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .key-actions-row input[type="password"],
+    .key-actions-row input[type="text"] {
+      flex: 1;
+      min-width: 120px;
+      font-size: 12px;
+      padding: 4px 8px;
+    }
+
+    /* ── Sessions table ─────────────────────────────────────────── */
+    #sessions-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    #sessions-toolbar {
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border2);
+    }
+    #sessions-toolbar input {
+      width: 200px;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    #sessions-toolbar .spacer { flex: 1; }
+    #sessions-count { font-size: 12px; color: var(--text-muted); }
+
+    .table-scroll { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    thead th {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border2);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td {
+      padding: 9px 12px;
+      vertical-align: middle;
+      max-width: 300px;
+    }
+
+    .grade-pill {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .grade-strong     { background: rgba(63,185,80,.18);  color: var(--ok);   }
+    .grade-acceptable { background: rgba(210,153,34,.18); color: var(--warn); }
+    .grade-weak       { background: rgba(248,81,73,.15);  color: var(--crit); }
+    .grade-suspicious { background: rgba(188,140,255,.15);color: var(--purple);}
+    .grade-unknown    { background: rgba(125,133,144,.12); color: var(--text-dim); }
+
+    .quorum-bar-wrap { width: 80px; height: 6px; background: var(--border); border-radius: 3px; position: relative; }
+    .quorum-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+    .quorum-bar-line { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--text-dim); border-radius: 1px; }
+
+    .collapse-flag { color: var(--err); font-weight: 700; font-size: 10px; }
+    .ok-flag { color: var(--text-dim); font-size: 10px; }
+
+    .prompt-cell {
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+    }
+
+    #no-sessions {
+      padding: 40px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* ── Session detail modal ──────────────────────────────────── */
+    #modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(1,4,9,.75);
+      z-index: 200;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 16px;
+      overflow-y: auto;
+    }
+    #modal-backdrop.open { display: flex; }
+
+    #modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 860px;
+      padding: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    #modal-header .modal-title { flex: 1; }
+    #modal-header h2 { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+    #modal-header .modal-meta { font-size: 11px; color: var(--text-muted); }
+    #modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    #modal-close:hover { color: var(--text); background: none; }
+
+    #modal-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-section {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+    .modal-section h3 {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .agent-responses-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .agent-resp-block {
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 10px;
+    }
+    .agent-resp-block .agent-resp-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--info);
+      margin-bottom: 6px;
+    }
+    .agent-resp-block .agent-resp-text {
+      font-size: 12px;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    .kv-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 6px;
+    }
+    .kv-item { display: flex; flex-direction: column; gap: 2px; }
+    .kv-item .kv-key { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+    .kv-item .kv-val { font-size: 13px; font-weight: 600; }
+
+    .pairwise-table { width: 100%; }
+    .pairwise-table td, .pairwise-table th {
+      padding: 4px 8px;
+      font-size: 11px;
+      border-bottom: 1px solid var(--border2);
+    }
+    .pairwise-table th { color: var(--text-muted); font-weight: 500; }
+
+    .flag-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .flag-list li {
+      font-size: 12px;
+      color: var(--warn);
+      padding: 3px 8px;
+      background: rgba(210,153,34,.1);
+      border-radius: 4px;
+    }
+    .flag-list li::before { content: "⚠ "; }
+
+    .consensus-text {
+      font-size: 13px;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 10px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 200px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+
+    /* ── Config drawer ──────────────────────────────────────────── */
+    #cfg-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(1,4,9,.5);
+      z-index: 150;
+    }
+    #cfg-backdrop.open { display: block; }
+    #cfg-drawer {
+      position: fixed;
+      right: 0; top: 0; bottom: 0;
+      width: 320px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      z-index: 151;
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    #cfg-drawer.open { transform: translateX(0); }
+    #cfg-drawer header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+    }
+    #cfg-drawer header button { margin-left: auto; }
+    #cfg-drawer .cfg-body {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .cfg-field label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    /* ── Alerts banner ──────────────────────────────────────────── */
+    #alerts-bar {
+      display: none;
+      background: rgba(248,81,73,.1);
+      border: 1px solid rgba(248,81,73,.3);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--crit);
+      gap: 8px;
+      align-items: center;
+    }
+    #alerts-bar.visible { display: flex; }
+    #alerts-bar .alerts-list { flex: 1; }
+    #alerts-bar button { color: var(--crit); border-color: rgba(248,81,73,.4); }
+
+    /* ── Self-improve status ──────────────────────────────────────── */
+    #si-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    #si-card .si-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    #si-card .si-status { font-size: 13px; font-weight: 600; }
+    #si-card .spacer { flex: 1; }
+
+    /* ── Loading spinner ──────────────────────────────────────────── */
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--info);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Utilities ──────────────────────────────────────────────── */
+    .hidden { display: none !important; }
+    .text-ok   { color: var(--ok); }
+    .text-warn { color: var(--warn); }
+    .text-err  { color: var(--err); }
+    .text-info { color: var(--info); }
+    .text-muted{ color: var(--text-muted); }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ────────────────────────────────────────────────── -->
+  <div id="header">
+    <div class="logo">
+      <div class="icon">M</div>
+      Maestro
+    </div>
+    <div class="version">Council Dashboard</div>
+
+    <div class="spacer"></div>
+
+    <div id="conn-indicator" class="offline">
+      <div class="dot"></div>
+      <span id="conn-label">Connecting…</span>
+    </div>
+
+    <span id="refresh-info">–</span>
+
+    <div class="header-btns">
+      <button onclick="manualRefresh()">↺ Refresh</button>
+      <button onclick="toggleCfg()">⚙ Config</button>
+    </div>
+  </div>
+
+  <!-- ── Config drawer backdrop ───────────────────────────────── -->
+  <div id="cfg-backdrop" onclick="toggleCfg()"></div>
+  <div id="cfg-drawer">
+    <header>
+      Dashboard Config
+      <button onclick="toggleCfg()">✕</button>
+    </header>
+    <div class="cfg-body">
+      <div class="cfg-field">
+        <label>Maestro API Base URL</label>
+        <input id="cfg-url" type="text" value="http://localhost:8000"
+               placeholder="http://localhost:8000" />
+      </div>
+      <div class="cfg-field">
+        <label>Auto-refresh interval (seconds)</label>
+        <input id="cfg-interval" type="number" min="5" max="300" value="30" />
+      </div>
+      <div class="cfg-field">
+        <label>Sessions to display</label>
+        <input id="cfg-limit" type="number" min="5" max="200" value="50" />
+      </div>
+      <button class="btn-primary" onclick="saveConfig()">Apply</button>
+      <hr style="border-color: var(--border2); margin: 4px 0;" />
+      <p style="font-size:11px; color: var(--text-muted);">
+        Config is saved to localStorage. The dashboard never sends your API
+        keys to any third party — all requests go directly to your Maestro
+        instance.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Main content ──────────────────────────────────────────── -->
+  <div id="main">
+
+    <!-- Alerts bar -->
+    <div id="alerts-bar">
+      <span>⚠</span>
+      <div class="alerts-list" id="alerts-list"></div>
+      <button onclick="dismissAlerts()">Dismiss</button>
+    </div>
+
+    <!-- ── Top stat cards ──────────────────────────────────────── -->
+    <div>
+      <div class="section-title">System Overview <div class="rule"></div></div>
+      <div id="status-row">
+        <div class="stat-card info">
+          <div class="stat-label">Total Sessions</div>
+          <div class="stat-value" id="stat-total">–</div>
+          <div class="stat-sub">all time</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">Quorum Rate</div>
+          <div class="stat-value" id="stat-quorum">–</div>
+          <div class="stat-sub">last 20 sessions</div>
+        </div>
+        <div class="stat-card purp">
+          <div class="stat-label">Avg Confidence</div>
+          <div class="stat-value" id="stat-confidence">–</div>
+          <div class="stat-sub">last 20 sessions</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="stat-label">Silent Collapses</div>
+          <div class="stat-value" id="stat-collapses">–</div>
+          <div class="stat-sub">last 20 sessions</div>
+        </div>
+        <div class="stat-card ok">
+          <div class="stat-label">Keys Configured</div>
+          <div class="stat-value" id="stat-keys">–</div>
+          <div class="stat-sub">of 4 providers</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Agent health ─────────────────────────────────────────── -->
+    <div>
+      <div class="section-title">Agent Health <div class="rule"></div></div>
+      <div id="agent-grid">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <!-- ── Self-improve status ──────────────────────────────────── -->
+    <div>
+      <div class="section-title">Self-Improvement Engine <div class="rule"></div></div>
+      <div id="si-card">
+        <div>
+          <div class="si-label">Status</div>
+          <div class="si-status" id="si-status">Loading…</div>
+        </div>
+        <div>
+          <div class="si-label">Active Injections</div>
+          <div class="si-status" id="si-injections">–</div>
+        </div>
+        <div>
+          <div class="si-label">Rollbacks Available</div>
+          <div class="si-status" id="si-rollbacks">–</div>
+        </div>
+        <div class="spacer"></div>
+        <button onclick="triggerSelfImprove()">Run Cycle</button>
+      </div>
+    </div>
+
+    <!-- ── API Keys ─────────────────────────────────────────────── -->
+    <div>
+      <div class="section-title">API Keys <div class="rule"></div></div>
+      <div id="keys-panel">
+        <div id="keys-panel-header" onclick="toggleKeys()">
+          <span style="font-weight:600">Provider Keys</span>
+          <span id="keys-summary" style="font-size:12px; color: var(--text-muted);">Loading…</span>
+          <div class="spacer"></div>
+          <button onclick="event.stopPropagation(); validateAllKeys()" style="font-size:11px">Validate All</button>
+          <span class="toggle-icon">▶</span>
+        </div>
+        <div id="keys-panel-body">
+          <!-- populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Sessions table ───────────────────────────────────────── -->
+    <div>
+      <div class="section-title">Council Sessions <div class="rule"></div></div>
+      <div id="sessions-wrap">
+        <div id="sessions-toolbar">
+          <input id="session-filter" type="text" placeholder="Filter by prompt…"
+                 oninput="filterSessions()" />
+          <div class="spacer"></div>
+          <span id="sessions-count" class="text-muted">–</span>
+          <span id="sessions-spinner" class="spinner hidden"></span>
+        </div>
+        <div class="table-scroll">
+          <table id="sessions-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Prompt</th>
+                <th>R2 Grade</th>
+                <th>Quorum</th>
+                <th>Agree %</th>
+                <th>Confidence</th>
+                <th>Collapse</th>
+                <th>Agents</th>
+                <th>Session ID</th>
+              </tr>
+            </thead>
+            <tbody id="sessions-body">
+              <tr><td colspan="9" id="no-sessions">Loading sessions…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ── Session detail modal ──────────────────────────────────────── -->
+<div id="modal-backdrop" onclick="closeModal()">
+  <div id="modal" onclick="event.stopPropagation()">
+    <div id="modal-header">
+      <div class="modal-title">
+        <h2 id="modal-title-text">Session Detail</h2>
+        <div class="modal-meta" id="modal-meta"></div>
+      </div>
+      <button id="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body">
+      <!-- populated by JS -->
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Config ──────────────────────────────────────────────────── */
+const LS_KEY = 'maestro_dashboard_cfg';
+let cfg = {
+  baseUrl: 'http://localhost:8000',
+  interval: 30,
+  limit: 50,
+};
+(function loadCfg() {
+  try {
+    const s = localStorage.getItem(LS_KEY);
+    if (s) Object.assign(cfg, JSON.parse(s));
+  } catch {}
+  document.getElementById('cfg-url').value      = cfg.baseUrl;
+  document.getElementById('cfg-interval').value = cfg.interval;
+  document.getElementById('cfg-limit').value    = cfg.limit;
+})();
+
+function saveConfig() {
+  cfg.baseUrl  = document.getElementById('cfg-url').value.replace(/\/$/, '');
+  cfg.interval = Math.max(5, parseInt(document.getElementById('cfg-interval').value) || 30);
+  cfg.limit    = Math.max(5, parseInt(document.getElementById('cfg-limit').value) || 50);
+  localStorage.setItem(LS_KEY, JSON.stringify(cfg));
+  toggleCfg();
+  manualRefresh();
+}
+
+/* ── Config drawer ───────────────────────────────────────────── */
+function toggleCfg() {
+  document.getElementById('cfg-backdrop').classList.toggle('open');
+  document.getElementById('cfg-drawer').classList.toggle('open');
+}
+
+/* ── Keys panel ─────────────────────────────────────────────── */
+function toggleKeys() {
+  document.getElementById('keys-panel-header').classList.toggle('open');
+  document.getElementById('keys-panel-body').classList.toggle('open');
+}
+
+/* ── API helpers ─────────────────────────────────────────────── */
+async function api(path, opts = {}) {
+  const res = await fetch(cfg.baseUrl + path, opts);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+/* ── Connection state ────────────────────────────────────────── */
+let online = false;
+function setOnline(v) {
+  online = v;
+  const el = document.getElementById('conn-indicator');
+  const lb = document.getElementById('conn-label');
+  el.className = v ? 'online' : 'offline';
+  lb.textContent = v ? 'Online' : 'Offline';
+}
+
+/* ── Refresh timer ───────────────────────────────────────────── */
+let refreshTimer = null;
+let countdown = 0;
+
+function startTimer() {
+  clearInterval(refreshTimer);
+  countdown = cfg.interval;
+  updateTimerLabel();
+  refreshTimer = setInterval(() => {
+    countdown--;
+    if (countdown <= 0) {
+      refresh();
+    } else {
+      updateTimerLabel();
+    }
+  }, 1000);
+}
+
+function updateTimerLabel() {
+  document.getElementById('refresh-info').textContent = `Refresh in ${countdown}s`;
+}
+
+function manualRefresh() {
+  refresh();
+}
+
+/* ── State ───────────────────────────────────────────────────── */
+let allSessions = [];   // raw session summaries from API
+let keyData = [];       // key info array
+let alerts = [];        // active alert strings
+
+/* ── Agent definitions ───────────────────────────────────────── */
+const AGENTS = [
+  { id: 'openai',     name: 'Sol',       model: 'gpt-4o',                  provider: 'OpenAI',    emoji: '⚡', color: '#74aa9c' },
+  { id: 'anthropic',  name: 'Aria',      model: 'claude-sonnet-4-6',       provider: 'Anthropic', emoji: '◈', color: '#d97757' },
+  { id: 'google',     name: 'Prism',     model: 'gemini-2.0-flash',        provider: 'Google',    emoji: '◉', color: '#4285f4' },
+  { id: 'openrouter', name: 'TempAgent', model: 'llama-3.3-70b-instruct',  provider: 'OpenRouter',emoji: '◎', color: '#bc8cff' },
+];
+
+/* ── Main refresh ────────────────────────────────────────────── */
+async function refresh() {
+  startTimer();
+  try {
+    const [sessions, keys] = await Promise.all([
+      api(`/api/sessions?limit=${cfg.limit}`).catch(() => null),
+      api('/api/keys').catch(() => null),
+    ]);
+    setOnline(true);
+    if (sessions) { allSessions = sessions; renderSessions(); }
+    if (keys)     { keyData = keys.keys || []; renderKeys(); }
+
+    // Compute overview stats from last 20 sessions
+    computeStats();
+
+    // Load self-improve status
+    loadSelfImprove();
+
+    // Render agent grid (uses keyData for key status)
+    renderAgentGrid();
+
+    alerts = [];
+    checkAlerts();
+
+  } catch (e) {
+    setOnline(false);
+    pushAlert('Cannot reach Maestro at ' + cfg.baseUrl + '. Check Config.');
+  }
+}
+
+/* ── Stats ───────────────────────────────────────────────────── */
+function computeStats() {
+  const total = allSessions.length;
+  document.getElementById('stat-total').textContent = total;
+
+  // For richer stats we need full session data — but session list only has summary.
+  // We'll load the last 20 full sessions if available.
+  // For now use what we have in allSessions (summary only has limited fields).
+  // We'll enrich asynchronously.
+  enrichStats();
+
+  // Keys configured
+  const configured = keyData.filter(k => k.configured).length;
+  document.getElementById('stat-keys').textContent = `${configured}/4`;
+}
+
+let statsLoaded = false;
+async function enrichStats() {
+  // Load up to 20 recent full sessions for statistics
+  const recent = allSessions.slice(0, 20);
+  if (recent.length === 0) {
+    document.getElementById('stat-quorum').textContent = 'N/A';
+    document.getElementById('stat-confidence').textContent = 'N/A';
+    document.getElementById('stat-collapses').textContent = '0';
+    return;
+  }
+
+  // Full session detail fetches (parallel, limited)
+  const details = await Promise.all(
+    recent.map(s => api(`/api/sessions/${s.session_id}`).catch(() => null))
+  );
+  const valid = details.filter(Boolean);
+
+  const quorumMet   = valid.filter(s => s.consensus?.quorum_met).length;
+  const collapses   = valid.filter(s => s.ncg_benchmark?.silent_collapse).length;
+  const confScores  = valid.map(s => s.r2?.confidence_score).filter(v => v != null);
+  const avgConf     = confScores.length
+    ? confScores.reduce((a,b) => a+b, 0) / confScores.length
+    : null;
+
+  document.getElementById('stat-quorum').textContent =
+    valid.length ? `${Math.round(quorumMet / valid.length * 100)}%` : 'N/A';
+  document.getElementById('stat-confidence').textContent =
+    avgConf != null ? `${(avgConf * 100).toFixed(0)}%` : 'N/A';
+  document.getElementById('stat-collapses').textContent = collapses;
+
+  // Flag collapses
+  if (collapses > 0) pushAlert(`${collapses} silent collapse(s) detected in the last ${valid.length} sessions.`);
+}
+
+/* ── Agent grid ─────────────────────────────────────────────── */
+function renderAgentGrid() {
+  const grid = document.getElementById('agent-grid');
+  grid.innerHTML = AGENTS.map(agent => {
+    const key = keyData.find(k => k.provider === agent.id);
+    const configured = key?.configured ?? false;
+    const valid      = key?.valid;      // true | false | null
+
+    let statusClass, pillClass, pillText;
+    if (!configured) {
+      statusClass = 'unknown'; pillClass = 'pill-dim'; pillText = 'No Key';
+    } else if (valid === true) {
+      statusClass = 'ok'; pillClass = 'pill-ok'; pillText = 'Online';
+    } else if (valid === false) {
+      statusClass = 'err'; pillClass = 'pill-err'; pillText = 'Key Error';
+    } else {
+      statusClass = 'warn'; pillClass = 'pill-warn'; pillText = 'Untested';
+    }
+
+    const masked = key?.masked_value ?? '—';
+
+    return `<div class="agent-card ${statusClass}">
+      <div class="agent-head">
+        <div class="agent-badge" style="background:${agent.color}22; color:${agent.color}">
+          ${agent.emoji}
+        </div>
+        <div>
+          <div class="agent-name">${agent.name}</div>
+          <div class="agent-model">${agent.provider}</div>
+        </div>
+        <span class="status-pill ${pillClass}">${pillText}</span>
+      </div>
+      <div class="agent-stats">
+        <div>Model</div><div><span>${agent.model}</span></div>
+        <div>Key</div><div><span class="mono">${masked}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Keys panel ─────────────────────────────────────────────── */
+const KEY_EDIT_VALS   = {};
+const KEY_SHOW_FLAGS  = {};
+
+function renderKeys() {
+  const configured = keyData.filter(k => k.configured).length;
+  document.getElementById('keys-summary').textContent =
+    `${configured} of ${keyData.length} configured`;
+
+  const body = document.getElementById('keys-panel-body');
+  body.innerHTML = keyData.map(k => {
+    const agent = AGENTS.find(a => a.id === k.provider);
+    const agentName = agent ? ` (${agent.name})` : '';
+    const showing = KEY_SHOW_FLAGS[k.provider];
+
+    let statusCls = 'pill-dim', statusTxt = 'Missing';
+    if (k.configured) {
+      if (k.valid === true)       { statusCls = 'pill-ok';   statusTxt = 'Valid'; }
+      else if (k.valid === false) { statusCls = 'pill-err';  statusTxt = 'Invalid'; }
+      else                        { statusCls = 'pill-warn'; statusTxt = 'Configured'; }
+    }
+
+    return `<div class="key-row">
+      <div class="key-row-top">
+        <span class="key-provider">${k.label}${agentName}</span>
+        <span class="key-envvar">${k.env_var}</span>
+        <span class="status-pill ${statusCls}" style="margin-right:auto">${statusTxt}</span>
+        ${k.configured ? `
+          <span class="key-masked mono" id="km-${k.provider}">
+            ${showing ? '(stored securely)' : k.masked_value}
+          </span>
+          <button onclick="toggleShowKey('${k.provider}')" style="font-size:11px">
+            ${showing ? 'Hide' : 'Reveal'}
+          </button>
+          <button onclick="validateKey('${k.provider}')" style="font-size:11px" id="vbtn-${k.provider}">Test</button>
+          <button onclick="removeKey('${k.provider}')" style="font-size:11px;color:var(--err)">Remove</button>
+        ` : ''}
+      </div>
+      ${k.valid === false && k.error ? `<div style="font-size:11px; color:var(--err)">${k.error}</div>` : ''}
+      <div class="key-actions-row">
+        <input type="${showing ? 'text' : 'password'}" id="ki-${k.provider}"
+               placeholder="${k.configured ? 'Replace key…' : 'Paste API key…'}"
+               value="${KEY_EDIT_VALS[k.provider] || ''}"
+               oninput="KEY_EDIT_VALS['${k.provider}']=this.value"
+               onkeydown="if(event.key==='Enter') saveKey('${k.provider}')" />
+        <button onclick="saveKey('${k.provider}')" class="btn-primary"
+                style="white-space:nowrap; font-size:11px">Save</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleShowKey(provider) {
+  KEY_SHOW_FLAGS[provider] = !KEY_SHOW_FLAGS[provider];
+  renderKeys();
+}
+
+async function saveKey(provider) {
+  const val = (KEY_EDIT_VALS[provider] || '').trim();
+  if (!val) return;
+  try {
+    await api(`/api/keys/${provider}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: val }),
+    });
+    KEY_EDIT_VALS[provider] = '';
+    const fresh = await api('/api/keys');
+    keyData = fresh.keys || [];
+    renderKeys();
+    renderAgentGrid();
+    document.getElementById('stat-keys').textContent =
+      `${keyData.filter(k=>k.configured).length}/4`;
+  } catch (e) { pushAlert('Failed to save key: ' + e.message); }
+}
+
+async function removeKey(provider) {
+  try {
+    await api(`/api/keys/${provider}`, { method: 'DELETE' });
+    const fresh = await api('/api/keys');
+    keyData = fresh.keys || [];
+    renderKeys();
+    renderAgentGrid();
+  } catch (e) { pushAlert('Failed to remove key: ' + e.message); }
+}
+
+async function validateKey(provider) {
+  const btn = document.getElementById('vbtn-' + provider);
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  try {
+    const result = await api(`/api/keys/${provider}/validate`, { method: 'POST' });
+    keyData = keyData.map(k => k.provider === provider ? { ...k, ...result } : k);
+    renderKeys();
+    renderAgentGrid();
+  } catch (e) { pushAlert('Validation error: ' + e.message); }
+}
+
+async function validateAllKeys() {
+  document.getElementById('keys-summary').textContent = 'Validating…';
+  try {
+    const data = await api('/api/keys/validate', { method: 'POST' });
+    keyData = data.keys || [];
+    renderKeys();
+    renderAgentGrid();
+  } catch (e) { pushAlert('Validation failed: ' + e.message); }
+}
+
+/* ── Self-improve ────────────────────────────────────────────── */
+async function loadSelfImprove() {
+  try {
+    const [si, inj, rb] = await Promise.all([
+      api('/api/self-improve').catch(() => null),
+      api('/api/self-improve/injections').catch(() => null),
+      api('/api/self-improve/rollbacks').catch(() => null),
+    ]);
+
+    document.getElementById('si-status').textContent =
+      si ? (si.auto_inject_enabled ? 'Auto-inject ON' : 'Manual mode') : 'Unknown';
+    document.getElementById('si-injections').textContent =
+      inj ? (Array.isArray(inj) ? inj.length : (inj.injections?.length ?? '?')) : '–';
+    document.getElementById('si-rollbacks').textContent =
+      rb ? (Array.isArray(rb) ? rb.length : (rb.rollbacks?.length ?? '?')) : '–';
+  } catch {}
+}
+
+async function triggerSelfImprove() {
+  if (!confirm('Trigger a self-improvement cycle? This will analyze the system and may propose code changes.')) return;
+  try {
+    document.getElementById('si-status').textContent = 'Running…';
+    await api('/api/self-improve/cycle', { method: 'POST' });
+    await loadSelfImprove();
+  } catch (e) {
+    pushAlert('Self-improve cycle failed: ' + e.message);
+    document.getElementById('si-status').textContent = 'Error';
+  }
+}
+
+/* ── Sessions table ─────────────────────────────────────────── */
+let filteredSessions = [];
+
+function filterSessions() {
+  const q = document.getElementById('session-filter').value.toLowerCase();
+  filteredSessions = q
+    ? allSessions.filter(s => (s.prompt || '').toLowerCase().includes(q))
+    : allSessions;
+  renderSessionRows();
+}
+
+function renderSessions() {
+  filteredSessions = allSessions;
+  renderSessionRows();
+}
+
+function renderSessionRows() {
+  const body = document.getElementById('sessions-body');
+  document.getElementById('sessions-count').textContent =
+    `${filteredSessions.length} session${filteredSessions.length !== 1 ? 's' : ''}`;
+
+  if (filteredSessions.length === 0) {
+    body.innerHTML = `<tr><td colspan="9" id="no-sessions" style="padding:40px;text-align:center;color:var(--text-muted)">No sessions found.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = filteredSessions.map(s => {
+    const time = new Date(s.timestamp).toLocaleString();
+    const prompt = (s.prompt || '').substring(0, 80) + (s.prompt?.length > 80 ? '…' : '');
+    const collapse = s.silent_collapse
+      ? `<span class="collapse-flag">COLLAPSE</span>`
+      : `<span class="ok-flag">—</span>`;
+
+    // Grade — we only have summary from list endpoint; enrich on click
+    const grade = s.r2_grade || '—';
+    const gradeCls = gradeClass(grade);
+
+    // Quorum bar
+    const ratio = s.agreement_ratio ?? null;
+    const quorumMet = s.quorum_met;
+    const barColor = quorumMet === true ? 'var(--ok)' : quorumMet === false ? 'var(--err)' : 'var(--text-dim)';
+    const barWidth = ratio != null ? Math.round(ratio * 100) : 0;
+    const quorumBar = ratio != null
+      ? `<div class="quorum-bar-wrap" title="${(ratio*100).toFixed(1)}%">
+           <div class="quorum-bar-fill" style="width:${barWidth}%; background:${barColor}"></div>
+           <div class="quorum-bar-line" style="left:66%"></div>
+         </div>`
+      : '—';
+
+    const agreeStr = ratio != null ? `${(ratio*100).toFixed(0)}%` : '—';
+    const confStr  = s.confidence || '—';
+
+    return `<tr onclick="openSession('${s.session_id}')">
+      <td class="mono text-muted">${time}</td>
+      <td class="prompt-cell">${escHtml(prompt)}</td>
+      <td><span class="grade-pill ${gradeCls}">${grade}</span></td>
+      <td>${quorumBar}</td>
+      <td>${agreeStr}</td>
+      <td>${confStr}</td>
+      <td>${collapse}</td>
+      <td>${s.agent_count ?? '—'}</td>
+      <td class="mono text-muted" style="font-size:10px">${s.session_id.slice(0,8)}…</td>
+    </tr>`;
+  }).join('');
+}
+
+function gradeClass(grade) {
+  switch ((grade||'').toLowerCase()) {
+    case 'strong':     return 'grade-strong';
+    case 'acceptable': return 'grade-acceptable';
+    case 'weak':       return 'grade-weak';
+    case 'suspicious': return 'grade-suspicious';
+    default:           return 'grade-unknown';
+  }
+}
+
+/* ── Session detail modal ────────────────────────────────────── */
+async function openSession(sessionId) {
+  document.getElementById('modal-backdrop').classList.add('open');
+  document.getElementById('modal-title-text').textContent = 'Session';
+  document.getElementById('modal-meta').textContent = sessionId;
+  document.getElementById('modal-body').innerHTML =
+    `<div style="text-align:center;padding:40px"><span class="spinner"></span></div>`;
+
+  try {
+    const s = await api(`/api/sessions/${sessionId}`);
+    renderModal(s);
+  } catch (e) {
+    document.getElementById('modal-body').innerHTML =
+      `<div style="color:var(--err);padding:20px">Failed to load session: ${e.message}</div>`;
+  }
+}
+
+function renderModal(s) {
+  const ts = s.timestamp ? new Date(s.timestamp).toLocaleString() : '—';
+  document.getElementById('modal-title-text').textContent = 'Session Detail';
+  document.getElementById('modal-meta').textContent = `${ts} · ${s.session_id}`;
+
+  const con = s.consensus || {};
+  const dissent = con.dissent || s.dissent || {};
+  const ncg = con.ncg_benchmark || s.ncg_benchmark || {};
+  const r2 = con.r2 || s.r2 || {};
+  const responses = s.agent_responses || con.responses || {};
+
+  /* ── R2 + quorum row ── */
+  const grade     = r2.grade || '—';
+  const confidence= r2.confidence_score != null ? `${(r2.confidence_score*100).toFixed(1)}%` : '—';
+  const agreement = con.agreement_ratio ?? con.internal_agreement ?? null;
+  const quorumMet = con.quorum_met;
+  const threshold = con.quorum_threshold ?? 0.66;
+
+  let sections = '';
+
+  /* ── Overview ── */
+  sections += `<div class="modal-section">
+    <h3>Overview</h3>
+    <div class="kv-grid">
+      <div class="kv-item"><div class="kv-key">R2 Grade</div>
+        <div class="kv-val"><span class="grade-pill ${gradeClass(grade)}">${grade}</span></div></div>
+      <div class="kv-item"><div class="kv-key">Confidence</div>
+        <div class="kv-val">${confidence}</div></div>
+      <div class="kv-item"><div class="kv-key">Agreement</div>
+        <div class="kv-val">${agreement != null ? (agreement*100).toFixed(1)+'%' : '—'}</div></div>
+      <div class="kv-item"><div class="kv-key">Quorum</div>
+        <div class="kv-val ${quorumMet ? 'text-ok' : 'text-err'}">${quorumMet == null ? '—' : quorumMet ? 'Met ✓' : 'Not met ✗'}</div></div>
+      <div class="kv-item"><div class="kv-key">Threshold</div>
+        <div class="kv-val">${(threshold*100).toFixed(0)}%</div></div>
+      <div class="kv-item"><div class="kv-key">Agents</div>
+        <div class="kv-val">${(s.agents_used || []).join(', ') || '—'}</div></div>
+    </div>
+  </div>`;
+
+  /* ── Prompt ── */
+  if (s.prompt) {
+    sections += `<div class="modal-section">
+      <h3>Prompt</h3>
+      <div class="consensus-text">${escHtml(s.prompt)}</div>
+    </div>`;
+  }
+
+  /* ── Consensus ── */
+  const consensusText = con.consensus || con.full || '';
+  if (consensusText) {
+    sections += `<div class="modal-section">
+      <h3>Consensus Output</h3>
+      <div class="consensus-text">${escHtml(consensusText)}</div>
+    </div>`;
+  }
+
+  /* ── R2 flags ── */
+  if (r2.flags && r2.flags.length) {
+    sections += `<div class="modal-section">
+      <h3>R2 Flags</h3>
+      <ul class="flag-list">${r2.flags.map(f=>`<li>${escHtml(f)}</li>`).join('')}</ul>
+    </div>`;
+  }
+
+  /* ── Dissent ── */
+  if (dissent.internal_agreement != null || dissent.pairwise?.length) {
+    const level = dissent.dissent_level || '—';
+    const levelColor = level === 'high' ? 'var(--err)' : level === 'moderate' ? 'var(--warn)' : 'var(--ok)';
+    const outliers = (dissent.outlier_agents || []).join(', ') || 'none';
+
+    const pairRows = (dissent.pairwise || []).map(p => {
+      const names = Array.isArray(p.agents) ? p.agents.join(' / ') : (p.agent_a && p.agent_b ? `${p.agent_a} / ${p.agent_b}` : '?');
+      return `<tr><td>${names}</td><td>${(p.distance??p.semantic_distance??0).toFixed(4)}</td></tr>`;
+    }).join('');
+
+    sections += `<div class="modal-section">
+      <h3>Dissent Analysis
+        <span class="status-pill" style="background:${levelColor}22; color:${levelColor}; font-size:10px">${level}</span>
+      </h3>
+      <div class="kv-grid" style="margin-bottom:10px">
+        <div class="kv-item"><div class="kv-key">Internal Agreement</div>
+          <div class="kv-val">${dissent.internal_agreement != null ? (dissent.internal_agreement*100).toFixed(1)+'%' : '—'}</div></div>
+        <div class="kv-item"><div class="kv-key">Outlier Agents</div>
+          <div class="kv-val ${outliers !== 'none' ? 'text-warn' : ''}">${outliers}</div></div>
+      </div>
+      ${pairRows ? `<table class="pairwise-table">
+        <thead><tr><th>Pair</th><th>Distance</th></tr></thead>
+        <tbody>${pairRows}</tbody>
+      </table>` : ''}
+    </div>`;
+  }
+
+  /* ── NCG Benchmark ── */
+  if (ncg.mean_drift != null || ncg.silent_collapse != null) {
+    const collapse = ncg.silent_collapse;
+    const compression = ncg.compression_alert;
+    const agentRows = (ncg.per_agent || []).map(a =>
+      `<tr>
+        <td>${a.agent}</td>
+        <td>${(a.drift??0).toFixed(4)}</td>
+        <td>${(a.compression??0).toFixed(2)}</td>
+        <td>${a.tier||'—'}</td>
+      </tr>`
+    ).join('');
+
+    sections += `<div class="modal-section${collapse ? ' alert-border' : ''}">
+      <h3>NCG Benchmark
+        ${collapse ? `<span class="status-pill pill-err">Silent Collapse</span>` : ''}
+        ${compression ? `<span class="status-pill pill-warn">Compression</span>` : ''}
+      </h3>
+      <div class="kv-grid" style="margin-bottom:10px">
+        <div class="kv-item"><div class="kv-key">Model</div>
+          <div class="kv-val mono" style="font-size:12px">${ncg.ncg_model||'—'}</div></div>
+        <div class="kv-item"><div class="kv-key">Mean Drift</div>
+          <div class="kv-val">${ncg.mean_drift != null ? ncg.mean_drift.toFixed(4) : '—'}</div></div>
+        <div class="kv-item"><div class="kv-key">Max Drift</div>
+          <div class="kv-val">${ncg.max_drift != null ? ncg.max_drift.toFixed(4) : '—'}</div></div>
+      </div>
+      ${agentRows ? `<table class="pairwise-table">
+        <thead><tr><th>Agent</th><th>Drift</th><th>Compression</th><th>Tier</th></tr></thead>
+        <tbody>${agentRows}</tbody>
+      </table>` : ''}
+    </div>`;
+  }
+
+  /* ── Agent Responses ── */
+  if (Object.keys(responses).length) {
+    const respBlocks = Object.entries(responses).map(([name, text]) => {
+      const agent = AGENTS.find(a => a.name === name);
+      const color = agent?.color || 'var(--info)';
+      return `<div class="agent-resp-block">
+        <div class="agent-resp-name" style="color:${color}">${name}</div>
+        <div class="agent-resp-text">${escHtml(text || '(no response)')}</div>
+      </div>`;
+    }).join('');
+    sections += `<div class="modal-section">
+      <h3>Agent Responses</h3>
+      <div class="agent-responses-grid">${respBlocks}</div>
+    </div>`;
+  }
+
+  document.getElementById('modal-body').innerHTML = sections;
+}
+
+function closeModal() {
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+/* ── Alerts ──────────────────────────────────────────────────── */
+function pushAlert(msg) {
+  if (!alerts.includes(msg)) alerts.push(msg);
+  checkAlerts();
+}
+
+function checkAlerts() {
+  const bar = document.getElementById('alerts-bar');
+  const list = document.getElementById('alerts-list');
+  if (alerts.length === 0) {
+    bar.classList.remove('visible');
+  } else {
+    bar.classList.add('visible');
+    list.innerHTML = alerts.map(a => `<div>${escHtml(a)}</div>`).join('');
+  }
+}
+
+function dismissAlerts() {
+  alerts = [];
+  checkAlerts();
+}
+
+/* ── Utilities ───────────────────────────────────────────────── */
+function escHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ── Keyboard ────────────────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeModal();
+    if (document.getElementById('cfg-drawer').classList.contains('open')) toggleCfg();
+  }
+});
+
+/* ── Boot ────────────────────────────────────────────────────── */
+refresh();
+</script>
+</body>
+</html>
