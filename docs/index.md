@@ -11,9 +11,6 @@ This system is built for researchers, engineers, and visionaries working at the 
 ### [Agents](agents.md)
 Modular definitions of participating language model agents (Sol, Aria, Prism, TempAgent). Describes how each agent is invoked, structured, and rotated in a session.
 
-### [Livefire Orchestration](livefire.md)
-The live orchestration pipeline that runs real-time API calls through the full analysis stack: dissent, NCG drift, semantic quorum, R2 scoring, and session persistence.
-
 ### [System Architecture](architecture.md)
 Modular architecture overview covering the orchestration pipeline, agent layer, quorum logic, NCG, R2 Engine, MAGI governance, self-improvement pipeline, CLI, frontend UI, and Docker deployment.
 
@@ -93,9 +90,7 @@ docker-compose.yml        # Docker Compose orchestration
 
 - [Architecture](architecture.md)
 - [Self-Improvement Pipeline](self-improvement-pipeline.md)
-- [Deployment Guide](deployment.md)
-- [Quickstart](quickstart.md)
-- [Setup Guide](setup_guide.md)
+- [Setup & Deployment](deployment.md)
 - [Troubleshooting](troubleshooting.md)
 - [UI Guide](ui-guide.md)
 - [Roadmap](roadmap.md)

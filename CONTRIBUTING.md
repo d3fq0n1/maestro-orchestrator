@@ -81,12 +81,14 @@ The frontend will be served at `http://localhost:5173`.
 To run both backend and frontend together:
 
 ```bash
-make setup
+python setup.py        # works on Windows, macOS, and Linux
 ```
+
+On macOS/Linux you can also use `make setup`.
 
 This builds the container, waits for the health check, and opens your browser to `http://localhost:8000`. No `.env` file is required -- API keys can be configured in the Web-UI.
 
-After initial setup, use `make up` / `make down` to start and stop. Run `make` to see all available commands.
+After initial setup, use `make up` / `make down` (or `docker compose up -d` / `docker compose down`) to start and stop. Run `make` to see all available commands.
 
 ---
 

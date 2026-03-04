@@ -1,85 +1,29 @@
-# Deployment Guide - Maestro-Orchestrator
+# Setup & Deployment Guide - Maestro-Orchestrator
 
-This guide walks you through deploying Maestro-Orchestrator in local, containerized, or production environments.
-
----
-
-## Local Development
-
-### Backend (FastAPI)
-
-1. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Windows: venv\Scripts\activate
-   ```
-
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Configure environment variables:
-   ```bash
-   cp .env.example .env
-   # Add your OpenAI / Anthropic / Google API keys
-   ```
-
-4. Start the backend server:
-   ```bash
-   uvicorn backend.main:app --reload --port 8000
-   ```
-
-The backend will be available at `http://localhost:8000/api/ask`.
+This guide covers everything from first-run quickstart to production deployment.
 
 ---
 
-### Frontend (React + Vite)
-
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-
-2. Install frontend dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start the dev server:
-   ```bash
-   npm run dev
-   ```
-
-Frontend will run at `http://localhost:5173`.
-
----
-
-### Interactive CLI (local)
-
-```bash
-python -m maestro.cli
-```
-
-This opens a REPL where you can type prompts and see the full orchestration pipeline output (agent responses, consensus, dissent, NCG benchmark, R2 grade) directly in the terminal.
-
----
-
-## Docker Deployment (Recommended)
+## Quick Start (Docker, Recommended)
 
 ### Prerequisites
-- Docker
-- Docker Compose v2+
-
-### Quick Start
+- Docker & Docker Compose v2+
 
 ```bash
-python setup.py          # works on Windows, macOS, and Linux
+git clone https://github.com/d3fq0n1/maestro-orchestrator.git
+cd maestro-orchestrator
+python setup.py        # works on Windows, macOS, and Linux
 ```
 
 On macOS/Linux you can also use `make setup`.
 
-This builds the container, waits for the health check to pass, and opens your browser to `http://localhost:8000`. No `.env` file is required -- API keys can be configured through the Web-UI and persist across container restarts.
+The setup script builds the container, waits for the health check to pass, and opens your browser to `http://localhost:8000`. The API Key settings panel opens automatically on first launch -- paste at least one provider key and start querying the council.
+
+Keys are saved through the Web-UI and persist across container restarts. No `.env` file is needed.
+
+After initial setup, use `docker compose up -d` / `docker compose down` to start and stop the container (or `make up` / `make down` on macOS/Linux).
+
+> **CLI mode:** `MAESTRO_MODE=cli docker compose up --build`
 
 ### Common Commands
 
@@ -92,14 +36,7 @@ This builds the container, waits for the health check to pass, and opens your br
 | Container status | `make status` | `docker compose ps` |
 | Rebuild (no cache) | `make build` | `docker compose build --no-cache` |
 | Remove all data | `make clean` | `docker compose down -v` |
-
-### CLI Mode
-
-Set the `MAESTRO_MODE` environment variable to launch the interactive terminal REPL:
-
-```bash
-MAESTRO_MODE=cli docker compose up --build
-```
+| Local dev (no Docker) | `make dev` | `python setup.py --dev` |
 
 ### Health Check
 
@@ -112,24 +49,53 @@ docker compose ps
 
 ---
 
-### Docker File Summary
+## Local Development (No Docker)
 
-- **`Dockerfile`** (root):
-  - Multi-stage build: Stage 1 builds the Vite frontend, Stage 2 sets up the Python backend and copies the built frontend as static assets
-  - Installs `dialog` for the ncurses startup GUI
-  - Includes a `HEALTHCHECK` instruction that polls `/api/health`
-  - Uses `entrypoint.py` as the default CMD (unified startup wrapper)
+### Web-UI (Backend + Frontend)
 
-- **`docker-compose.yml`**:
-  - `.env` file is optional (`required: false`) -- keys can be set via the Web-UI
-  - Maps port `8000:8000`
-  - Health check with 30s start period
-  - `restart: unless-stopped` for crash recovery
-  - Named volumes for session, R2, and key persistence
+```bash
+git clone https://github.com/d3fq0n1/maestro-orchestrator.git
+cd maestro-orchestrator
+python -m venv venv
+source venv/bin/activate        # macOS/Linux
+# .\venv\Scripts\activate       # Windows (PowerShell)
+pip install -r requirements.txt
+cp .env.example .env            # add your API keys
+python setup.py --dev           # starts backend + frontend together
+```
 
-- **`Makefile`**: Common operations for macOS/Linux (setup, up, down, logs, status, build, clean, dev)
+Or start services individually:
 
-- **`setup.py`**: Cross-platform setup script (dep check, build, health wait, browser open). Works on Windows, macOS, and Linux
+```bash
+uvicorn backend.main:app --reload --port 8000   # backend
+cd frontend && npm install && npm run dev        # frontend (separate terminal)
+```
+
+Backend API: `http://localhost:8000/api/ask`
+Frontend dev server: `http://localhost:5173` (proxies API calls to the backend)
+
+### Interactive CLI
+
+```bash
+python -m maestro.cli
+```
+
+Type prompts at the `maestro>` prompt. Results include agent responses, consensus, dissent analysis, NCG benchmark, and R2 grade. Type `/help` for available commands.
+
+---
+
+## Running Tests
+
+```bash
+pip install pytest
+python -m pytest tests/ -v
+```
+
+---
+
+## Customizing Agents
+
+Agent implementations live in `maestro/agents/`. Each agent extends the shared base class in `maestro/agents/base.py`. See [`agents.md`](./agents.md) for the full agent architecture and how to add new agents.
 
 ---
 
@@ -155,6 +121,27 @@ In production, make sure to:
 
 ---
 
+## Docker File Summary
+
+- **`Dockerfile`** (root):
+  - Multi-stage build: Stage 1 builds the Vite frontend, Stage 2 sets up the Python backend and copies the built frontend as static assets
+  - Installs `dialog` for the ncurses startup GUI
+  - Includes a `HEALTHCHECK` instruction that polls `/api/health`
+  - Uses `entrypoint.py` as the default CMD (unified startup wrapper)
+
+- **`docker-compose.yml`**:
+  - `.env` file is optional (`required: false`) -- keys can be set via the Web-UI
+  - Maps port `8000:8000`
+  - Health check with 30s start period
+  - `restart: unless-stopped` for crash recovery
+  - Named volumes for session, R2, and key persistence
+
+- **`Makefile`**: Common operations for macOS/Linux (setup, up, down, logs, status, build, clean, dev)
+
+- **`setup.py`**: Cross-platform setup script (dep check, build, health wait, browser open). Works on Windows, macOS, and Linux
+
+---
+
 ## Production Hosting Options
 
 Maestro-Orchestrator can be hosted on:
@@ -173,9 +160,9 @@ Ensure proper firewall rules are in place for ports `8000` (API) and `80/443` (f
 - Use `nginx` or `Caddy` as a reverse proxy
 - Monitor API rate limits from OpenAI / Claude / Gemini
 - Rotate API keys securely and store them in `.env`
-- Use `make build` (or `docker compose build --no-cache`) if frontend isn’t updating
+- Use `make build` (or `docker compose build --no-cache`) if frontend isn't updating
 
 ---
 
-For architecture overview, see: [`architecture.md`](./architecture.md)  
-For quorum logic, see: [`quorum_logic.md`](./quorum_logic.md)
+For architecture overview, see: [`architecture.md`](./architecture.md)
+For troubleshooting, see: [`troubleshooting.md`](./troubleshooting.md)

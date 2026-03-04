@@ -110,9 +110,4 @@ NCG is the immune system's antibody production — constantly generating diverse
 
 ## Future Direction
 
-The current implementation operates primarily at Tier 1 (semantic drift). As token-level APIs become more widely available:
-
-1. **Full logprob analysis** across all agents, not just OpenAI
-2. **Attention-level drift** when model internals become accessible
-3. **Feedback loops** where NCG drift signals reshape prompts before they hit the conversational agents
-4. **Cross-session NCG** where the headless baseline evolves to track what "normal" looks like over time
+The current implementation operates primarily at Tier 1 (semantic drift). See [`roadmap.md`](./roadmap.md) for planned NCG enhancements including full logprob analysis across all providers, NCG feedback loops, and cross-session baselines.
