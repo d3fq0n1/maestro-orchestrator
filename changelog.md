@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.4.1] - 2026-03-04
+
+### Added
+
+- **One-command setup**: `make setup` builds the container, waits for the health check, and opens the browser automatically
+- **Makefile**: Common operations — `make up`, `make down`, `make logs`, `make status`, `make build`, `make clean`, `make dev`
+- **`setup.sh`**: Setup script with dependency checks, Docker build, health polling, and cross-platform browser launch
+- **Health endpoint**: `GET /api/health` returns `{"status": "ok"}` for container and external health monitoring
+- **Docker HEALTHCHECK**: Built into both `Dockerfile` and `docker-compose.yml` with 30s start period
+- **Restart policy**: `restart: unless-stopped` in `docker-compose.yml` for crash recovery
+
+### Changed
+
+- **`.env` file is now optional**: `docker-compose.yml` uses `required: false` — API keys can be configured entirely through the Web-UI
+- **Removed `stdin_open`/`tty`** from `docker-compose.yml` — no longer needed since `MAESTRO_MODE` defaults to `web`
+- **`make dev`**: Starts both backend and frontend together for local development
+- Updated all documentation (README, deployment, quickstart, setup guide, troubleshooting, contributing, architecture) to reflect simplified deployment workflow
+
+---
+
 ## [0.4.0] - 2026-03-04
 
 ### Changed

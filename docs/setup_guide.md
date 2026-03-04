@@ -8,29 +8,24 @@ For complete setup instructions, see:
 
 ## Quick Reference
 
-### Backend
+### Docker (Recommended)
+
+```bash
+make setup
+```
+
+This builds the container, waits for the health check, and opens your browser. No `.env` needed -- configure keys in the Web-UI.
+
+After initial setup: `make up` / `make down` / `make logs` / `make status`
+
+### Local Development
 
 ```bash
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env  # add your API keys
-uvicorn backend.main:app --reload --port 8000
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### Docker (Recommended)
-
-```bash
-cp .env.example .env   # add your API keys
-docker-compose up --build
+make dev               # starts backend + frontend together
 ```
 
 Application (UI + API): `http://localhost:8000`

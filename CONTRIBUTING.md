@@ -81,11 +81,12 @@ The frontend will be served at `http://localhost:5173`.
 To run both backend and frontend together:
 
 ```bash
-cp .env.example .env   # add your API keys
-docker-compose up --build
+make setup
 ```
 
-The application (UI + API) will be available at `http://localhost:8000`.
+This builds the container, waits for the health check, and opens your browser to `http://localhost:8000`. No `.env` file is required -- API keys can be configured in the Web-UI.
+
+After initial setup, use `make up` / `make down` to start and stop. Run `make` to see all available commands.
 
 ---
 

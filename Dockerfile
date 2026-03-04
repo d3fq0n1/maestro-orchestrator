@@ -53,6 +53,9 @@ COPY --from=frontend-builder /app/frontend/dist ./backend/frontend/dist
 
 EXPOSE 8000
 
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')" || exit 1
+
 # Unified entrypoint — presents a mode-selection GUI on first launch.
 # Override with MAESTRO_MODE=web or MAESTRO_MODE=cli to skip the dialog.
 CMD ["python", "entrypoint.py"]

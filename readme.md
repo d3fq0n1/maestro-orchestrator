@@ -1,7 +1,7 @@
 
 # Maestro-Orchestrator
 
-![Version](https://img.shields.io/badge/version-v0.4-blue)
+![Version](https://img.shields.io/badge/version-v0.4.1-blue)
 ![License](https://img.shields.io/badge/license-Custom%20Open%20Use-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-green)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)
@@ -62,20 +62,32 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 
 ## Setup
 
-### 1. Docker (recommended)
+### Quick start (recommended)
 ```bash
 git clone https://github.com/d3fq0n1/maestro-orchestrator.git
 cd maestro-orchestrator
-docker-compose up --build
+make setup
 ```
 
-Open [http://localhost:8000](http://localhost:8000). On first launch the API Key settings panel opens automatically -- paste at least one provider key and you're ready to go.
+That's it. The setup script builds the container, waits for the health check to pass, and opens your browser to `http://localhost:8000`. On first launch the API Key settings panel opens automatically -- paste at least one provider key and you're ready to go.
 
 No `.env` file is required. Keys are saved through the Web-UI and persist across container restarts.
 
+### Common commands
+
+| Command | What it does |
+|---------|-------------|
+| `make setup` | First-time build + start + open browser |
+| `make up` | Start the container (detached) |
+| `make down` | Stop the container |
+| `make logs` | Tail container logs |
+| `make status` | Show container and health status |
+| `make clean` | Stop and remove all data volumes |
+| `make dev` | Start local dev servers (no Docker) |
+
 > **CLI mode:** Set `MAESTRO_MODE=cli` in a `.env` file or pass it as an environment variable to use the interactive terminal REPL instead.
 
-### 2. Local development
+### Local development (no Docker)
 ```bash
 git clone https://github.com/d3fq0n1/maestro-orchestrator.git
 cd maestro-orchestrator
@@ -83,23 +95,15 @@ python -m venv venv
 source venv/bin/activate  # or .\venv\Scripts\activate on Windows
 pip install -r requirements.txt
 cp .env.example .env      # add your API keys
+make dev                   # starts backend + frontend together
 ```
 
-**Web-UI mode:**
-```bash
-uvicorn backend.main:app --reload --port 8000
-```
+Or start services individually:
 
-Frontend (separate terminal):
 ```bash
-cd frontend
-npm install
-npm run dev
-```
-
-**CLI mode:**
-```bash
-python -m maestro.cli
+uvicorn backend.main:app --reload --port 8000   # backend
+cd frontend && npm install && npm run dev        # frontend (separate terminal)
+python -m maestro.cli                            # CLI mode (no web)
 ```
 
 Backend API: `http://localhost:8000/api/ask`

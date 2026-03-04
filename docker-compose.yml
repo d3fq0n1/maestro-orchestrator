@@ -6,12 +6,20 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    environment:
+      - MAESTRO_MODE=${MAESTRO_MODE:-web}
+    # .env is optional — API keys can be configured via the Web-UI at runtime
+    # and are persisted in the maestro-env volume across restarts.
     env_file:
-      - .env
-    # Enable interactive TTY so the startup dialog is displayed.
-    # Set MAESTRO_MODE=web in .env to skip the dialog and auto-launch the Web-UI.
-    stdin_open: true
-    tty: true
+      - path: .env
+        required: false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     volumes:
       - maestro-sessions:/app/data/sessions
       - maestro-r2:/app/data/r2

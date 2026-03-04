@@ -1,21 +1,23 @@
 # Maestro-Orchestrator Quickstart
 
 ## Prerequisites
-- Docker & Docker Compose
+- Docker & Docker Compose v2+
 
 ## Docker (Recommended)
 
 ```bash
 git clone https://github.com/d3fq0n1/maestro-orchestrator.git
 cd maestro-orchestrator
-docker-compose up --build
+make setup
 ```
 
-Open [http://localhost:8000](http://localhost:8000). The API Key settings panel opens automatically on first launch -- paste at least one provider key and start querying the council.
+The setup script builds the container, waits for the health check to pass, and opens your browser to `http://localhost:8000`. The API Key settings panel opens automatically on first launch -- paste at least one provider key and start querying the council.
 
 Keys are saved through the Web-UI and persist across container restarts. No `.env` file is needed.
 
-> **CLI mode:** `MAESTRO_MODE=cli docker-compose run maestro`
+After initial setup, use `make up` / `make down` to start and stop the container. Run `make` to see all available commands.
+
+> **CLI mode:** `MAESTRO_MODE=cli docker compose up --build`
 
 ## Local Development
 
@@ -28,14 +30,13 @@ python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env  # add your API keys
-uvicorn backend.main:app --reload --port 8000
+make dev               # starts backend + frontend together
 ```
 
-Frontend (separate terminal):
+Or start services individually:
 ```bash
-cd frontend
-npm install
-npm run dev
+uvicorn backend.main:app --reload --port 8000   # backend
+cd frontend && npm install && npm run dev        # frontend (separate terminal)
 ```
 
 The UI will be available at `http://localhost:5173` and proxies API calls to the backend.
