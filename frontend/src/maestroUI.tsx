@@ -674,7 +674,12 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
         </div>
 
         <div className="settings-body">
-          {error && <p className="update-error">{error}</p>}
+          {error && (
+            <div className="update-result-card update-result-error">
+              <p className="update-result-text">Unable to check for updates</p>
+              <p className="muted">{error}</p>
+            </div>
+          )}
 
           {applied && (
             <div className="update-result-card update-result-success">
