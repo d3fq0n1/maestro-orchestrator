@@ -17,11 +17,16 @@ class Agent(ABC):
     name: str
     model: str
 
+    @staticmethod
+    def build_system_prompt() -> str:
+        """Return a system prompt grounding the model with the current date."""
+        ...
+
     @abstractmethod
     async def fetch(self, prompt: str) -> str: ...
 ```
 
-Every agent implements one method: receive a prompt, return a response string. The analysis pipeline (dissent, NCG, R2, MAGI) then measures the actual behavior of each agent's output rather than assigning explicit roles.
+Every agent implements one method: receive a prompt, return a response string. The base class provides a shared `build_system_prompt()` that includes today's date and instructs the model to answer directly without knowledge-cutoff hedging. Each agent includes this system prompt in its API call using the provider-appropriate format. The analysis pipeline (dissent, NCG, R2, MAGI) then measures the actual behavior of each agent's output rather than assigning explicit roles.
 
 ---
 
@@ -82,9 +87,10 @@ All agents also use `return_exceptions=True` in `asyncio.gather` (handled in `or
 
 1. Create a new file in `maestro/agents/` extending `Agent`
 2. Implement `name`, `model`, and `async fetch(prompt) -> str`
-3. Follow the error handling contract above — return error strings, never raise
-4. Add to `maestro/agents/__init__.py`
-5. Add to the `COUNCIL` list in `backend/orchestrator_foundry.py`
+3. Include the system prompt from `self.build_system_prompt()` in your API call using the provider-appropriate format (e.g. `system` message for chat completions APIs, `system` field for Anthropic, `systemInstruction` for Gemini)
+4. Follow the error handling contract above — return error strings, never raise
+5. Add to `maestro/agents/__init__.py`
+6. Add to the `COUNCIL` list in `backend/orchestrator_foundry.py`
 
 ---
 

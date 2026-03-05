@@ -37,6 +37,7 @@ class Aria(Agent):
                     json={
                         "model": self.model,
                         "max_tokens": self.max_tokens,
+                        "system": self.build_system_prompt(),
                         "messages": [{"role": "user", "content": prompt}],
                     },
                     timeout=self.timeout,

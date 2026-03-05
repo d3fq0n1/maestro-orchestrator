@@ -35,6 +35,7 @@ class Prism(Agent):
         )
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
+            "systemInstruction": {"parts": [{"text": self.build_system_prompt()}]},
             "safetySettings": self.SAFETY_SETTINGS,
         }
 
