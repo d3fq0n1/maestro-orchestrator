@@ -610,6 +610,40 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
   const [applied, setApplied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Remote URL config
+  const [remoteUrl, setRemoteUrl] = useState("");
+  const [remoteLoaded, setRemoteLoaded] = useState(false);
+  const [remoteSaving, setRemoteSaving] = useState(false);
+  const [remoteSaved, setRemoteSaved] = useState(false);
+
+  const loadRemote = async () => {
+    try {
+      const res = await fetch("/api/update/remote");
+      if (res.ok) {
+        const data = await res.json();
+        setRemoteUrl(data.url || "");
+        setRemoteLoaded(true);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const saveRemote = async () => {
+    setRemoteSaving(true);
+    setRemoteSaved(false);
+    try {
+      const res = await fetch("/api/update/remote", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: remoteUrl.trim() }),
+      });
+      if (res.ok) {
+        setRemoteSaved(true);
+        setTimeout(() => setRemoteSaved(false), 2000);
+      }
+    } catch { /* ignore */ }
+    setRemoteSaving(false);
+  };
+
   const checkForUpdates = async () => {
     setChecking(true);
     setError(null);
@@ -630,7 +664,10 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
   };
 
   useEffect(() => {
-    if (visible) checkForUpdates();
+    if (visible) {
+      loadRemote();
+      checkForUpdates();
+    }
   }, [visible]);
 
   const handleApply = async () => {
@@ -746,9 +783,33 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
           )}
         </div>
 
+        {remoteLoaded && !info?.git_missing && (
+          <div className="update-remote-config">
+            <label className="update-remote-label" htmlFor="update-remote-url">
+              Remote repository URL
+            </label>
+            <div className="update-remote-row">
+              <input
+                id="update-remote-url"
+                type="text"
+                className="key-input"
+                placeholder="https://github.com/user/repo.git"
+                value={remoteUrl}
+                onChange={(e) => { setRemoteUrl(e.target.value); setRemoteSaved(false); }}
+              />
+              <button
+                className="submit-btn"
+                onClick={saveRemote}
+                disabled={remoteSaving || !remoteUrl.trim()}
+              >
+                {remoteSaved ? "Saved" : remoteSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        )}
+
         <p className="settings-footer">
-          Updates pull the latest code from the remote repository.
-          Restart the server after updating.
+          Set your repository URL above, then check for updates.
         </p>
       </div>
     </div>

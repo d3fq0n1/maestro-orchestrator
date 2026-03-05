@@ -656,6 +656,31 @@ code {
   font-size: 0.76rem;
 }
 
+.update-remote-config {
+  padding: 0.75rem 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.update-remote-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.update-remote-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.update-remote-row .key-input {
+  flex: 1;
+}
+
+.update-remote-row .submit-btn {
+  white-space: nowrap;
+}
+
 /* ── Streaming / Stage indicator ─────────────────────────────── */
 
 .result-card-streaming {

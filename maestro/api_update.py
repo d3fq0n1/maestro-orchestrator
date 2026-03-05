@@ -1,14 +1,19 @@
 """
 API endpoints for the auto-updater.
 
-GET  /api/update/check   — check if updates are available
-POST /api/update/apply   — pull latest changes
+GET  /api/update/check    — check if updates are available
+POST /api/update/apply    — pull latest changes
+GET  /api/update/remote   — get configured remote URL
+PUT  /api/update/remote   — set the remote URL
 """
 
+import os
 import shutil
 
 from fastapi import APIRouter
+from pydantic import BaseModel, Field
 from maestro.updater import check_for_updates, apply_update
+from maestro.keyring import _default_env_path, _upsert_env_file
 
 router = APIRouter(prefix="/api/update", tags=["update"])
 
@@ -53,3 +58,28 @@ async def update_apply():
         return apply_update()
     except Exception as e:
         return {"success": False, "message": str(e), "commits_pulled": 0, "rebuilt": False}
+
+
+_REMOTE_ENV_VAR = "MAESTRO_UPDATE_REMOTE"
+
+
+class SetRemoteRequest(BaseModel):
+    url: str = Field(..., min_length=1, max_length=500)
+
+
+@router.get("/remote")
+async def get_remote():
+    """Return the currently configured remote URL."""
+    url = os.environ.get(_REMOTE_ENV_VAR, "").strip()
+    return {"url": url, "configured": bool(url)}
+
+
+@router.put("/remote")
+async def set_remote(body: SetRemoteRequest):
+    """Set the remote repository URL (persisted to .env)."""
+    url = body.url.strip()
+    # Persist to .env file
+    _upsert_env_file(_default_env_path(), _REMOTE_ENV_VAR, url)
+    # Reflect into current process
+    os.environ[_REMOTE_ENV_VAR] = url
+    return {"url": url, "configured": True}

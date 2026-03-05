@@ -8,6 +8,8 @@ services:
       - "8000:8000"
     environment:
       - MAESTRO_MODE=${MAESTRO_MODE:-web}
+      # Set to your repo URL to enable in-app updates (e.g. https://github.com/user/maestro-orchestrator.git)
+      - MAESTRO_UPDATE_REMOTE=${MAESTRO_UPDATE_REMOTE:-}
     # .env is optional — API keys can be configured via the Web-UI at runtime
     # and are persisted in the maestro-env volume across restarts.
     env_file:
