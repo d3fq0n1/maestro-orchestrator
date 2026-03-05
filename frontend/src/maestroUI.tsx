@@ -687,7 +687,7 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
             <p className="muted">Checking for updates...</p>
           )}
 
-          {info && !info.available && !applied && (
+          {info && !info.available && !applied && !error && (
             <div className="update-result-card update-result-current">
               <p className="update-result-text">You're up to date</p>
               <p className="muted">
