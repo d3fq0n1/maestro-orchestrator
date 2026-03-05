@@ -5,20 +5,32 @@ Maestro-Orchestrator Auto-Updater.
 Checks the remote Git repository for new commits and pulls updates
 automatically, with optional Docker rebuild support.
 
+Works in two modes:
+  1. **Git mode** — the project root contains a `.git` directory (local dev).
+  2. **Docker mode** — no `.git` dir; uses a VERSION file + `git ls-remote`.
+
 Usage:
     from maestro.updater import check_for_updates, apply_update
 
 Environment variables:
     MAESTRO_AUTO_UPDATE=1       Enable automatic update check on startup
-    MAESTRO_UPDATE_BRANCH=main  Branch to track (default: current branch)
+    MAESTRO_UPDATE_BRANCH=main  Branch to track (default: current branch or main)
     MAESTRO_UPDATE_REMOTE=URL   Git remote URL (overrides origin; required in Docker)
 """
 
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_VERSION_FILE = os.path.join(_PROJECT_ROOT, "VERSION")
+
+
+def _is_git_repo() -> bool:
+    """Return True if the project root is inside a git repository."""
+    return os.path.isdir(os.path.join(_PROJECT_ROOT, ".git"))
 
 
 def _run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
@@ -32,46 +44,117 @@ def _run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
     )
 
 
-def get_current_branch() -> str:
-    """Return the name of the current Git branch."""
-    result = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"])
-    return result.stdout.strip() if result.returncode == 0 else "master"
+def _get_remote_url() -> str:
+    """Return the configured remote URL, or empty string."""
+    return os.environ.get("MAESTRO_UPDATE_REMOTE", "").strip()
 
+
+def _get_branch() -> str:
+    """Return the branch to track."""
+    explicit = os.environ.get("MAESTRO_UPDATE_BRANCH", "").strip()
+    if explicit:
+        return explicit
+    if _is_git_repo():
+        result = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+        if result.returncode == 0:
+            return result.stdout.strip()
+    return "main"
+
+
+# ── Local commit ──────────────────────────────────────────────────────
 
 def get_local_commit() -> str:
     """Return the current local HEAD commit hash."""
-    result = _run(["git", "rev-parse", "HEAD"])
-    return result.stdout.strip() if result.returncode == 0 else ""
+    # Git mode
+    if _is_git_repo():
+        result = _run(["git", "rev-parse", "HEAD"])
+        if result.returncode == 0:
+            return result.stdout.strip()
+    # Docker mode — read baked-in VERSION file
+    if os.path.isfile(_VERSION_FILE):
+        with open(_VERSION_FILE) as f:
+            return f.read().strip()
+    return ""
 
 
-def _sync_remote_url() -> None:
-    """If MAESTRO_UPDATE_REMOTE is set, point origin at that URL."""
-    url = os.environ.get("MAESTRO_UPDATE_REMOTE", "").strip()
-    if url:
-        _run(["git", "remote", "set-url", "origin", url])
-
+# ── Remote commit ─────────────────────────────────────────────────────
 
 def get_remote_commit(branch: str | None = None) -> tuple[str, str]:
-    """Fetch and return (remote_commit, error_message). Error is empty on success."""
-    _sync_remote_url()
-    branch = branch or os.environ.get("MAESTRO_UPDATE_BRANCH") or get_current_branch()
-    fetch = _run(["git", "fetch", "origin", branch])
-    if fetch.returncode != 0:
-        err = fetch.stderr.strip() or "git fetch failed"
-        return "", err
-    result = _run(["git", "rev-parse", f"origin/{branch}"])
-    return (result.stdout.strip() if result.returncode == 0 else ""), ""
+    """
+    Return (remote_commit_hash, error_message).
 
+    Uses `git ls-remote` which does NOT require a local .git directory.
+    """
+    branch = branch or _get_branch()
+    url = _get_remote_url()
 
-def get_commit_log(local: str, remote: str) -> list[str]:
-    """Return a list of new commit messages between local and remote."""
-    if not local or not remote:
-        return []
-    result = _run(["git", "log", "--oneline", f"{local}..{remote}"])
+    if _is_git_repo() and not url:
+        # Dev mode — use normal fetch
+        fetch = _run(["git", "fetch", "origin", branch])
+        if fetch.returncode != 0:
+            return "", fetch.stderr.strip() or "git fetch failed"
+        result = _run(["git", "rev-parse", f"origin/{branch}"])
+        return (result.stdout.strip() if result.returncode == 0 else ""), ""
+
+    if not url:
+        return "", "No remote URL configured."
+
+    # Docker mode — ls-remote works without a local repo
+    result = subprocess.run(
+        ["git", "ls-remote", url, f"refs/heads/{branch}"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
     if result.returncode != 0:
-        return []
-    return [line for line in result.stdout.strip().splitlines() if line]
+        err = result.stderr.strip() or "git ls-remote failed"
+        return "", err
+    line = result.stdout.strip()
+    if not line:
+        return "", f"Branch '{branch}' not found on remote."
+    commit = line.split()[0]
+    return commit, ""
 
+
+# ── Commit log ────────────────────────────────────────────────────────
+
+def get_commit_log(local: str, remote: str, branch: str | None = None) -> list[str]:
+    """Return one-line summaries of commits between local..remote."""
+    if not local or not remote or local == remote:
+        return []
+
+    # Git mode — direct log
+    if _is_git_repo():
+        result = _run(["git", "log", "--oneline", f"{local}..{remote}"])
+        if result.returncode == 0:
+            return [l for l in result.stdout.strip().splitlines() if l]
+
+    # Docker mode — shallow clone to read log
+    url = _get_remote_url()
+    if not url:
+        return []
+    branch = branch or _get_branch()
+    try:
+        with tempfile.TemporaryDirectory(prefix="maestro_update_") as tmp:
+            clone = subprocess.run(
+                ["git", "clone", "--bare", "--filter=blob:none",
+                 "--single-branch", "--branch", branch, url, tmp],
+                capture_output=True, text=True, timeout=60,
+            )
+            if clone.returncode != 0:
+                return []
+            log = subprocess.run(
+                ["git", "--git-dir", tmp, "log", "--oneline", f"{local}..{remote}"],
+                capture_output=True, text=True, timeout=15,
+            )
+            if log.returncode == 0:
+                return [l for l in log.stdout.strip().splitlines() if l]
+    except Exception:
+        pass
+    return []
+
+
+# ── Check ─────────────────────────────────────────────────────────────
 
 def check_for_updates(branch: str | None = None) -> dict:
     """
@@ -83,15 +166,16 @@ def check_for_updates(branch: str | None = None) -> dict:
         remote_commit (str): Latest remote commit hash (short)
         new_commits (list[str]): One-line summaries of new commits
         branch (str): Branch being tracked
+        error (str, optional): Error message if check failed
     """
-    branch = branch or os.environ.get("MAESTRO_UPDATE_BRANCH") or get_current_branch()
+    branch = branch or _get_branch()
     local = get_local_commit()
     remote, fetch_err = get_remote_commit(branch)
 
-    if not local or not remote:
-        has_remote_configured = bool(os.environ.get("MAESTRO_UPDATE_REMOTE", "").strip())
-        if not has_remote_configured:
-            msg = "No remote configured. Set your repository URL above."
+    if not remote:
+        url = _get_remote_url()
+        if not url:
+            msg = "No remote configured. Set your repository URL above, then check for updates."
         elif fetch_err:
             msg = fetch_err
         else:
@@ -106,19 +190,23 @@ def check_for_updates(branch: str | None = None) -> dict:
         }
 
     available = local != remote
-    new_commits = get_commit_log(local, remote) if available else []
+    new_commits = get_commit_log(local, remote, branch) if available else []
 
     return {
         "available": available,
-        "local_commit": local[:8],
+        "local_commit": local[:8] if local else "",
         "remote_commit": remote[:8],
         "new_commits": new_commits,
         "branch": branch,
     }
 
 
+# ── Apply ─────────────────────────────────────────────────────────────
+
 def has_local_changes() -> bool:
     """Return True if there are uncommitted changes in the working tree."""
+    if not _is_git_repo():
+        return False
     result = _run(["git", "status", "--porcelain"])
     return bool(result.stdout.strip()) if result.returncode == 0 else False
 
@@ -127,16 +215,29 @@ def apply_update(branch: str | None = None, rebuild: bool = False) -> dict:
     """
     Pull the latest changes and optionally rebuild Docker.
 
+    In git mode: does a normal `git pull`.
+    In Docker mode: clones into a temp dir and copies updated files over.
+
     Returns a dict with:
         success (bool): Whether the update succeeded
         message (str): Human-readable result message
         commits_pulled (int): Number of new commits pulled
         rebuilt (bool): Whether Docker was rebuilt
     """
-    branch = branch or os.environ.get("MAESTRO_UPDATE_BRANCH") or get_current_branch()
+    branch = branch or _get_branch()
+
+    if _is_git_repo():
+        return _apply_git_mode(branch, rebuild)
+    return _apply_docker_mode(branch, rebuild)
+
+
+def _apply_git_mode(branch: str, rebuild: bool) -> dict:
+    """Pull updates in a normal git working tree."""
+    url = _get_remote_url()
+    if url:
+        _run(["git", "remote", "set-url", "origin", url])
 
     if has_local_changes():
-        # Stash local changes so pull doesn't fail
         _run(["git", "stash", "push", "-m", "maestro-auto-update-stash"])
         stashed = True
     else:
@@ -156,27 +257,14 @@ def apply_update(branch: str | None = None, rebuild: bool = False) -> dict:
         }
 
     after = get_local_commit()
-    new_commits = get_commit_log(before, after) if before != after else []
+    new_commits = get_commit_log(before, after, branch) if before != after else []
 
     if stashed:
         _run(["git", "stash", "pop"])
 
-    rebuilt = False
-    if rebuild and new_commits:
-        compose = _find_compose_cmd()
-        if compose:
-            print("  Rebuilding Docker image ...")
-            build_result = subprocess.run(
-                compose + ["up", "-d", "--build"],
-                cwd=_PROJECT_ROOT,
-            )
-            rebuilt = build_result.returncode == 0
-
+    rebuilt = _maybe_rebuild(rebuild, new_commits)
     count = len(new_commits)
-    if count == 0:
-        msg = "Already up to date."
-    else:
-        msg = f"Updated successfully — {count} new commit{'s' if count != 1 else ''}."
+    msg = "Already up to date." if count == 0 else f"Updated successfully — {count} new commit{'s' if count != 1 else ''}."
 
     return {
         "success": True,
@@ -186,10 +274,116 @@ def apply_update(branch: str | None = None, rebuild: bool = False) -> dict:
     }
 
 
+# Directories to sync from a fresh clone into the running container.
+_SYNC_DIRS = ["maestro", "backend"]
+
+
+def _apply_docker_mode(branch: str, rebuild: bool) -> dict:
+    """Clone into a temp dir and copy updated files into the running container."""
+    url = _get_remote_url()
+    if not url:
+        return {
+            "success": False,
+            "message": "No remote URL configured.",
+            "commits_pulled": 0,
+            "rebuilt": False,
+        }
+
+    before = get_local_commit()
+
+    try:
+        tmp = tempfile.mkdtemp(prefix="maestro_update_")
+        clone = subprocess.run(
+            ["git", "clone", "--depth=50", "--single-branch",
+             "--branch", branch, url, tmp],
+            capture_output=True, text=True, timeout=120,
+        )
+        if clone.returncode != 0:
+            return {
+                "success": False,
+                "message": f"Clone failed: {clone.stderr.strip()}",
+                "commits_pulled": 0,
+                "rebuilt": False,
+            }
+
+        # Read the new HEAD
+        head = subprocess.run(
+            ["git", "-C", tmp, "rev-parse", "HEAD"],
+            capture_output=True, text=True,
+        )
+        after = head.stdout.strip() if head.returncode == 0 else ""
+
+        if before and before == after:
+            shutil.rmtree(tmp, ignore_errors=True)
+            return {
+                "success": True,
+                "message": "Already up to date.",
+                "commits_pulled": 0,
+                "rebuilt": False,
+            }
+
+        # Get commit log from the clone
+        new_commits: list[str] = []
+        if before and after:
+            log = subprocess.run(
+                ["git", "-C", tmp, "log", "--oneline", f"{before}..{after}"],
+                capture_output=True, text=True,
+            )
+            if log.returncode == 0:
+                new_commits = [l for l in log.stdout.strip().splitlines() if l]
+
+        # Copy updated directories into the running app
+        for d in _SYNC_DIRS:
+            src = os.path.join(tmp, d)
+            dst = os.path.join(_PROJECT_ROOT, d)
+            if os.path.isdir(src):
+                shutil.rmtree(dst, ignore_errors=True)
+                shutil.copytree(src, dst)
+
+        # Update VERSION file so next check knows where we are
+        with open(_VERSION_FILE, "w") as f:
+            f.write(after + "\n")
+
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    except Exception as exc:
+        return {
+            "success": False,
+            "message": f"Update failed: {exc}",
+            "commits_pulled": 0,
+            "rebuilt": False,
+        }
+
+    rebuilt = _maybe_rebuild(rebuild, new_commits)
+    count = len(new_commits) or (1 if before != after else 0)
+    msg = f"Updated successfully — {count} new commit{'s' if count != 1 else ''}. Restart the container to load changes."
+
+    return {
+        "success": True,
+        "message": msg,
+        "commits_pulled": count,
+        "rebuilt": rebuilt,
+    }
+
+
+# ── Helpers ───────────────────────────────────────────────────────────
+
+def _maybe_rebuild(rebuild: bool, new_commits: list) -> bool:
+    if not rebuild or not new_commits:
+        return False
+    compose = _find_compose_cmd()
+    if not compose:
+        return False
+    print("  Rebuilding Docker image ...")
+    build_result = subprocess.run(
+        compose + ["up", "-d", "--build"],
+        cwd=_PROJECT_ROOT,
+    )
+    return build_result.returncode == 0
+
+
 def _find_compose_cmd() -> list[str]:
     """Return the Docker Compose command as a list, or empty if not found."""
-    import shutil
-
     for cmd in [["docker", "compose"], ["docker-compose"]]:
         try:
             result = subprocess.run(
