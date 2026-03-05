@@ -46,18 +46,18 @@ class TestAgentInterface(unittest.TestCase):
 
     def test_agent_name_and_model(self):
         sol = Sol()
-        self.assertEqual(sol.name, "Sol")
-        self.assertEqual(sol.model, "gpt-4")
+        self.assertEqual(sol.name, "GPT-4o")
+        self.assertEqual(sol.model, "gpt-4o")
 
         aria = Aria()
-        self.assertEqual(aria.name, "Aria")
-        self.assertEqual(aria.model, "claude-3-opus-20240229")
+        self.assertEqual(aria.name, "Claude Sonnet 4.6")
+        self.assertEqual(aria.model, "claude-sonnet-4-6")
 
         prism = Prism()
-        self.assertEqual(prism.name, "Prism")
+        self.assertEqual(prism.name, "Gemini 2.5 Flash")
 
         temp = TempAgent()
-        self.assertEqual(temp.name, "TempAgent")
+        self.assertEqual(temp.name, "Llama 3.3 70B")
 
     def test_agent_custom_model(self):
         sol = Sol(model="gpt-4-turbo")

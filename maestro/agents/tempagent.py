@@ -4,9 +4,9 @@ from .base import Agent
 
 
 class TempAgent(Agent):
-    """OpenRouter agent. Rotating external model for diversity testing."""
+    """OpenRouter Llama 3.3 70B agent."""
 
-    name = "TempAgent"
+    name = "Llama 3.3 70B"
     model = "meta-llama/llama-3.3-70b-instruct"
 
     def __init__(self, model: str = "meta-llama/llama-3.3-70b-instruct", timeout: float = 30):

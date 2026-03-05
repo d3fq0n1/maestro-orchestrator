@@ -4,9 +4,9 @@ from .base import Agent
 
 
 class Prism(Agent):
-    """Google Gemini 2.5 Flash agent. Pattern matcher, precision analysis."""
+    """Google Gemini 2.5 Flash agent."""
 
-    name = "Prism"
+    name = "Gemini 2.5 Flash"
     model = "models/gemini-2.5-flash"
 
     SAFETY_SETTINGS = [

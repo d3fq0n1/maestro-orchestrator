@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.2] - 2026-03-05
+
+### Added
+
+- **SSE Response Streaming**: New `POST /api/ask/stream` endpoint returns Server-Sent Events as each pipeline stage completes (agent responses, dissent, NCG, consensus, R2). The frontend now renders results progressively instead of waiting for the full pipeline to finish.
+- **Progressive UI rendering**: Agent responses appear one-by-one as they arrive, with animated stage indicators showing pipeline progress.
+- **Streaming stage indicator**: Visual pills show which pipeline stage is currently running (agents, dissent, NCG, consensus, R2).
+
+### Changed
+
+- **Agent display names**: Agents now display their model names instead of codenames: GPT-4o (was Sol), Claude Sonnet 4.6 (was Aria), Gemini 2.5 Flash (was Prism), Llama 3.3 70B (was TempAgent). Class names remain unchanged for backward compatibility.
+- **Gemini model updated**: `models/gemini-2.0-flash` → `models/gemini-2.5-flash`
+- **Frontend default endpoint**: UI now uses `/api/ask/stream` instead of `/api/ask` for better perceived performance.
+- All documentation updated to reflect new agent display names, streaming endpoint, and Gemini model version.
+
+---
+
 ## [0.4.1] - 2026-03-04
 
 ### Added
@@ -108,7 +125,7 @@
 
 - FastAPI backend with `/api/ask` POST route
 - Core orchestration engine modularized as `orchestrator_foundry.py`
-- Multi-agent architecture: Sol (OpenAI), Aria (Claude), Prism (Gemini), TempAgent (OpenRouter)
+- Multi-agent architecture: GPT-4o (OpenAI), Claude Sonnet 4.6 (Anthropic), Gemini (Google), Llama 3.3 70B (OpenRouter)
 - Vite + React + Tailwind frontend with live quorum rendering
 - Emoji mapping for agent identity in frontend
 - `.env.template` with API key structure and variable examples

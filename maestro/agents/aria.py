@@ -4,9 +4,9 @@ from .base import Agent
 
 
 class Aria(Agent):
-    """Anthropic Claude Sonnet 4.6 agent. Contextual analyst, ethical anchor."""
+    """Anthropic Claude Sonnet 4.6 agent."""
 
-    name = "Aria"
+    name = "Claude Sonnet 4.6"
     model = "claude-sonnet-4-6"
 
     def __init__(self, model: str = "claude-sonnet-4-6", timeout: float = 45, max_tokens: int = 2048):

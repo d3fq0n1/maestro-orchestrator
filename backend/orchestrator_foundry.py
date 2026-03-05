@@ -15,7 +15,7 @@ from maestro.agents.sol import Sol
 from maestro.agents.aria import Aria
 from maestro.agents.prism import Prism
 from maestro.agents.tempagent import TempAgent
-from maestro.orchestrator import run_orchestration_async
+from maestro.orchestrator import run_orchestration_async, run_orchestration_stream
 from maestro.ncg.generator import (
     OpenAIHeadlessGenerator,
     AnthropicHeadlessGenerator,
@@ -56,6 +56,21 @@ async def run_orchestration(prompt: str) -> dict:
         session_logging=True,
         headless_generator=_select_headless_generator(),
     )
+
+
+async def stream_orchestration(prompt: str):
+    """
+    Streaming wrapper that passes the live council and best available headless
+    generator into the streaming orchestration pipeline. Yields SSE events.
+    """
+    async for event in run_orchestration_stream(
+        prompt=prompt,
+        agents=COUNCIL,
+        ncg_enabled=True,
+        session_logging=True,
+        headless_generator=_select_headless_generator(),
+    ):
+        yield event
 
 
 # === API Key Validation ===

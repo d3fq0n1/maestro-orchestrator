@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from pathlib import Path
-from orchestrator_foundry import run_orchestration
+from orchestrator_foundry import run_orchestration, stream_orchestration
 from maestro.api_sessions import router as sessions_router
 from maestro.api_magi import router as magi_router
 from maestro.api_keys import router as keys_router
@@ -74,6 +75,25 @@ async def ask(prompt: Prompt):
             "responses": {},
             "error": f"{type(e).__name__}: {str(e)}",
         }
+
+# === POST endpoint for streaming orchestration (SSE) ===
+@app.post("/api/ask/stream")
+async def ask_stream(prompt: Prompt):
+    user_prompt = prompt.prompt.strip()
+    if not user_prompt:
+        return {"error": "Prompt cannot be empty or whitespace-only."}
+
+    print(f"[Maestro-Orchestrator] Stream prompt received: {user_prompt}")
+
+    return StreamingResponse(
+        stream_orchestration(user_prompt),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 # === Static UI Mount (Vite production build) ===
 # In Docker, the built frontend is copied to backend/frontend/dist.

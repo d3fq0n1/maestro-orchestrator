@@ -24,11 +24,11 @@ Each file is a complete `SessionRecord` containing the prompt, all agent respons
   "timestamp": "2026-03-02T14:32:12+00:00",
   "prompt": "What are the risks of synthetic consensus?",
   "agent_responses": {
-    "Sol": "The key risk lies in...",
-    "Aria": "From an ethical standpoint...",
-    "Prism": "Analytically, the pattern suggests..."
+    "GPT-4o": "The key risk lies in...",
+    "Claude Sonnet 4.6": "From an ethical standpoint...",
+    "Gemini 2.5 Flash": "Analytically, the pattern suggests..."
   },
-  "agents_used": ["Sol", "Aria", "Prism"],
+  "agents_used": ["GPT-4o", "Claude Sonnet 4.6", "Gemini 2.5 Flash"],
   "final_output": {
     "consensus": "Merged consensus view...",
     "majority_view": "...",

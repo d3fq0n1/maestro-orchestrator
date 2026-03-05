@@ -48,12 +48,12 @@ The pairwise distance function uses sentence-transformers embeddings when availa
 
 ### Responses:
 
-- `Sol`: Expresses concern over surveillance abuse
-- `Aria`: Highlights ethical dilemmas and biases
-- `Prism`: Warns of systemic reinforcement of inequality
-- `TempAgent`: Supports deployment with safeguards
+- `GPT-4o`: Expresses concern over surveillance abuse
+- `Claude Sonnet 4.6`: Highlights ethical dilemmas and biases
+- `Gemini 2.5 Flash`: Warns of systemic reinforcement of inequality
+- `Llama 3.3 70B`: Supports deployment with safeguards
 
-Only Sol, Aria, and Prism align — **consensus is reached** (3/4).
+Only GPT-4o, Claude Sonnet 4.6, and Gemini 2.5 Flash align — **consensus is reached** (3/4).
 
 ---
 
@@ -62,10 +62,10 @@ Only Sol, Aria, and Prism align — **consensus is reached** (3/4).
 ```json
 {
   "responses": {
-    "Sol": "...",
-    "Aria": "...",
-    "Prism": "...",
-    "TempAgent": "..."
+    "GPT-4o": "...",
+    "Claude Sonnet 4.6": "...",
+    "Gemini 2.5 Flash": "...",
+    "Llama 3.3 70B": "..."
   },
   "consensus": "Synthesized Answer: ...",
   "confidence": "High",

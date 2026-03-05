@@ -16,10 +16,10 @@ NCG catches **silent collapse** (agents all agreeing on something shaped by conf
 ## Architecture
 
 ```
-Conversational track:    Sol ───────┐
-                        Aria ───────┼── compare among ── R2 (internal dissent)
-                       Prism ───────┤                           │
-                   TempAgent ───────┘                           ▼
+Conversational track:  GPT-4o ─────────────┐
+                  Claude Sonnet 4.6 ───────┼── compare among ── R2 (internal dissent)
+                  Gemini 2.5 Flash ────────┤                           │
+                    Llama 3.3 70B ─────────┘                           ▼
                                              NCG track: headless ─── DriftDetector
 ```
 
@@ -71,8 +71,8 @@ The aggregator accepts an optional `ncg_drift_report` parameter. When present, t
     "silent_collapse": false,
     "compression_alert": false,
     "per_agent": [
-      {"agent": "Sol", "drift": 0.42, "compression": 0.85, "tier": "semantic"},
-      {"agent": "Aria", "drift": 0.51, "compression": 0.72, "tier": "semantic"}
+      {"agent": "GPT-4o", "drift": 0.42, "compression": 0.85, "tier": "semantic"},
+      {"agent": "Claude Sonnet 4.6", "drift": 0.51, "compression": 0.72, "tier": "semantic"}
     ]
   }
 }

@@ -68,6 +68,12 @@ interface OrchestratorResponse {
   error?: string;
 }
 
+interface StreamStage {
+  name: string;
+  status: "running" | "done";
+  message?: string;
+}
+
 interface SessionSummary {
   session_id: string;
   timestamp: string;
@@ -311,6 +317,20 @@ function NcgSection({ ncg }: { ncg: NcgBenchmark }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function StageIndicator({ stages }: { stages: StreamStage[] }) {
+  if (!stages.length) return null;
+  return (
+    <div className="section stage-indicator">
+      {stages.map((s, i) => (
+        <span key={i} className={`stage-pill stage-${s.status}`}>
+          {s.status === "running" && <span className="stage-spinner" />}
+          {s.message || s.name}
+        </span>
+      ))}
     </div>
   );
 }
@@ -576,6 +596,10 @@ export default function MaestroUI() {
   const [loading, setLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // Streaming state: the in-progress result being built up from SSE events
+  const [streamEntry, setStreamEntry] = useState<Partial<OrchestratorResponse> | null>(null);
+  const [streamStages, setStreamStages] = useState<StreamStage[]>([]);
+
   // Auto-open the settings panel on first load when no keys are configured.
   useEffect(() => {
     (async () => {
@@ -592,12 +616,19 @@ export default function MaestroUI() {
   const sendPrompt = async () => {
     if (!prompt.trim() || loading) return;
     setLoading(true);
+    setStreamEntry({ responses: {} });
+    setStreamStages([]);
+
+    const currentPrompt = prompt;
+    setPrompt("");
+
     try {
-      const res = await fetch("/api/ask", {
+      const res = await fetch("/api/ask/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt: currentPrompt }),
       });
+
       if (!res.ok) {
         const status = res.status;
         let userMessage: string;
@@ -614,11 +645,51 @@ export default function MaestroUI() {
         } else {
           userMessage = `Request failed with HTTP ${status}.`;
         }
+        setStreamEntry(null);
+        setStreamStages([]);
         setHistory((prev) => [{ responses: {}, error: userMessage }, ...prev]);
         return;
       }
-      const data: OrchestratorResponse = await res.json();
-      setHistory((prev) => [data, ...prev]);
+
+      const reader = res.body?.getReader();
+      if (!reader) {
+        setStreamEntry(null);
+        setStreamStages([]);
+        setHistory((prev) => [{ responses: {}, error: "Streaming not supported by browser." }, ...prev]);
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        // Keep the last incomplete line in the buffer
+        buffer = lines.pop() || "";
+
+        let eventType = "";
+        let dataLines: string[] = [];
+
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            eventType = line.slice(7).trim();
+          } else if (line.startsWith("data: ")) {
+            dataLines.push(line.slice(6));
+          } else if (line === "" && eventType && dataLines.length) {
+            // End of an SSE message — process it
+            try {
+              const data = JSON.parse(dataLines.join("\n"));
+              handleSSEEvent(eventType, data);
+            } catch { /* skip malformed events */ }
+            eventType = "";
+            dataLines = [];
+          }
+        }
+      }
     } catch (err) {
       let userMessage: string;
       if (err instanceof TypeError && String(err).includes("fetch")) {
@@ -626,10 +697,84 @@ export default function MaestroUI() {
       } else {
         userMessage = `Unexpected error: ${String(err)}`;
       }
+      setStreamEntry(null);
+      setStreamStages([]);
       setHistory((prev) => [{ responses: {}, error: userMessage }, ...prev]);
     } finally {
-      setPrompt("");
       setLoading(false);
+    }
+  };
+
+  const handleSSEEvent = (event: string, data: Record<string, unknown>) => {
+    switch (event) {
+      case "stage":
+        setStreamStages((prev) => {
+          // Mark previous running stages as done, add the new one
+          const updated = prev.map((s) =>
+            s.status === "running" ? { ...s, status: "done" as const } : s,
+          );
+          return [...updated, {
+            name: data.name as string,
+            status: "running" as const,
+            message: data.message as string | undefined,
+          }];
+        });
+        break;
+
+      case "agent_response":
+        setStreamEntry((prev) => ({
+          ...prev,
+          responses: {
+            ...(prev?.responses || {}),
+            [data.agent as string]: data.text as string,
+          },
+        }));
+        break;
+
+      case "agents_done":
+        setStreamEntry((prev) => ({
+          ...prev,
+          responses: data.responses as Record<string, string>,
+          agent_errors: data.agent_errors as AgentError[],
+        }));
+        break;
+
+      case "dissent":
+        setStreamEntry((prev) => ({ ...prev, dissent: data as unknown as DissentData }));
+        break;
+
+      case "ncg":
+        setStreamEntry((prev) => ({ ...prev, ncg_benchmark: data as unknown as NcgBenchmark }));
+        break;
+
+      case "consensus":
+        setStreamEntry((prev) => ({
+          ...prev,
+          consensus: data.consensus as string,
+          confidence: data.confidence as string,
+          agreement_ratio: data.agreement_ratio as number,
+          quorum_met: data.quorum_met as boolean,
+          quorum_threshold: data.quorum_threshold as number,
+          note: data.note as string | undefined,
+        }));
+        break;
+
+      case "r2":
+        setStreamEntry((prev) => ({ ...prev, r2: data as unknown as R2Data }));
+        break;
+
+      case "done":
+        // Finalize: move streaming entry to history
+        setStreamStages([]);
+        setStreamEntry(null);
+        setHistory((prev) => [data as unknown as OrchestratorResponse, ...prev]);
+        break;
+
+      case "error":
+        setStreamStages([]);
+        setStreamEntry(null);
+        setHistory((prev) => [{ responses: {}, error: data.error as string }, ...prev]);
+        break;
     }
   };
 
@@ -644,7 +789,7 @@ export default function MaestroUI() {
     <div className="maestro-root">
       <header className="maestro-header">
         <h1>Maestro-Orchestrator</h1>
-        <span className="version">v0.4.1</span>
+        <span className="version">v0.4.2</span>
         <button
           className="toggle-btn settings-btn"
           onClick={() => setSettingsOpen(true)}
@@ -671,6 +816,29 @@ export default function MaestroUI() {
       </div>
 
       <SessionHistory />
+
+      {/* Live streaming result — renders progressively as SSE events arrive */}
+      {streamEntry && (
+        <div className="result-card result-card-streaming">
+          <StageIndicator stages={streamStages} />
+          {streamEntry.note && <p className="note-text">{streamEntry.note}</p>}
+          {(streamEntry.agent_errors?.length ?? 0) > 0 && (
+            <AgentWarnings errors={streamEntry.agent_errors!} />
+          )}
+          {streamEntry.r2 && <R2Section r2={streamEntry.r2} />}
+          {streamEntry.consensus != null && (
+            <ConsensusBar data={streamEntry as OrchestratorResponse} />
+          )}
+          {streamEntry.dissent && <DissentSection dissent={streamEntry.dissent} />}
+          {streamEntry.ncg_benchmark && <NcgSection ncg={streamEntry.ncg_benchmark} />}
+          {streamEntry.responses && Object.keys(streamEntry.responses).length > 0 && (
+            <AgentResponses
+              responses={streamEntry.responses}
+              errorAgents={new Set((streamEntry.agent_errors ?? []).map((e) => e.agent))}
+            />
+          )}
+        </div>
+      )}
 
       {history.map((entry, idx) => {
         const agentErrors = entry.agent_errors ?? [];

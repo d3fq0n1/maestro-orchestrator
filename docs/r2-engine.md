@@ -106,7 +106,7 @@ See [`self-improvement-pipeline.md`](./self-improvement-pipeline.md) for the com
   "session_id": "sess-abc-123",
   "prompt": "What is the role of dissent in democracy?",
   "consensus": "Synthesized Answer: ...",
-  "agents_agreed": ["Sol", "Aria", "Prism"],
+  "agents_agreed": ["GPT-4o", "Claude Sonnet 4.6", "Gemini 2.5 Flash"],
   "score": {
     "grade": "acceptable",
     "confidence_score": 0.72,
@@ -116,7 +116,7 @@ See [`self-improvement-pipeline.md`](./self-improvement-pipeline.md) for the com
     "silent_collapse": false,
     "compression_alert": false,
     "has_outliers": true,
-    "flags": ["Outlier agents detected: Prism"]
+    "flags": ["Outlier agents detected: Gemini 2.5 Flash"]
   },
   "improvement_signals": [
     {
