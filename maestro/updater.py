@@ -51,15 +51,16 @@ def _sync_remote_url() -> None:
         _run(["git", "remote", "set-url", "origin", url])
 
 
-def get_remote_commit(branch: str | None = None) -> str:
-    """Fetch and return the latest remote commit hash for the branch."""
+def get_remote_commit(branch: str | None = None) -> tuple[str, str]:
+    """Fetch and return (remote_commit, error_message). Error is empty on success."""
     _sync_remote_url()
     branch = branch or os.environ.get("MAESTRO_UPDATE_BRANCH") or get_current_branch()
     fetch = _run(["git", "fetch", "origin", branch])
     if fetch.returncode != 0:
-        return ""
+        err = fetch.stderr.strip() or "git fetch failed"
+        return "", err
     result = _run(["git", "rev-parse", f"origin/{branch}"])
-    return result.stdout.strip() if result.returncode == 0 else ""
+    return (result.stdout.strip() if result.returncode == 0 else ""), ""
 
 
 def get_commit_log(local: str, remote: str) -> list[str]:
@@ -85,14 +86,16 @@ def check_for_updates(branch: str | None = None) -> dict:
     """
     branch = branch or os.environ.get("MAESTRO_UPDATE_BRANCH") or get_current_branch()
     local = get_local_commit()
-    remote = get_remote_commit(branch)
+    remote, fetch_err = get_remote_commit(branch)
 
     if not local or not remote:
         has_remote_configured = bool(os.environ.get("MAESTRO_UPDATE_REMOTE", "").strip())
-        if has_remote_configured:
-            msg = "Could not reach the remote repository."
+        if not has_remote_configured:
+            msg = "No remote configured. Set your repository URL above."
+        elif fetch_err:
+            msg = fetch_err
         else:
-            msg = "No remote configured. Set MAESTRO_UPDATE_REMOTE in your environment or docker-compose.yml."
+            msg = "Could not determine remote commit."
         return {
             "available": False,
             "local_commit": local[:8] if local else "",
