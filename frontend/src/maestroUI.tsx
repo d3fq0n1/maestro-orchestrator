@@ -591,7 +591,7 @@ function ApiKeySettings({ visible, onClose }: { visible: boolean; onClose: () =>
   );
 }
 
-/* ── Update Banner ────────────────────────────────────────────── */
+/* ── Update Panel ─────────────────────────────────────────────── */
 
 interface UpdateInfo {
   available: boolean;
@@ -602,94 +602,140 @@ interface UpdateInfo {
   error?: string;
 }
 
-function UpdateBanner() {
+function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const [info, setInfo] = useState<UpdateInfo | null>(null);
-  const [dismissed, setDismissed] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const checkForUpdates = async () => {
+    setChecking(true);
+    setError(null);
+    setApplied(null);
+    try {
+      const res = await fetch("/api/update/check");
+      if (res.ok) {
+        const data: UpdateInfo = await res.json();
+        setInfo(data);
+        if (data.error) setError(data.error);
+      } else {
+        setError("Failed to reach update server.");
+      }
+    } catch {
+      setError("Network error checking for updates.");
+    }
+    setChecking(false);
+  };
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/update/check");
-        if (res.ok) {
-          const data: UpdateInfo = await res.json();
-          if (data.available) setInfo(data);
-        }
-      } catch { /* ignore */ }
-    })();
-  }, []);
-
-  if (!info || dismissed) return null;
+    if (visible) checkForUpdates();
+  }, [visible]);
 
   const handleApply = async () => {
     setApplying(true);
+    setError(null);
     try {
       const res = await fetch("/api/update/apply", { method: "POST" });
       if (res.ok) {
         const result = await res.json();
         if (result.success) {
           setApplied(result.message);
+          setInfo(null);
         } else {
-          setApplied(`Failed: ${result.message}`);
+          setError(`Update failed: ${result.message}`);
         }
       }
     } catch {
-      setApplied("Update request failed.");
+      setError("Network error applying update.");
     }
     setApplying(false);
   };
 
-  const count = info.new_commits.length;
-
-  if (applied) {
-    return (
-      <div className="update-banner update-banner-done">
-        <span className="update-banner-text">{applied}</span>
-        <span className="update-banner-hint">Restart the server to use the new version.</span>
-        <button className="toggle-btn update-dismiss-btn" onClick={() => setDismissed(true)}>
-          Dismiss
-        </button>
-      </div>
-    );
-  }
+  if (!visible) return null;
 
   return (
-    <div className="update-banner">
-      <div className="update-banner-row">
-        <span className="update-banner-text">
-          Update available: {count} new commit{count !== 1 ? "s" : ""} on <code>{info.branch}</code>
-        </span>
-        <span className="update-banner-commits">
-          {info.local_commit} &rarr; {info.remote_commit}
-        </span>
-        <div className="update-banner-actions">
-          <button className="toggle-btn" onClick={() => setExpanded(!expanded)}>
-            {expanded ? "Hide" : "Details"}
-          </button>
-          <button
-            className="submit-btn update-apply-btn"
-            onClick={handleApply}
-            disabled={applying}
-          >
-            {applying ? "Updating..." : "Update now"}
-          </button>
-          <button className="toggle-btn update-dismiss-btn" onClick={() => setDismissed(true)}>
-            Dismiss
-          </button>
+    <div className="settings-overlay" onClick={onClose}>
+      <div className="settings-panel update-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="settings-header">
+          <h2>System Update</h2>
+          <div className="settings-header-actions">
+            <button
+              className="toggle-btn"
+              onClick={checkForUpdates}
+              disabled={checking}
+            >
+              {checking ? "Checking..." : "Check again"}
+            </button>
+            <button className="settings-close" onClick={onClose} aria-label="Close">
+              x
+            </button>
+          </div>
         </div>
-      </div>
-      {expanded && info.new_commits.length > 0 && (
-        <div className="update-commit-list">
-          {info.new_commits.slice(0, 15).map((c, i) => (
-            <div key={i} className="update-commit-item"><code>{c}</code></div>
-          ))}
-          {info.new_commits.length > 15 && (
-            <div className="update-commit-item muted">... and {info.new_commits.length - 15} more</div>
+
+        <div className="settings-body">
+          {error && <p className="update-error">{error}</p>}
+
+          {applied && (
+            <div className="update-result-card update-result-success">
+              <p className="update-result-text">{applied}</p>
+              <p className="muted">Restart the server to use the new version.</p>
+            </div>
+          )}
+
+          {checking && !info && (
+            <p className="muted">Checking for updates...</p>
+          )}
+
+          {info && !info.available && !applied && (
+            <div className="update-result-card update-result-current">
+              <p className="update-result-text">You're up to date</p>
+              <p className="muted">
+                Branch: <code>{info.branch}</code> &nbsp; Commit: <code>{info.local_commit}</code>
+              </p>
+            </div>
+          )}
+
+          {info && info.available && (
+            <div className="update-result-card update-result-available">
+              <p className="update-result-text">
+                {info.new_commits.length} new commit{info.new_commits.length !== 1 ? "s" : ""} available
+              </p>
+              <p className="muted">
+                <code>{info.local_commit}</code> &rarr; <code>{info.remote_commit}</code>
+                &nbsp; on <code>{info.branch}</code>
+              </p>
+
+              {info.new_commits.length > 0 && (
+                <div className="update-commit-list">
+                  {info.new_commits.slice(0, 20).map((c, i) => (
+                    <div key={i} className="update-commit-item"><code>{c}</code></div>
+                  ))}
+                  {info.new_commits.length > 20 && (
+                    <div className="update-commit-item muted">
+                      ... and {info.new_commits.length - 20} more
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                className="submit-btn update-apply-btn"
+                onClick={handleApply}
+                disabled={applying}
+                style={{ marginTop: "0.75rem" }}
+              >
+                {applying ? "Updating..." : "Update now"}
+              </button>
+            </div>
           )}
         </div>
-      )}
+
+        <p className="settings-footer">
+          Updates pull the latest code from the remote repository.
+          Restart the server after updating.
+        </p>
+      </div>
     </div>
   );
 }
@@ -701,6 +747,7 @@ export default function MaestroUI() {
   const [history, setHistory] = useState<OrchestratorResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [updateOpen, setUpdateOpen] = useState(false);
 
   // Streaming state: the in-progress result being built up from SSE events
   const [streamEntry, setStreamEntry] = useState<Partial<OrchestratorResponse> | null>(null);
@@ -896,16 +943,25 @@ export default function MaestroUI() {
       <header className="maestro-header">
         <h1>Maestro-Orchestrator</h1>
         <span className="version">v0.5.0</span>
-        <button
-          className="toggle-btn settings-btn"
-          onClick={() => setSettingsOpen(true)}
-          title="API Key Settings"
-        >
-          Settings
-        </button>
+        <div className="header-actions">
+          <button
+            className="toggle-btn settings-btn"
+            onClick={() => setUpdateOpen(true)}
+            title="Check for updates"
+          >
+            Update
+          </button>
+          <button
+            className="toggle-btn settings-btn"
+            onClick={() => setSettingsOpen(true)}
+            title="API Key Settings"
+          >
+            Settings
+          </button>
+        </div>
       </header>
 
-      <UpdateBanner />
+      <UpdatePanel visible={updateOpen} onClose={() => setUpdateOpen(false)} />
       <ApiKeySettings visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <div className="prompt-area">
