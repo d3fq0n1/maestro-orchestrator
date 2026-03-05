@@ -1,7 +1,7 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v0.4.1
-**Last Updated:** 2026-03-04
+**Current Version:** v0.5.0
+**Last Updated:** 2026-03-05
 **Maintainer:** defcon
 
 ---
@@ -32,6 +32,7 @@
 - **MAGI Automation Layer** -- Opt-in auto-apply for validated low-risk proposals via `MAESTRO_AUTO_INJECT=true`; category whitelist, bounds enforcement, rate limiting, post-injection smoke test with automatic rollback
 - **Model Updates (v0.4)** -- All four council agents updated to current-generation models (gpt-4o, claude-sonnet-4-6, gemini-2.0-flash, llama-3.3-70b-instruct); NCG headless generators updated (gpt-4o-mini, claude-haiku-4-5-20251001)
 - **Comprehensive Error Handling (v0.4)** -- All agents, orchestrator, API endpoints, and session/R2 persistence wrapped with typed exception handlers; no silent failures anywhere in the pipeline
+- **Auto-Updater (v0.5)** -- Built-in update system that checks the remote repo for new commits and pulls changes in-place; available via `/update` CLI command, `make update`, and optional startup notification (`MAESTRO_AUTO_UPDATE=1`); stashes local changes before pulling, supports Docker rebuild
 
 ---
 

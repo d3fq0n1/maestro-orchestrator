@@ -1,4 +1,4 @@
-.PHONY: up down build logs status clean dev setup help
+.PHONY: up down build logs status clean dev setup update help
 
 # Default target
 help:
@@ -13,6 +13,7 @@ help:
 	@echo "  make logs     Tail container logs"
 	@echo "  make status   Show container and health status"
 	@echo "  make clean    Stop container and remove volumes"
+	@echo "  make update   Pull latest changes and rebuild"
 	@echo "  make dev      Start local dev servers (no Docker)"
 	@echo ""
 
@@ -53,6 +54,16 @@ clean:
 	@echo "This will delete all sessions, R2 data, and saved API keys."
 	@read -p "  Continue? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
 	docker compose down -v
+
+# Pull latest changes and rebuild
+update:
+	@echo "  Pulling latest changes ..."
+	git pull origin $$(git rev-parse --abbrev-ref HEAD)
+	@echo "  Rebuilding and restarting ..."
+	docker compose up -d --build
+	@echo ""
+	@echo "  Update complete!"
+	@echo ""
 
 # Local development (no Docker)
 dev:
