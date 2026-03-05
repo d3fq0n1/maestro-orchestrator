@@ -36,6 +36,7 @@ After initial setup, use `docker compose up -d` / `docker compose down` to start
 | Container status | `make status` | `docker compose ps` |
 | Rebuild (no cache) | `make build` | `docker compose build --no-cache` |
 | Remove all data | `make clean` | `docker compose down -v` |
+| Update to latest | `make update` | `git pull && docker compose up -d --build` |
 | Local dev (no Docker) | `make dev` | `python setup.py --dev` |
 
 ### Health Check
@@ -161,6 +162,30 @@ Ensure proper firewall rules are in place for ports `8000` (API) and `80/443` (f
 - Monitor API rate limits from OpenAI / Claude / Gemini
 - Rotate API keys securely and store them in `.env`
 - Use `make build` (or `docker compose build --no-cache`) if frontend isn't updating
+
+---
+
+## Updating
+
+Maestro includes a built-in auto-updater so you don't need to re-clone the repo.
+
+### From the CLI
+
+```
+maestro> /update
+```
+
+This checks the remote for new commits, shows you what changed, and asks before applying.
+
+### From the shell
+
+```bash
+make update          # pulls latest + rebuilds Docker
+```
+
+### Automatic startup check
+
+Set `MAESTRO_AUTO_UPDATE=1` in your environment (or `.env`) to get a notification on startup when new commits are available. This is non-blocking -- it only prints a notice, it won't apply changes without your confirmation.
 
 ---
 

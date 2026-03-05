@@ -93,6 +93,7 @@ def _print_banner():
     print("    /improve    — run a self-improvement cycle")
     print("    /introspect — analyze code for optimization targets")
     print("    /cycles     — show recent improvement cycles")
+    print("    /update     — check for and apply updates")
     print("    /help       — show this help text")
     print("    /quit       — exit the CLI")
     print()
@@ -372,6 +373,80 @@ def _show_improvement_cycles():
 
 
 # ---------------------------------------------------------------------------
+# Auto-update command
+# ---------------------------------------------------------------------------
+
+def _run_update():
+    """Check for updates and optionally apply them."""
+    from maestro.updater import check_for_updates, apply_update
+
+    print()
+    print(SEPARATOR)
+    print("  Auto-Updater")
+    print(SEPARATOR)
+    print("  Checking for updates ...")
+    print()
+
+    try:
+        info = check_for_updates()
+    except Exception as e:
+        print(f"  [ERROR] Update check failed: {e}")
+        print()
+        print(SEPARATOR)
+        print()
+        return
+
+    if info.get("error"):
+        print(f"  {info['error']}")
+        print()
+        print(SEPARATOR)
+        print()
+        return
+
+    if not info["available"]:
+        print(f"  Already up to date ({info['local_commit']} on {info['branch']}).")
+        print()
+        print(SEPARATOR)
+        print()
+        return
+
+    commits = info.get("new_commits", [])
+    print(f"  {len(commits)} new commit{'s' if len(commits) != 1 else ''} available on {info['branch']}:")
+    print(f"  Local: {info['local_commit']}  ->  Remote: {info['remote_commit']}")
+    print()
+    for c in commits[:10]:
+        print(f"    {c}")
+    if len(commits) > 10:
+        print(f"    ... and {len(commits) - 10} more")
+    print()
+
+    try:
+        answer = input("  Apply update? [Y/n] ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        answer = "n"
+
+    if answer in ("n", "no"):
+        print("  Update skipped.")
+        print()
+        print(SEPARATOR)
+        print()
+        return
+
+    result = apply_update()
+    print(f"  {result['message']}")
+
+    if result["success"] and result["commits_pulled"] > 0:
+        print()
+        print("  Restart Maestro to use the new version:")
+        print("    Docker : make up")
+        print("    Local  : re-run python -m maestro.cli")
+
+    print()
+    print(SEPARATOR)
+    print()
+
+
+# ---------------------------------------------------------------------------
 # Main interactive loop
 # ---------------------------------------------------------------------------
 
@@ -413,6 +488,10 @@ def interactive_loop():
 
         if lower in ("/cycles", "/history"):
             _show_improvement_cycles()
+            continue
+
+        if lower in ("/update", "/upgrade"):
+            _run_update()
             continue
 
         # --- Run orchestration ---

@@ -139,6 +139,13 @@ def main():
         # No TTY (e.g., docker-compose up without -it) -> default to web
         mode = "web"
 
+    # Check for updates on startup (non-blocking, notify-only)
+    try:
+        from maestro.updater import startup_check
+        startup_check()
+    except Exception:
+        pass  # Never block startup due to update check failure
+
     if mode == "cli":
         launch_cli()
     else:
