@@ -628,11 +628,10 @@ code {
   border-left: 3px solid var(--accent);
 }
 
-.update-error {
-  font-size: 0.85rem;
-  color: var(--color-err);
-  margin: 0 0 0.5rem;
+.update-result-error {
+  border-left: 3px solid var(--color-err);
 }
+
 
 .update-apply-btn {
   margin-top: 0;

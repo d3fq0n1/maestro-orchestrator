@@ -16,10 +16,19 @@ async def update_check():
     """Check the remote for new commits."""
     try:
         return check_for_updates()
+    except FileNotFoundError:
+        return {
+            "available": False,
+            "error": "Git is not installed or not in PATH. Install Git to enable updates.",
+            "local_commit": "",
+            "remote_commit": "",
+            "new_commits": [],
+            "branch": "",
+        }
     except Exception as e:
         return {
             "available": False,
-            "error": str(e),
+            "error": f"Update check failed: {e}",
             "local_commit": "",
             "remote_commit": "",
             "new_commits": [],
