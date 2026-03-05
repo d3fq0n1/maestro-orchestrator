@@ -31,6 +31,11 @@ COPY backend/ ./backend/
 # Copy maestro orchestration package (agents, NCG, R2, sessions, etc.)
 COPY maestro/ ./maestro/
 
+# Bake the current git commit into a VERSION file so the auto-updater
+# knows which version is running even without a .git directory.
+ARG GIT_COMMIT=unknown
+RUN echo "$GIT_COMMIT" > VERSION
+
 # Copy unified startup wrapper
 COPY entrypoint.py ./entrypoint.py
 
