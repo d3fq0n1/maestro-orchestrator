@@ -591,6 +591,109 @@ function ApiKeySettings({ visible, onClose }: { visible: boolean; onClose: () =>
   );
 }
 
+/* ── Update Banner ────────────────────────────────────────────── */
+
+interface UpdateInfo {
+  available: boolean;
+  local_commit: string;
+  remote_commit: string;
+  new_commits: string[];
+  branch: string;
+  error?: string;
+}
+
+function UpdateBanner() {
+  const [info, setInfo] = useState<UpdateInfo | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/update/check");
+        if (res.ok) {
+          const data: UpdateInfo = await res.json();
+          if (data.available) setInfo(data);
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  if (!info || dismissed) return null;
+
+  const handleApply = async () => {
+    setApplying(true);
+    try {
+      const res = await fetch("/api/update/apply", { method: "POST" });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success) {
+          setApplied(result.message);
+        } else {
+          setApplied(`Failed: ${result.message}`);
+        }
+      }
+    } catch {
+      setApplied("Update request failed.");
+    }
+    setApplying(false);
+  };
+
+  const count = info.new_commits.length;
+
+  if (applied) {
+    return (
+      <div className="update-banner update-banner-done">
+        <span className="update-banner-text">{applied}</span>
+        <span className="update-banner-hint">Restart the server to use the new version.</span>
+        <button className="toggle-btn update-dismiss-btn" onClick={() => setDismissed(true)}>
+          Dismiss
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="update-banner">
+      <div className="update-banner-row">
+        <span className="update-banner-text">
+          Update available: {count} new commit{count !== 1 ? "s" : ""} on <code>{info.branch}</code>
+        </span>
+        <span className="update-banner-commits">
+          {info.local_commit} &rarr; {info.remote_commit}
+        </span>
+        <div className="update-banner-actions">
+          <button className="toggle-btn" onClick={() => setExpanded(!expanded)}>
+            {expanded ? "Hide" : "Details"}
+          </button>
+          <button
+            className="submit-btn update-apply-btn"
+            onClick={handleApply}
+            disabled={applying}
+          >
+            {applying ? "Updating..." : "Update now"}
+          </button>
+          <button className="toggle-btn update-dismiss-btn" onClick={() => setDismissed(true)}>
+            Dismiss
+          </button>
+        </div>
+      </div>
+      {expanded && info.new_commits.length > 0 && (
+        <div className="update-commit-list">
+          {info.new_commits.slice(0, 15).map((c, i) => (
+            <div key={i} className="update-commit-item"><code>{c}</code></div>
+          ))}
+          {info.new_commits.length > 15 && (
+            <div className="update-commit-item muted">... and {info.new_commits.length - 15} more</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Main ────────────────────────────────────────────────────── */
 
 export default function MaestroUI() {
@@ -792,7 +895,7 @@ export default function MaestroUI() {
     <div className="maestro-root">
       <header className="maestro-header">
         <h1>Maestro-Orchestrator</h1>
-        <span className="version">v0.4.2</span>
+        <span className="version">v0.5.0</span>
         <button
           className="toggle-btn settings-btn"
           onClick={() => setSettingsOpen(true)}
@@ -802,6 +905,7 @@ export default function MaestroUI() {
         </button>
       </header>
 
+      <UpdateBanner />
       <ApiKeySettings visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <div className="prompt-area">

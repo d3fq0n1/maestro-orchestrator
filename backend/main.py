@@ -9,6 +9,7 @@ from maestro.api_sessions import router as sessions_router
 from maestro.api_magi import router as magi_router
 from maestro.api_keys import router as keys_router
 from maestro.api_self_improve import router as self_improve_router
+from maestro.api_update import router as update_router
 
 # === Initialize FastAPI app ===
 app = FastAPI()
@@ -31,6 +32,7 @@ app.include_router(sessions_router)
 app.include_router(magi_router)
 app.include_router(keys_router)
 app.include_router(self_improve_router)
+app.include_router(update_router)
 
 # === Health check ===
 @app.get("/api/health")
