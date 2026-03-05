@@ -593,3 +593,78 @@ code {
   padding: 0.35rem 0.8rem;
   font-size: 0.78rem;
 }
+
+/* ── Streaming / Stage indicator ─────────────────────────────── */
+
+.result-card-streaming {
+  border-color: var(--accent);
+  border-style: solid;
+  animation: pulse-border 2s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: var(--accent); }
+  50% { border-color: var(--border); }
+}
+
+.stage-indicator {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.stage-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.stage-running {
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.stage-done {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--color-ok);
+  border: 1px solid transparent;
+}
+
+.stage-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Fade-in for progressively arriving agent cards */
+.agent-card {
+  animation: fade-slide-in 0.3s ease-out;
+}
+
+@keyframes fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -27,13 +27,13 @@ Every agent implements one method: receive a prompt, return a response string. T
 
 ## Current Agent Council
 
-| ID          | Codename   | Backed By                      | Model                               | Description                                  |
-|-------------|------------|--------------------------------|-------------------------------------|----------------------------------------------|
-| `sol`       | Sol        | OpenAI                         | `gpt-4o`                            | Language-first anchor and reasoning engine    |
-| `aria`      | Aria       | Anthropic                      | `claude-sonnet-4-6`                 | Contextual analyst, ethical perspective       |
-| `prism`     | Prism      | Google                         | `models/gemini-2.0-flash`           | Analytical and pattern-focused perspective    |
-| `tempagent` | TempAgent  | OpenRouter                     | `meta-llama/llama-3.3-70b-instruct` | Rotating agent for external model diversity   |
-| `mock`      | MockAgent  | (built-in)                     | n/a                                 | Deterministic responses for testing           |
+| Display Name         | Class      | Provider   | Model                                | Notes                                    |
+|----------------------|------------|------------|--------------------------------------|------------------------------------------|
+| GPT-4o               | `Sol`      | OpenAI     | `gpt-4o`                             | Primary reasoning engine                 |
+| Claude Sonnet 4.6    | `Aria`     | Anthropic  | `claude-sonnet-4-6`                  | Contextual analysis                      |
+| Gemini 2.5 Flash     | `Prism`    | Google     | `models/gemini-2.5-flash`            | Pattern-focused, low latency             |
+| Llama 3.3 70B        | `TempAgent`| OpenRouter | `meta-llama/llama-3.3-70b-instruct`  | Diversity anchor (open-weight model)     |
+| MockAgent            | `MockAgent`| (built-in) | n/a                                 | Deterministic responses for testing      |
 
 ---
 
@@ -52,7 +52,7 @@ Agents that consistently diverge from the council are flagged by R2 as persisten
 
 ## API Behavior
 
-Each agent receives the same prompt via `/api/ask`, responds independently, and contributes to:
+Each agent receives the same prompt via `/api/ask` (or `/api/ask/stream` for SSE streaming), responds independently, and contributes to:
 
 - Raw response log (displayed per-agent in the UI)
 - Semantic quorum evaluation (66% similarity threshold)

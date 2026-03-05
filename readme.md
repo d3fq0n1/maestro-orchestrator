@@ -1,7 +1,7 @@
 
 # Maestro-Orchestrator
 
-![Version](https://img.shields.io/badge/version-v0.4.1-blue)
+![Version](https://img.shields.io/badge/version-v0.4.2-blue)
 ![License](https://img.shields.io/badge/license-Custom%20Open%20Use-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-green)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)
@@ -31,7 +31,8 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 ## Features
 
 - **FastAPI Backend** -- Live orchestration logic via `/api/ask`
-- **Multi-Agent Council** -- Models: Sol (GPT-4o), Aria (Claude Sonnet 4.6), Prism (Gemini 2.0 Flash), TempAgent (Llama 3.3 70B via OpenRouter)
+- **Multi-Agent Council** -- Models: GPT-4o (OpenAI), Claude Sonnet 4.6 (Anthropic), Gemini 2.5 Flash (Google), Llama 3.3 70B (OpenRouter)
+- **SSE Response Streaming** -- Progressive rendering via Server-Sent Events: agent responses appear as they arrive, analysis sections render as each pipeline stage completes
 - **Semantic Quorum Consensus** -- 66% similarity-cluster agreement with dissent preservation
 - **NCG (Novel Content Generation)** -- Headless baseline track that detects silent model collapse and RLHF conformity drift
 - **Dissent Analysis** -- Pairwise semantic distance between agents, outlier detection, and cross-session trend tracking
@@ -119,12 +120,12 @@ Frontend dev server: `http://localhost:5173`
 
 ## Agent Council
 
-| Agent         | Provider                          | Model                           | Description                                   |
-|---------------|-----------------------------------|---------------------------------|-----------------------------------------------|
-| **Sol**       | OpenAI                            | `gpt-4o`                        | Natural language programmer and scribe        |
-| **Aria**      | Anthropic                         | `claude-sonnet-4-6`             | Reflective moral and abstract reasoning agent |
-| **Prism**     | Google                            | `models/gemini-2.0-flash`       | Analytical and pattern-driven                 |
-| **TempAgent** | OpenRouter                        | `meta-llama/llama-3.3-70b-instruct` | Rotating agent for external model testing |
+| Agent              | Provider   | Model                                | Notes                                    |
+|--------------------|------------|--------------------------------------|------------------------------------------|
+| **GPT-4o**         | OpenAI     | `gpt-4o`                             | Primary reasoning engine                 |
+| **Claude Sonnet 4.6** | Anthropic  | `claude-sonnet-4-6`              | Contextual analysis                      |
+| **Gemini 2.5 Flash** | Google   | `models/gemini-2.5-flash`            | Pattern-focused, low latency             |
+| **Llama 3.3 70B** | OpenRouter | `meta-llama/llama-3.3-70b-instruct`  | Diversity anchor (open-weight model)     |
 
 Agent implementations live in `maestro/agents/`. Each agent extends the shared base class in `maestro/agents/base.py` and implements an async `fetch(prompt) -> str` interface.
 
@@ -162,7 +163,7 @@ See [`docs/ncg.md`](./docs/ncg.md) for the full technical specification.
 Returns:
 ```json
 {
-  "responses": { "Sol": "...", "Aria": "...", "Prism": "...", "TempAgent": "..." },
+  "responses": { "GPT-4o": "...", "Claude Sonnet 4.6": "...", "Gemini 2.5 Flash": "...", "Llama 3.3 70B": "..." },
   "session_id": "b04e41f8-...",
   "consensus": "Merged consensus view...",
   "confidence": "High",
@@ -174,6 +175,23 @@ Returns:
   "r2": { "grade": "strong", "confidence_score": 0.82, "flags": [], "signal_count": 0, ... }
 }
 ```
+
+### `POST /api/ask/stream`
+Same request body as `/api/ask`. Returns a **Server-Sent Events** stream with progressive results:
+
+| Event | Description |
+|-------|-------------|
+| `stage` | Pipeline stage update (name + status message) |
+| `agent_response` | Individual agent response as it arrives |
+| `agents_done` | All agents complete |
+| `dissent` | Dissent analysis results |
+| `ncg` | NCG benchmark results |
+| `consensus` | Quorum/consensus results |
+| `r2` | R2 scoring results |
+| `done` | Complete response (same shape as `/api/ask`) |
+| `error` | Error occurred |
+
+The Web-UI uses this endpoint by default for progressive rendering.
 
 ### `GET /api/sessions`
 List stored sessions (most recent first). Supports `limit` and `offset` query params.

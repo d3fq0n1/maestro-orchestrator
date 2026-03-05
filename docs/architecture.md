@@ -7,9 +7,10 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 ## Core Components
 
 ### Orchestrator (Python / FastAPI)
-- Receives user prompts via RESTful POST `/api/ask`
-- Loads active agent configurations (Sol, Aria, Prism, TempAgent)
-- Sends prompts to all agents concurrently via `asyncio.gather(return_exceptions=True)` — a single agent failure never aborts the pipeline
+- Receives user prompts via RESTful POST `/api/ask` (batch) or `/api/ask/stream` (SSE streaming)
+- Loads active agent configurations (GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B)
+- Sends prompts to all agents concurrently — a single agent failure never aborts the pipeline
+- The streaming endpoint (`/api/ask/stream`) yields SSE events as each pipeline stage completes, enabling progressive rendering in the UI
 - Runs the full analysis pipeline on every request:
   1. Dissent analysis (internal agreement between agents)
   2. NCG headless baseline and drift detection
@@ -21,10 +22,10 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 
 ### Agent Layer
 - Each agent is an abstraction wrapping an API model:
-  - **Sol** — OpenAI (`gpt-4o`)
-  - **Aria** — Anthropic (`claude-sonnet-4-6`)
-  - **Prism** — Google (`models/gemini-2.0-flash`)
-  - **TempAgent** — OpenRouter (`meta-llama/llama-3.3-70b-instruct`)
+  - **GPT-4o** — OpenAI (`gpt-4o`)
+  - **Claude Sonnet 4.6** — Anthropic (`claude-sonnet-4-6`)
+  - **Gemini 2.5 Flash** — Google (`models/gemini-2.5-flash`)
+  - **Llama 3.3 70B** — OpenRouter (`meta-llama/llama-3.3-70b-instruct`)
 - All agents implement a shared async `fetch(prompt) -> str` interface
 - Agents receive the same raw prompt; the analysis pipeline measures their actual behavior rather than assigning explicit roles
 - Every agent follows a consistent error handling contract: missing keys, timeouts, connection failures, HTTP errors, and malformed responses all return typed error strings rather than raising — the pipeline is never aborted by a single agent failure
@@ -89,7 +90,7 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 - Can be run standalone (`python -m maestro.cli`) or via the startup wrapper
 
 ### Frontend UI (React + Vite)
-- Calls backend API at `/api/ask`
+- Calls backend API at `/api/ask/stream` for progressive SSE rendering (falls back to `/api/ask` batch endpoint)
 - Displays:
   - R2 session grade with confidence score and flags
   - Quorum bar with agreement ratio and threshold indicator
@@ -179,7 +180,7 @@ setup.sh                      # One-command setup (build, health wait, browser o
               |                     |
          [Web-UI]              [CLI]
               |                     |
-   User -> UI -> /api/ask   User -> maestro> prompt
+   User -> UI -> /api/ask/stream   User -> maestro> prompt
               |                     |
    Orchestrator Foundry      maestro.cli (direct call)
               |                     |
@@ -192,10 +193,10 @@ setup.sh                      # One-command setup (build, health wait, browser o
          |               |               |
    Conversational    NCG Track     Dissent Analysis
    Track             [Headless     (pairwise distance,
-   [Sol, Aria,        Gen]          outlier detection)
-    Prism,               |               |
-    TempAgent]           v               |
-         |         Drift Detector        |
+   [GPT-4o,            Gen]          outlier detection)
+    Claude Sonnet,       |               |
+    Gemini Flash,        v               |
+    Llama 3.3]     Drift Detector        |
          |         (semantic + token)    |
          |               |               |
          +---------------+---------------+
@@ -243,7 +244,8 @@ Self-improvement (on demand):
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/health` | Health check (returns `{"status": "ok"}`) |
-| POST | `/api/ask` | Run orchestration with full analysis pipeline |
+| POST | `/api/ask` | Run orchestration with full analysis pipeline (batch JSON response) |
+| POST | `/api/ask/stream` | Run orchestration with SSE streaming (progressive results) |
 | GET | `/api/sessions` | List session history (paginated) |
 | GET | `/api/sessions/{id}` | Get full session record |
 | GET | `/api/magi` | Run MAGI cross-session analysis |

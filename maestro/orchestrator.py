@@ -1,5 +1,7 @@
 import asyncio
+import json
 import re
+from typing import AsyncGenerator
 
 from maestro.agents.mock import MockAgent
 from maestro.aggregator import aggregate_responses
@@ -244,3 +246,228 @@ def run_orchestration(prompt: str, ncg_enabled: bool = True, session_logging: bo
     return asyncio.run(run_orchestration_async(
         prompt, ncg_enabled=ncg_enabled, session_logging=session_logging,
     ))
+
+
+def _sse_event(event: str, data: dict) -> str:
+    """Format a Server-Sent Events message."""
+    payload = json.dumps(data, default=str)
+    return f"event: {event}\ndata: {payload}\n\n"
+
+
+async def run_orchestration_stream(
+    prompt: str,
+    agents: list = None,
+    ncg_enabled: bool = True,
+    session_logging: bool = True,
+    headless_generator=None,
+) -> AsyncGenerator[str, None]:
+    """
+    Streaming version of run_orchestration_async. Yields SSE events as each
+    pipeline stage completes so the frontend can render progressively.
+
+    Events emitted:
+        stage       - Pipeline stage update (name + status)
+        agents_done - All agent responses collected
+        dissent     - Dissent analysis complete
+        ncg         - NCG benchmark complete
+        consensus   - Aggregation complete (quorum, confidence, consensus text)
+        r2          - R2 scoring complete
+        done        - Final complete response (same shape as the POST endpoint)
+        error       - An error occurred
+    """
+    if agents is None:
+        agents = [
+            MockAgent(name="MockAgent2", response_style="empathic"),
+            MockAgent(name="MockAgent3", response_style="historical"),
+        ]
+
+    try:
+        # --- Stage: Gathering agent responses ---
+        yield _sse_event("stage", {"name": "agents", "status": "running",
+                                   "message": f"Querying {len(agents)} agents..."})
+
+        # Fire off all agents and yield each one as it completes
+        named_responses = {}
+        agent_errors = []
+        pending = {
+            asyncio.ensure_future(agent.fetch(prompt)): agent
+            for agent in agents
+        }
+
+        for coro in asyncio.as_completed(pending):
+            agent = pending[coro]
+            try:
+                response = await coro
+            except BaseException as exc:
+                error_msg = f"[{agent.name}] Unhandled exception: {type(exc).__name__}: {exc}"
+                print(error_msg)
+                response = f"[{agent.name}] Failed"
+                agent_errors.append(_classify_agent_error(agent.name, response))
+
+            named_responses[agent.name] = response
+            if isinstance(response, str) and _is_agent_error(response):
+                if not any(e["agent"] == agent.name for e in agent_errors):
+                    agent_errors.append(_classify_agent_error(agent.name, response))
+
+            print(f"{agent.name} responded: {response}")
+            yield _sse_event("agent_response", {
+                "agent": agent.name,
+                "text": response,
+                "is_error": _is_agent_error(response) if isinstance(response, str) else False,
+                "agents_done": len(named_responses),
+                "agents_total": len(agents),
+            })
+
+        # Separate clean responses
+        clean_responses = {
+            name: resp for name, resp in named_responses.items()
+            if not _is_agent_error(resp)
+        }
+        responses = list(clean_responses.values()) if clean_responses else list(named_responses.values())
+
+        yield _sse_event("agents_done", {
+            "responses": named_responses,
+            "agent_errors": agent_errors,
+        })
+
+        # --- Stage: Dissent analysis ---
+        yield _sse_event("stage", {"name": "dissent", "status": "running",
+                                   "message": "Analyzing dissent..."})
+
+        dissent_analyzer = DissentAnalyzer()
+        dissent_input = clean_responses if clean_responses else named_responses
+        dissent_report = dissent_analyzer.analyze(prompt, dissent_input)
+
+        dissent_data = {
+            "internal_agreement": dissent_report.internal_agreement,
+            "dissent_level": dissent_report.dissent_level,
+            "outlier_agents": dissent_report.outlier_agents,
+            "pairwise": [
+                {"agents": [p.agent_a, p.agent_b], "distance": p.distance}
+                for p in dissent_report.pairwise
+            ],
+            "agent_profiles": [
+                {"agent": p.agent_name, "mean_distance": p.mean_distance_to_others, "is_outlier": p.is_outlier}
+                for p in dissent_report.agent_profiles
+            ],
+        }
+        yield _sse_event("dissent", dissent_data)
+
+        # --- Stage: NCG benchmark ---
+        ncg_drift_report = None
+        ncg_data = None
+        if ncg_enabled:
+            yield _sse_event("stage", {"name": "ncg", "status": "running",
+                                       "message": "Running NCG headless baseline..."})
+            try:
+                generator = headless_generator or MockHeadlessGenerator()
+                ncg_output = generator.generate(prompt)
+                detector = DriftDetector()
+                ncg_drift_report = detector.analyze(
+                    prompt=prompt,
+                    ncg_output=ncg_output,
+                    conversational_outputs=clean_responses if clean_responses else named_responses,
+                    internal_agreement=dissent_report.internal_agreement,
+                )
+                ncg_data = {
+                    "ncg_model": ncg_drift_report.ncg_model,
+                    "mean_drift": ncg_drift_report.mean_semantic_distance,
+                    "max_drift": ncg_drift_report.max_semantic_distance,
+                    "silent_collapse": ncg_drift_report.silent_collapse_detected,
+                    "compression_alert": ncg_drift_report.compression_alert,
+                    "per_agent": [
+                        {"agent": sig.agent_name, "drift": sig.semantic_distance,
+                         "compression": sig.compression_ratio, "tier": sig.analysis_tier}
+                        for sig in ncg_drift_report.agent_signals
+                    ],
+                }
+                yield _sse_event("ncg", ncg_data)
+            except Exception as e:
+                print(f"[NCG Error] {type(e).__name__}: {e} -- skipping NCG track")
+
+        # --- Stage: Aggregation ---
+        yield _sse_event("stage", {"name": "consensus", "status": "running",
+                                   "message": "Synthesizing consensus..."})
+
+        final_output = aggregate_responses(responses, ncg_drift_report, dissent_report)
+
+        yield _sse_event("consensus", {
+            "consensus": final_output.get("consensus"),
+            "confidence": final_output.get("confidence"),
+            "agreement_ratio": final_output.get("agreement_ratio"),
+            "quorum_met": final_output.get("quorum_met"),
+            "quorum_threshold": final_output.get("quorum_threshold"),
+            "note": final_output.get("note"),
+        })
+
+        # --- Stage: Session persistence ---
+        session_id = None
+        if session_logging:
+            try:
+                logger = SessionLogger()
+                record = build_session_record(
+                    prompt=prompt,
+                    agent_responses=named_responses,
+                    final_output=final_output,
+                    ncg_enabled=ncg_enabled,
+                    agents_used=[a.name for a in agents],
+                )
+                logger.save(record)
+                session_id = record.session_id
+            except Exception as e:
+                print(f"[Session Logger Error] {type(e).__name__}: {e}")
+
+        # --- Stage: R2 scoring ---
+        yield _sse_event("stage", {"name": "r2", "status": "running",
+                                   "message": "Scoring with R2 engine..."})
+        try:
+            r2 = R2Engine()
+            r2_score = r2.score_session(
+                dissent_report=dissent_report,
+                drift_report=ncg_drift_report,
+                quorum_confidence=final_output.get("confidence", "Low"),
+            )
+            r2_signals = r2.detect_signals(r2_score, dissent_report, ncg_drift_report)
+            r2_entry = r2.index(
+                session_id=session_id,
+                prompt=prompt,
+                consensus=final_output.get("consensus", ""),
+                agents_agreed=[a.name for a in agents],
+                score=r2_score,
+                improvement_signals=r2_signals,
+                dissent_report=dissent_report,
+                drift_report=ncg_drift_report,
+            )
+
+            r2_data = {
+                "grade": r2_score.grade,
+                "confidence_score": r2_score.confidence_score,
+                "flags": r2_score.flags,
+                "signal_count": len(r2_signals),
+                "entry_id": r2_entry.entry_id,
+            }
+            final_output["r2"] = r2_data
+            yield _sse_event("r2", r2_data)
+        except Exception as e:
+            print(f"[R2 Engine Error] {type(e).__name__}: {e}")
+            final_output["r2"] = None
+
+        # --- Done: emit complete response ---
+        yield _sse_event("done", {
+            "responses": named_responses,
+            "agent_errors": agent_errors,
+            "session_id": session_id,
+            "consensus": final_output.get("consensus"),
+            "confidence": final_output.get("confidence"),
+            "agreement_ratio": final_output.get("agreement_ratio"),
+            "quorum_met": final_output.get("quorum_met"),
+            "quorum_threshold": final_output.get("quorum_threshold"),
+            "dissent": dissent_data,
+            "ncg_benchmark": ncg_data,
+            "r2": final_output.get("r2"),
+            "note": final_output.get("note"),
+        })
+
+    except Exception as e:
+        print(f"[Stream Error] {type(e).__name__}: {e}")
+        yield _sse_event("error", {"error": f"{type(e).__name__}: {str(e)}"})

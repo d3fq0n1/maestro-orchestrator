@@ -4,9 +4,9 @@ from .base import Agent
 
 
 class Sol(Agent):
-    """OpenAI GPT-4o agent. Primary reasoning engine."""
+    """OpenAI GPT-4o agent."""
 
-    name = "Sol"
+    name = "GPT-4o"
     model = "gpt-4o"
 
     def __init__(self, model: str = "gpt-4o", timeout: float = 30, temperature: float = 0.7):
