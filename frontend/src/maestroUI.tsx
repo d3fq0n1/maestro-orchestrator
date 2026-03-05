@@ -644,7 +644,7 @@ export default function MaestroUI() {
     <div className="maestro-root">
       <header className="maestro-header">
         <h1>Maestro-Orchestrator</h1>
-        <span className="version">v0.3</span>
+        <span className="version">v0.4.1</span>
         <button
           className="toggle-btn settings-btn"
           onClick={() => setSettingsOpen(true)}
