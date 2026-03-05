@@ -600,6 +600,7 @@ interface UpdateInfo {
   new_commits: string[];
   branch: string;
   error?: string;
+  git_missing?: boolean;
 }
 
 function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -674,6 +675,15 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
         </div>
 
         <div className="settings-body">
+          {info?.git_missing && (
+            <div className="update-result-card update-result-current">
+              <p className="update-result-text">Updates not available</p>
+              <p className="muted">
+                Git is not installed in this environment. Updates require Git on the server.
+              </p>
+            </div>
+          )}
+
           {error && (
             <div className="update-result-card update-result-error">
               <p className="update-result-text">Unable to check for updates</p>
@@ -692,7 +702,7 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
             <p className="muted">Checking for updates...</p>
           )}
 
-          {info && !info.available && !applied && !error && (
+          {info && !info.git_missing && !info.available && !applied && !error && (
             <div className="update-result-card update-result-current">
               <p className="update-result-text">You're up to date</p>
               <p className="muted">
