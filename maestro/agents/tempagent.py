@@ -34,7 +34,10 @@ class TempAgent(Agent):
                     headers=headers,
                     json={
                         "model": self.model,
-                        "messages": [{"role": "user", "content": prompt}],
+                        "messages": [
+                            {"role": "system", "content": self.build_system_prompt()},
+                            {"role": "user", "content": prompt},
+                        ],
                     },
                     timeout=self.timeout,
                 )
