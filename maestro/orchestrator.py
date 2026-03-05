@@ -289,34 +289,39 @@ async def run_orchestration_stream(
         # Fire off all agents and yield each one as it completes
         named_responses = {}
         agent_errors = []
-        pending = {
+        task_to_agent = {
             asyncio.ensure_future(agent.fetch(prompt)): agent
             for agent in agents
         }
+        pending_tasks = set(task_to_agent.keys())
 
-        for coro in asyncio.as_completed(pending):
-            agent = pending[coro]
-            try:
-                response = await coro
-            except BaseException as exc:
-                error_msg = f"[{agent.name}] Unhandled exception: {type(exc).__name__}: {exc}"
-                print(error_msg)
-                response = f"[{agent.name}] Failed"
-                agent_errors.append(_classify_agent_error(agent.name, response))
-
-            named_responses[agent.name] = response
-            if isinstance(response, str) and _is_agent_error(response):
-                if not any(e["agent"] == agent.name for e in agent_errors):
+        while pending_tasks:
+            done, pending_tasks = await asyncio.wait(
+                pending_tasks, return_when=asyncio.FIRST_COMPLETED,
+            )
+            for task in done:
+                agent = task_to_agent[task]
+                try:
+                    response = task.result()
+                except BaseException as exc:
+                    error_msg = f"[{agent.name}] Unhandled exception: {type(exc).__name__}: {exc}"
+                    print(error_msg)
+                    response = f"[{agent.name}] Failed"
                     agent_errors.append(_classify_agent_error(agent.name, response))
 
-            print(f"{agent.name} responded: {response}")
-            yield _sse_event("agent_response", {
-                "agent": agent.name,
-                "text": response,
-                "is_error": _is_agent_error(response) if isinstance(response, str) else False,
-                "agents_done": len(named_responses),
-                "agents_total": len(agents),
-            })
+                named_responses[agent.name] = response
+                if isinstance(response, str) and _is_agent_error(response):
+                    if not any(e["agent"] == agent.name for e in agent_errors):
+                        agent_errors.append(_classify_agent_error(agent.name, response))
+
+                print(f"{agent.name} responded: {response}")
+                yield _sse_event("agent_response", {
+                    "agent": agent.name,
+                    "text": response,
+                    "is_error": _is_agent_error(response) if isinstance(response, str) else False,
+                    "agents_done": len(named_responses),
+                    "agents_total": len(agents),
+                })
 
         # Separate clean responses
         clean_responses = {
