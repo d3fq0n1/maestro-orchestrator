@@ -1009,7 +1009,7 @@ async function refresh() {
       api('/api/keys').catch(() => null),
     ]);
     setOnline(true);
-    if (sessions) { allSessions = sessions; renderSessions(); }
+    if (sessions) { allSessions = sessions.sessions || []; renderSessions(); }
     if (keys)     { keyData = keys.keys || []; renderKeys(); }
 
     // Compute overview stats from last 20 sessions
