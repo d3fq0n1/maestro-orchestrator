@@ -17,7 +17,14 @@ async def update_check():
     try:
         return check_for_updates()
     except Exception as e:
-        return {"available": False, "error": str(e)}
+        return {
+            "available": False,
+            "error": str(e),
+            "local_commit": "",
+            "remote_commit": "",
+            "new_commits": [],
+            "branch": "",
+        }
 
 
 @router.post("/apply")
