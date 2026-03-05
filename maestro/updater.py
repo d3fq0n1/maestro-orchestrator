@@ -11,6 +11,7 @@ Usage:
 Environment variables:
     MAESTRO_AUTO_UPDATE=1       Enable automatic update check on startup
     MAESTRO_UPDATE_BRANCH=main  Branch to track (default: current branch)
+    MAESTRO_UPDATE_REMOTE=URL   Git remote URL (overrides origin; required in Docker)
 """
 
 import os
@@ -43,8 +44,16 @@ def get_local_commit() -> str:
     return result.stdout.strip() if result.returncode == 0 else ""
 
 
+def _sync_remote_url() -> None:
+    """If MAESTRO_UPDATE_REMOTE is set, point origin at that URL."""
+    url = os.environ.get("MAESTRO_UPDATE_REMOTE", "").strip()
+    if url:
+        _run(["git", "remote", "set-url", "origin", url])
+
+
 def get_remote_commit(branch: str | None = None) -> str:
     """Fetch and return the latest remote commit hash for the branch."""
+    _sync_remote_url()
     branch = branch or os.environ.get("MAESTRO_UPDATE_BRANCH") or get_current_branch()
     fetch = _run(["git", "fetch", "origin", branch])
     if fetch.returncode != 0:
@@ -79,13 +88,18 @@ def check_for_updates(branch: str | None = None) -> dict:
     remote = get_remote_commit(branch)
 
     if not local or not remote:
+        has_remote_configured = bool(os.environ.get("MAESTRO_UPDATE_REMOTE", "").strip())
+        if has_remote_configured:
+            msg = "Could not reach the remote repository."
+        else:
+            msg = "No remote configured. Set MAESTRO_UPDATE_REMOTE in your environment or docker-compose.yml."
         return {
             "available": False,
-            "local_commit": local[:8],
+            "local_commit": local[:8] if local else "",
             "remote_commit": "",
             "new_commits": [],
             "branch": branch,
-            "error": "Could not reach remote repository.",
+            "error": msg,
         }
 
     available = local != remote
