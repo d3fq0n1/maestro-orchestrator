@@ -383,11 +383,15 @@ code {
   padding: 0.5rem;
 }
 
-/* ── Settings button (header) ────────────────────────────────── */
+/* ── Header actions ──────────────────────────────────────────── */
 
-.settings-btn {
+.header-actions {
+  display: flex;
+  gap: 0.4rem;
   margin-left: auto;
 }
+
+.settings-btn {}
 
 /* ── Settings overlay & panel ────────────────────────────────── */
 
@@ -594,65 +598,54 @@ code {
   font-size: 0.78rem;
 }
 
-/* ── Update banner ───────────────────────────────────────────── */
+/* ── Update panel ────────────────────────────────────────────── */
 
-.update-banner {
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  padding: 0.65rem 1rem;
-  margin-bottom: 1.25rem;
-  animation: fade-slide-in 0.3s ease-out;
+.update-panel {
+  max-width: 520px;
 }
 
-.update-banner-done {
-  border-color: var(--color-ok);
-  background: rgba(34, 197, 94, 0.1);
+.update-result-card {
+  background: var(--bg-section);
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
 }
 
-.update-banner-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+.update-result-text {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin: 0 0 0.25rem;
 }
 
-.update-banner-text {
-  font-size: 0.88rem;
-  font-weight: 600;
+.update-result-success {
+  border-left: 3px solid var(--color-ok);
 }
 
-.update-banner-hint {
-  font-size: 0.82rem;
-  color: var(--text-muted);
+.update-result-current {
+  border-left: 3px solid var(--color-ok);
 }
 
-.update-banner-commits {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  font-family: "SF Mono", "Fira Code", monospace;
+.update-result-available {
+  border-left: 3px solid var(--accent);
 }
 
-.update-banner-actions {
-  display: flex;
-  gap: 0.4rem;
-  margin-left: auto;
+.update-error {
+  font-size: 0.85rem;
+  color: var(--color-err);
+  margin: 0 0 0.5rem;
 }
 
 .update-apply-btn {
   margin-top: 0;
-  padding: 0.3rem 0.8rem;
-  font-size: 0.78rem;
-}
-
-.update-dismiss-btn {
-  font-size: 0.72rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.82rem;
 }
 
 .update-commit-list {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--border);
+  max-height: 240px;
+  overflow-y: auto;
 }
 
 .update-commit-item {
