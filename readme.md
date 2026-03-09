@@ -1,7 +1,7 @@
 
 # Maestro-Orchestrator
 
-![Version](https://img.shields.io/badge/version-v0.5-blue)
+![Version](https://img.shields.io/badge/version-v0.6-blue)
 ![License](https://img.shields.io/badge/license-Custom%20Open%20Use-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-green)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)
@@ -45,6 +45,10 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - **Rollback System** -- Append-only ledger with snapshots for every injected change; single-call rollback per injection or per cycle
 - **API Key Management** -- In-app key configuration, validation, and secure `.env` persistence
 - **Session History** -- Persistent JSON logging of every orchestration session
+- **Proof-of-Storage Network** -- Distributed inference across storage nodes with cryptographic challenge-response verification (PoRep, PoRes, PoI) and reputation-based routing
+- **ShardAgent** -- Distributed inference agent that constructs pipelines across storage nodes; same `fetch(prompt) -> str` interface as centralized agents
+- **Modular Plugin Architecture (Mod Manager)** -- Full plugin lifecycle (discover/validate/load/enable/disable/unload/reload) with 8 pipeline hook points, event bus, and controlled access to Maestro internals
+- **Weight State Snapshots** -- Save, restore, diff, and delete system configuration snapshots (plugins, agents, thresholds, runtime config)
 - **React/Vite Frontend** -- Full analysis dashboard (R2 grade, quorum bar, dissent, NCG drift, session browser)
 - **Unified Startup Wrapper** -- Single Docker entrypoint with a GUI that lets you choose Web-UI or CLI mode
 - **Interactive CLI** -- Full orchestration pipeline in the terminal (REPL with agent responses, consensus, dissent, NCG, R2)
@@ -126,6 +130,7 @@ Frontend dev server: `http://localhost:5173`
 | **Claude Sonnet 4.6** | Anthropic  | `claude-sonnet-4-6`              | Contextual analysis                      |
 | **Gemini 2.5 Flash** | Google   | `models/gemini-2.5-flash`            | Pattern-focused, low latency             |
 | **Llama 3.3 70B** | OpenRouter | `meta-llama/llama-3.3-70b-instruct`  | Diversity anchor (open-weight model)     |
+| **ShardNet**       | Distributed| `distributed`                         | Proof-of-storage distributed inference   |
 
 Agent implementations live in `maestro/agents/`. Each agent extends the shared base class in `maestro/agents/base.py` and implements an async `fetch(prompt) -> str` interface.
 
@@ -247,6 +252,78 @@ List all active (non-rolled-back) injections.
 ### `GET /api/self-improve/rollbacks`
 Full rollback history.
 
+### Storage Network
+
+### `POST /api/storage/nodes/register`
+Register a storage node.
+
+### `DELETE /api/storage/nodes/{node_id}`
+Unregister a storage node.
+
+### `GET /api/storage/nodes`
+List all storage nodes with status and reputation.
+
+### `GET /api/storage/nodes/{node_id}`
+Detailed node info with reputation breakdown.
+
+### `POST /api/storage/challenge/{node_id}`
+Trigger a proof-of-storage challenge.
+
+### `GET /api/storage/pipeline/{model_id}`
+View the inference pipeline for a model.
+
+### `GET /api/storage/redundancy/{model_id}`
+Redundancy map (which nodes hold which layers).
+
+### `GET /api/storage/reputation`
+All node reputations.
+
+### Plugin System
+
+### `GET /api/plugins`
+List all plugins with state.
+
+### `POST /api/plugins/discover`
+Scan for new plugins.
+
+### `POST /api/plugins/{plugin_id}/enable`
+Load and enable a plugin.
+
+### `POST /api/plugins/{plugin_id}/disable`
+Disable a plugin.
+
+### `POST /api/plugins/{plugin_id}/reload`
+Hot-reload a plugin.
+
+### `GET /api/plugins/{plugin_id}`
+Detailed plugin info with health check.
+
+### `PUT /api/plugins/{plugin_id}/config`
+Update plugin configuration.
+
+### `GET /api/plugins/health`
+Health check all enabled plugins.
+
+### Weight State Snapshots
+
+### `GET /api/snapshots`
+List saved snapshots.
+
+### `POST /api/snapshots`
+Create a new snapshot.
+
+### `POST /api/snapshots/{id}/restore`
+Restore a snapshot.
+
+### `GET /api/snapshots/{id}`
+Load full snapshot data.
+
+### `DELETE /api/snapshots/{id}`
+Delete a snapshot.
+
+### `GET /api/snapshots/diff/{a}/{b}`
+Compare two snapshots.
+
 ---
 
 ## Documentation
@@ -257,6 +334,8 @@ Full rollback history.
 - [`r2-engine.md`](./docs/r2-engine.md) -- Rapid Recursion & Reinforcement Engine
 - [`magi.md`](./docs/magi.md) -- Meta-Agent Governance and Insight
 - [`self-improvement-pipeline.md`](./docs/self-improvement-pipeline.md) -- Self-improvement pipeline (introspection, proposals, VIR validation, code injection)
+- [`storage-network.md`](./docs/storage-network.md) -- Proof-of-storage distributed inference
+- [`mod-manager.md`](./docs/mod-manager.md) -- Modular plugin architecture
 - [`quorum_logic.md`](./docs/quorum_logic.md) -- Semantic quorum consensus
 - [`deployment.md`](./docs/deployment.md) -- Setup & deployment guide
 - [`troubleshooting.md`](./docs/troubleshooting.md) -- Troubleshooting

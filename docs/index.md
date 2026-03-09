@@ -32,6 +32,12 @@ Semantic similarity clustering for consensus detection with 66% supermajority th
 ### [Self-Improvement Pipeline](self-improvement-pipeline.md)
 Complete rapid recursion loop: MAGI analysis, code introspection (AST + signal mapping), optimization proposals, MAGI_VIR sandboxed validation, and promote/reject lifecycle. All proposals require human approval.
 
+### [Storage Network](storage-network.md)
+Proof-of-storage distributed inference layer. Storage nodes hold weight shards and prove residency through cryptographic challenges. The ShardAgent constructs inference pipelines across nodes. Reputation scoring integrates with R2 for trust management.
+
+### [Mod Manager](mod-manager.md)
+Modular plugin architecture with full lifecycle management (discover, validate, load, enable, disable, unload, hot-reload). 8 pipeline hook points, event bus for inter-plugin communication, weight state snapshots for configuration management.
+
 ---
 
 ## System Design Philosophy
@@ -64,7 +70,13 @@ maestro/                  # Core orchestration package
   api_magi.py             # MAGI analysis REST API
   api_keys.py             # Key management REST API
   api_self_improve.py     # Self-improvement pipeline REST API
-  agents/                 # Agent wrappers (base, sol, aria, prism, tempagent, mock)
+  api_storage.py          # Storage network REST API
+  api_plugins.py          # Plugin system REST API
+  storage_proof.py        # Storage proof engine
+  shard_registry.py       # Storage node registry
+  node_server.py          # Standalone node server (separate process)
+  plugins/                # Plugin system (base protocol, mod manager)
+  agents/                 # Agent wrappers (base, sol, aria, prism, tempagent, shard, mock)
   ncg/                    # Novel Content Generation (generator, drift)
 backend/                  # FastAPI backend
   main.py                 # API entry point, static UI mount
@@ -78,6 +90,9 @@ data/
   r2/                     # R2 Engine ledger entries
   improvements/           # Self-improvement cycle records
   compute_nodes/          # Compute node registry
+  storage_nodes/          # Storage node registry
+  storage_proofs/         # Proof challenge records and reputation data
+  plugins/                # Plugin system (installed, disabled, snapshots)
 docs/                     # Documentation hub
 Dockerfile                # Multi-stage Docker build
 docker-compose.yml        # Docker Compose orchestration
@@ -89,6 +104,8 @@ docker-compose.yml        # Docker Compose orchestration
 ## Additional Documentation
 
 - [Architecture](architecture.md)
+- [Storage Network](storage-network.md)
+- [Mod Manager](mod-manager.md)
 - [Self-Improvement Pipeline](self-improvement-pipeline.md)
 - [Setup & Deployment](deployment.md)
 - [Troubleshooting](troubleshooting.md)

@@ -1,0 +1,22 @@
+{
+    "plugin_id": "defcon.shard-agent",
+    "name": "ShardNet Distributed Agent",
+    "version": "0.1.0",
+    "category": "agent",
+    "description": "Routes inference through the proof-of-storage distributed network",
+    "author": "defcon",
+    "entry_point": "plugin",
+    "class_name": "ShardAgentPlugin",
+    "dependencies": [],
+    "maestro_version_min": "0.6.0",
+    "config_schema": {
+        "type": "object",
+        "properties": {
+            "model_id": {"type": "string", "default": "meta-llama/llama-3.3-70b-instruct"},
+            "timeout_per_hop": {"type": "number", "default": 30.0},
+            "min_reputation": {"type": "number", "default": 0.5, "minimum": 0.0, "maximum": 1.0}
+        }
+    },
+    "permissions": ["network"],
+    "tags": ["distributed", "inference", "storage"]
+}

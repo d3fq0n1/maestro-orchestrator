@@ -328,8 +328,21 @@ The pipeline has **89 tests** across two test files:
 
 ---
 
+## Mod Manager Integration (v0.6)
+
+The injection guard's injectable categories have been extended in v0.6 to support the storage network and plugin system:
+
+- **New injectable categories**: `storage`, `module`
+- **New blocked categories**: `shard_eviction`
+
+This means the self-improvement pipeline can now propose and apply optimizations to storage network thresholds and plugin configurations, subject to the same safety rails (bounds enforcement, rate limiting, smoke test, automatic rollback).
+
+---
+
 ## See Also
 
 - [`magi.md`](./magi.md) — MAGI meta-agent governance
 - [`r2-engine.md`](./r2-engine.md) — R2 Engine (signals that drive the pipeline)
+- [`storage-network.md`](./storage-network.md) — Storage network (R2 node integration)
+- [`mod-manager.md`](./mod-manager.md) — Plugin architecture (pipeline hooks)
 - [`architecture.md`](./architecture.md) — System overview

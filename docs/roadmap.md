@@ -1,6 +1,6 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v0.5
+**Current Version:** v0.6
 **Last Updated:** 2026-03-09
 **Maintainer:** defcon
 
@@ -33,15 +33,20 @@
 - **Model Updates (v0.4)** -- All four council agents updated to current-generation models (gpt-4o, claude-sonnet-4-6, gemini-2.5-flash, llama-3.3-70b-instruct); NCG headless generators updated (gpt-4o-mini, claude-haiku-4-5-20251001)
 - **Comprehensive Error Handling (v0.4)** -- All agents, orchestrator, API endpoints, and session/R2 persistence wrapped with typed exception handlers; no silent failures anywhere in the pipeline
 - **Auto-Updater (v0.5)** -- Built-in update system that checks the remote repo for new commits and pulls changes in-place; available via `/update` CLI command, `make update`, and optional startup notification (`MAESTRO_AUTO_UPDATE=1`); stashes local changes before pulling, supports Docker rebuild
+- **Proof-of-Storage Distributed Inference (v0.6)** -- Full storage network layer: shard registry with topology-aware pipeline construction, cryptographic challenge-response verification (PoRep, PoRes, PoI), reputation scoring integrated with R2, automatic eviction, ShardAgent with failover, standalone node server
+- **Modular Plugin Architecture (v0.6)** -- Mod Manager with full plugin lifecycle (discover/validate/load/enable/disable/unload/reload), 8 pipeline hook points, event bus, PluginContext with controlled access to internals, hook ownership tracking for clean deactivation
+- **Weight State Snapshots (v0.6)** -- Save/restore/diff system configurations (plugins, agents, thresholds, runtime config); snapshot CRUD via REST API and CLI
+- **Remote Compute Node Validation (v0.6)** -- Full MAGI_VIR validation on remote Maestro nodes via the compute node registry and storage network infrastructure
 
 ---
 
-## Active Development (v0.6 Goals)
+## Active Development (v0.7 Goals)
 
 - **Token-Level NCG Analysis** -- Bridge from conversational metadata to logprob-level drift measurement across all providers (OpenAI logprobs integration built, pending for Anthropic/Google)
 - **NCG Feedback Loops** -- Reshape prompts based on drift signals before they reach conversational agents
 - **Reinforcement Loop** -- Feed consensus outcomes into fine-tuning or snapshot logs
-- **Remote Compute Node Validation** -- Full MAGI_VIR validation on remote Maestro nodes via the compute node registry
+- **Plugin Marketplace** -- Curated plugin registry with versioning, dependency resolution, and one-click install
+- **Storage Network Dashboard** -- Real-time visualization of node topology, shard distribution, proof challenge history, and reputation trends
 
 ---
 

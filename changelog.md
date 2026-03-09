@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.6] - 2026-03-09
+
+### Added
+
+- **Proof-of-Storage Distributed Inference** — Full storage network layer: `StorageNodeRegistry` for shard-aware topology, `StorageProofEngine` with three proof types (PoRep byte-range hash, PoRes latency probe, PoI canary inference), `NodeReputation` scoring (0.7×pass_rate + 0.3×R2_contribution), and automatic eviction below threshold.
+- **ShardAgent** (`maestro/agents/shard.py`) — Distributed inference agent implementing the same `Agent.fetch(prompt) -> str` interface. Constructs inference pipelines across storage nodes, routes activation tensors, handles failover to redundant nodes. Follows the agent error handling contract.
+- **Node Server** (`maestro/node_server.py`) — Standalone FastAPI server for storage nodes (separate process from Maestro backend). Endpoints: `/infer`, `/challenge`, `/health`, `/heartbeat`, `/shards`. Configured via `MAESTRO_NODE_ID` and `MAESTRO_SHARD_CONFIG` environment variables.
+- **Modular Plugin Architecture (Mod Manager)** — Full plugin lifecycle: discover, validate, load, enable, disable, unload, hot-reload. Plugin protocol (`MaestroPlugin` ABC), manifest validation, version compatibility checks, dependency resolution, and permission system.
+- **Pipeline Hooks** — 8 hook points in the orchestration pipeline (`pre_orchestration`, `post_agent_response`, `pre_aggregation`, `post_aggregation`, `pre_r2_scoring`, `post_r2_scoring`, `pre_session_save`, `post_session_save`). Hooks run in registration order, support async, and are fail-safe.
+- **Plugin Context** — Controlled access to Maestro internals via `PluginContext` dataclass: registry access, R2 engine, session logger, agent registration, hook registration (with ownership tracking), event bus, and scoped logging.
+- **Event Bus** — Inter-plugin communication via `emit_event()`/`subscribe_event()`. Decoupled pub/sub with error isolation.
+- **Weight State Snapshots** — Save, restore, diff, and delete system configuration snapshots. Captures plugin states, configs, active agents, runtime config overlay.
+- **Storage Network REST API** (`maestro/api_storage.py`) — Endpoints under `/api/storage/`: node registration/unregistration, node listing, challenge triggering, pipeline viewing, redundancy mapping, reputation querying.
+- **Plugin REST API** (`maestro/api_plugins.py`) — Endpoints under `/api/plugins/` and `/api/snapshots/`: plugin lifecycle management, configuration, health checks, snapshot CRUD, snapshot diff.
+- **R2 Node Integration** — `score_node_contribution()` and `detect_node_signals()` methods in R2Engine. New signal types: `node_degradation`, `proof_failure`.
+- **Injection Guard Extensions** — Injectable categories extended with `storage` and `module`. Blocked categories extended with `shard_eviction`.
+- **CLI Commands** — `/nodes` (storage node listing), `/plugins` (plugin management), `/snapshot` (weight state snapshots), `/challenge` (proof-of-storage challenge cycle).
+- **Reference Plugin** — `data/plugins/installed/defcon.shard-agent/` with `manifest.json` and `plugin.py` demonstrating the plugin protocol.
+- **Test Suite** — 96 tests total: 14 orchestrator snapshot tests, 28 mod manager tests, 15 storage proof tests, 14 shard registry tests, 7 shard agent tests, 7 weight snapshot tests, 7 plugin hook tests, plus existing suites.
+- **Documentation** — New `docs/storage-network.md` and `docs/mod-manager.md`. All existing documentation updated for v0.6 consistency.
+
+### Changed
+
+- **Version bumped to v0.6** across readme, frontend, roadmap, release notes, and changelog.
+- `maestro/orchestrator.py` — Added `mod_manager` parameter to `run_orchestration_async()` and `run_orchestration_stream()` with 8 hook call points, all guarded by `if mod_manager:` for backward compatibility.
+- `maestro/injection_guard.py` — Extended injectable and blocked category lists.
+- `maestro/agents/__init__.py` — Added ShardAgent export.
+- `maestro/__init__.py` — Added ModManager export.
+- `maestro/cli.py` — Added `/nodes`, `/plugins`, `/snapshot`, `/challenge` commands.
+- `backend/main.py` — Mounted storage and plugin API routers.
+
+---
+
 ## [0.5] - 2026-03-09
 
 ### Changed

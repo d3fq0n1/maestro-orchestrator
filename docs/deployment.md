@@ -115,6 +115,23 @@ GOOGLE_API_KEY=...
 OPENROUTER_API_KEY=...
 ```
 
+### Storage Network (v0.6)
+
+The following environment variables configure storage nodes (used when running a standalone node server):
+
+```env
+MAESTRO_NODE_ID=gpu-node-1              # Unique node identifier
+MAESTRO_SHARD_CONFIG=data/node_shards.json  # Path to shard declarations
+```
+
+To start a storage node:
+```bash
+MAESTRO_NODE_ID=gpu-node-1 \
+uvicorn maestro.node_server:app --host 0.0.0.0 --port 8001
+```
+
+See [`storage-network.md`](./storage-network.md) for full storage network documentation.
+
 In production, make sure to:
 - Disable `--reload`
 - Set `DEBUG=False`

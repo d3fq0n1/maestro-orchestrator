@@ -420,3 +420,69 @@ class R2Engine:
             except json.JSONDecodeError:
                 continue
         return entries
+
+    # --- Storage node reputation integration ---
+
+    def score_node_contribution(self, node_id: str, session_score: R2Score) -> dict:
+        """
+        Track how a specific node contributed to session quality.
+        Called after every session that used distributed inference.
+        Returns a contribution record that feeds NodeReputation.
+        """
+        # Map session grade to a numeric contribution score
+        grade_scores = {
+            "strong": 1.0,
+            "acceptable": 0.7,
+            "weak": 0.4,
+            "suspicious": 0.1,
+        }
+        contribution = grade_scores.get(session_score.grade, 0.5)
+
+        # Penalize if this session had silent collapse
+        if session_score.silent_collapse:
+            contribution *= 0.5
+
+        return {
+            "node_id": node_id,
+            "session_grade": session_score.grade,
+            "contribution_score": round(contribution, 4),
+            "confidence_score": session_score.confidence_score,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    def detect_node_signals(self, node_reputations: dict) -> list:
+        """
+        Analyze node reputation trends and generate improvement signals.
+        Analogous to detect_signals() but for the storage network.
+        """
+        signals = []
+
+        for node_id, rep in node_reputations.items():
+            rep_score = rep if isinstance(rep, (int, float)) else getattr(rep, 'reputation_score', 1.0)
+            status = "trusted" if isinstance(rep, (int, float)) else getattr(rep, 'status', 'trusted')
+
+            if rep_score < 0.5:
+                signals.append(ImprovementSignal(
+                    signal_type="node_degradation",
+                    severity="warning",
+                    description=(
+                        f"Storage node {node_id} reputation has dropped to "
+                        f"{rep_score:.2f}. Consider investigating or replacing."
+                    ),
+                    affected_agents=[],
+                    data={"node_id": node_id, "reputation": rep_score},
+                ))
+
+            if status == "evicted":
+                signals.append(ImprovementSignal(
+                    signal_type="proof_failure",
+                    severity="critical",
+                    description=(
+                        f"Storage node {node_id} has been evicted from the "
+                        f"network due to repeated proof failures."
+                    ),
+                    affected_agents=[],
+                    data={"node_id": node_id, "status": status},
+                ))
+
+        return signals

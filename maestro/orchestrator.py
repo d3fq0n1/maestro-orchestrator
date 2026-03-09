@@ -1,7 +1,7 @@
 import asyncio
 import json
 import re
-from typing import AsyncGenerator
+from typing import AsyncGenerator, TYPE_CHECKING
 
 from maestro.agents.mock import MockAgent
 from maestro.aggregator import aggregate_responses
@@ -9,6 +9,9 @@ from maestro.dissent import DissentAnalyzer
 from maestro.ncg import MockHeadlessGenerator, DriftDetector
 from maestro.r2 import R2Engine
 from maestro.session import SessionLogger, build_session_record
+
+if TYPE_CHECKING:
+    from maestro.plugins.manager import ModManager
 
 
 # Patterns that indicate an agent returned an error instead of real content.
@@ -58,6 +61,7 @@ async def run_orchestration_async(
     ncg_enabled: bool = True,
     session_logging: bool = True,
     headless_generator=None,
+    mod_manager: 'ModManager' = None,
 ) -> dict:
     """
     Orchestrates multiple agents, aggregates responses, and runs the
@@ -101,6 +105,14 @@ async def run_orchestration_async(
             MockAgent(name="MockAgent3", response_style="historical"),
         ]
 
+    # --- Pre-orchestration hook ---
+    if mod_manager:
+        hook_ctx = await mod_manager.run_hooks("pre_orchestration", {
+            "prompt": prompt, "agents": agents,
+        })
+        prompt = hook_ctx.get("prompt", prompt)
+        agents = hook_ctx.get("agents", agents)
+
     # --- Conversational track ---
     # return_exceptions=True prevents a single agent failure from aborting
     # the gather — each exception is returned as a value and converted to
@@ -124,6 +136,14 @@ async def run_orchestration_async(
             named_responses[agent.name] = response
             if _is_agent_error(response):
                 agent_errors.append(_classify_agent_error(agent.name, response))
+
+    # --- Post-agent-response hooks ---
+    if mod_manager:
+        for agent, response in zip(agents, results):
+            resp_str = named_responses.get(agent.name, "")
+            await mod_manager.run_hooks("post_agent_response", {
+                "agent_name": agent.name, "response": resp_str, "prompt": prompt,
+            })
 
     # Separate clean (non-error) responses for metrics so errored agents
     # don't pollute dissent analysis, NCG drift, or aggregation scores.
@@ -171,9 +191,27 @@ async def run_orchestration_async(
             print(f"[NCG Error] {type(e).__name__}: {e} -- skipping NCG track")
             ncg_drift_report = None
 
+    # --- Pre-aggregation hook ---
+    if mod_manager:
+        hook_ctx = await mod_manager.run_hooks("pre_aggregation", {
+            "responses": responses, "dissent_report": dissent_report,
+        })
+        responses = hook_ctx.get("responses", responses)
+
     # --- Aggregation (now with dissent and NCG data) ---
     print("\nAggregating responses...")
     final_output = aggregate_responses(responses, ncg_drift_report, dissent_report)
+
+    # --- Post-aggregation hook ---
+    if mod_manager:
+        await mod_manager.run_hooks("post_aggregation", {"final_output": final_output})
+
+    # --- Pre-session-save hook ---
+    if mod_manager:
+        await mod_manager.run_hooks("pre_session_save", {
+            "prompt": prompt, "named_responses": named_responses,
+            "final_output": final_output,
+        })
 
     # --- Session persistence ---
     session_id = None
@@ -192,6 +230,16 @@ async def run_orchestration_async(
             print(f"Session logged: {session_id}")
         except Exception as e:
             print(f"[Session Logger Error] {type(e).__name__}: {e} -- session not persisted")
+
+    # --- Post-session-save hook ---
+    if mod_manager:
+        await mod_manager.run_hooks("post_session_save", {"session_id": session_id})
+
+    # --- Pre-R2-scoring hook ---
+    if mod_manager:
+        await mod_manager.run_hooks("pre_r2_scoring", {
+            "dissent_report": dissent_report, "drift_report": ncg_drift_report,
+        })
 
     # --- R2 Engine (score, signal, index) ---
     try:
@@ -228,6 +276,11 @@ async def run_orchestration_async(
             "signal_count": len(r2_signals),
             "entry_id": r2_entry.entry_id,
         }
+        # --- Post-R2-scoring hook ---
+        if mod_manager:
+            await mod_manager.run_hooks("post_r2_scoring", {
+                "r2_score": final_output["r2"], "r2_signals": r2_signals,
+            })
     except Exception as e:
         print(f"[R2 Engine Error] {type(e).__name__}: {e} -- R2 data unavailable for this session")
         final_output["r2"] = None
@@ -260,6 +313,7 @@ async def run_orchestration_stream(
     ncg_enabled: bool = True,
     session_logging: bool = True,
     headless_generator=None,
+    mod_manager: 'ModManager' = None,
 ) -> AsyncGenerator[str, None]:
     """
     Streaming version of run_orchestration_async. Yields SSE events as each
@@ -282,6 +336,14 @@ async def run_orchestration_stream(
         ]
 
     try:
+        # --- Pre-orchestration hook ---
+        if mod_manager:
+            hook_ctx = await mod_manager.run_hooks("pre_orchestration", {
+                "prompt": prompt, "agents": agents,
+            })
+            prompt = hook_ctx.get("prompt", prompt)
+            agents = hook_ctx.get("agents", agents)
+
         # --- Stage: Gathering agent responses ---
         yield _sse_event("stage", {"name": "agents", "status": "running",
                                    "message": f"Querying {len(agents)} agents..."})
@@ -334,6 +396,13 @@ async def run_orchestration_stream(
             "responses": named_responses,
             "agent_errors": agent_errors,
         })
+
+        # --- Post-agent-response hooks ---
+        if mod_manager:
+            for aname, aresp in named_responses.items():
+                await mod_manager.run_hooks("post_agent_response", {
+                    "agent_name": aname, "response": aresp, "prompt": prompt,
+                })
 
         # --- Stage: Dissent analysis ---
         yield _sse_event("stage", {"name": "dissent", "status": "running",
@@ -390,6 +459,13 @@ async def run_orchestration_stream(
             except Exception as e:
                 print(f"[NCG Error] {type(e).__name__}: {e} -- skipping NCG track")
 
+        # --- Pre-aggregation hook ---
+        if mod_manager:
+            hook_ctx = await mod_manager.run_hooks("pre_aggregation", {
+                "responses": responses, "dissent_report": dissent_report,
+            })
+            responses = hook_ctx.get("responses", responses)
+
         # --- Stage: Aggregation ---
         yield _sse_event("stage", {"name": "consensus", "status": "running",
                                    "message": "Synthesizing consensus..."})
@@ -404,6 +480,17 @@ async def run_orchestration_stream(
             "quorum_threshold": final_output.get("quorum_threshold"),
             "note": final_output.get("note"),
         })
+
+        # --- Post-aggregation hook ---
+        if mod_manager:
+            await mod_manager.run_hooks("post_aggregation", {"final_output": final_output})
+
+        # --- Pre-session-save hook ---
+        if mod_manager:
+            await mod_manager.run_hooks("pre_session_save", {
+                "prompt": prompt, "named_responses": named_responses,
+                "final_output": final_output,
+            })
 
         # --- Stage: Session persistence ---
         session_id = None
@@ -421,6 +508,16 @@ async def run_orchestration_stream(
                 session_id = record.session_id
             except Exception as e:
                 print(f"[Session Logger Error] {type(e).__name__}: {e}")
+
+        # --- Post-session-save hook ---
+        if mod_manager:
+            await mod_manager.run_hooks("post_session_save", {"session_id": session_id})
+
+        # --- Pre-R2-scoring hook ---
+        if mod_manager:
+            await mod_manager.run_hooks("pre_r2_scoring", {
+                "dissent_report": dissent_report, "drift_report": ncg_drift_report,
+            })
 
         # --- Stage: R2 scoring ---
         yield _sse_event("stage", {"name": "r2", "status": "running",
@@ -453,6 +550,12 @@ async def run_orchestration_stream(
             }
             final_output["r2"] = r2_data
             yield _sse_event("r2", r2_data)
+
+            # --- Post-R2-scoring hook ---
+            if mod_manager:
+                await mod_manager.run_hooks("post_r2_scoring", {
+                    "r2_score": r2_data, "r2_signals": r2_signals,
+                })
         except Exception as e:
             print(f"[R2 Engine Error] {type(e).__name__}: {e}")
             final_output["r2"] = None
