@@ -114,6 +114,49 @@ class ModManager:
         # External registrations (set by orchestrator at init)
         self._registered_agents: dict[str, object] = {}
 
+        # Hook ownership tracking: {hook_point: [(plugin_id, callback)]}
+        self._hook_owners: dict[str, list[tuple[str, callable]]] = {
+            hp: [] for hp in HOOK_POINTS
+        }
+
+    # ------------------------------------------------------------------
+    # Plugin context callbacks
+    # ------------------------------------------------------------------
+
+    def _get_registry_callback(self):
+        """Return the StorageNodeRegistry if available."""
+        try:
+            from maestro.shard_registry import StorageNodeRegistry
+            return StorageNodeRegistry()
+        except Exception:
+            return None
+
+    def _get_r2_engine_callback(self):
+        """Return an R2Engine instance."""
+        try:
+            from maestro.r2 import R2Engine
+            return R2Engine()
+        except Exception:
+            return None
+
+    def _get_session_logger_callback(self):
+        """Return a SessionLogger instance."""
+        try:
+            from maestro.session import SessionLogger
+            return SessionLogger()
+        except Exception:
+            return None
+
+    def _register_agent(self, agent):
+        """Register an agent provided by a plugin."""
+        name = getattr(agent, 'name', str(agent))
+        self._registered_agents[name] = agent
+
+    def _unregister_agent(self, agent):
+        """Remove a plugin-registered agent."""
+        name = getattr(agent, 'name', str(agent))
+        self._registered_agents.pop(name, None)
+
     # ------------------------------------------------------------------
     # Discovery
     # ------------------------------------------------------------------
@@ -301,11 +344,21 @@ class ModManager:
         plugin_data_dir = self._plugins_dir / "data" / plugin_id
         plugin_data_dir.mkdir(parents=True, exist_ok=True)
 
+        # Build register_hook wrapper that tracks ownership
+        def _plugin_register_hook(hook_point, callback):
+            self.register_hook(hook_point, callback)
+            self._hook_owners.setdefault(hook_point, []).append((plugin_id, callback))
+
         context = PluginContext(
             maestro_version=_MAESTRO_VERSION,
             data_dir=str(plugin_data_dir),
             shared_data_dir=str(self._plugins_dir / "data" / "shared"),
-            register_hook=self.register_hook,
+            get_registry=self._get_registry_callback,
+            get_r2_engine=self._get_r2_engine_callback,
+            get_session_logger=self._get_session_logger_callback,
+            register_agent=self._register_agent,
+            unregister_agent=self._unregister_agent,
+            register_hook=_plugin_register_hook,
             unregister_hook=self.unregister_hook,
             emit_event=self.emit_event,
             subscribe_event=self.subscribe_event,
@@ -648,15 +701,21 @@ class ModManager:
         return context
 
     def _remove_plugin_hooks(self, plugin_id: str):
-        """Remove all hooks registered by a specific plugin.
-
-        Hooks are tracked by the plugin instance — we clear any that
-        belong to the deactivating plugin's module.
-        """
-        # Hooks are callables; we can't easily trace ownership without
-        # extra bookkeeping.  For now, plugins are expected to unregister
-        # their own hooks in deactivate().  This is a safety fallback.
-        pass
+        """Remove all hooks registered by a specific plugin."""
+        for hook_point in HOOK_POINTS:
+            owned = [
+                (pid, cb) for pid, cb in self._hook_owners.get(hook_point, [])
+                if pid == plugin_id
+            ]
+            for pid, cb in owned:
+                try:
+                    self._hooks[hook_point].remove(cb)
+                except ValueError:
+                    pass
+            self._hook_owners[hook_point] = [
+                (pid, cb) for pid, cb in self._hook_owners.get(hook_point, [])
+                if pid != plugin_id
+            ]
 
     # ------------------------------------------------------------------
     # Introspection

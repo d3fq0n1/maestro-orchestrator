@@ -1,6 +1,6 @@
 # Agent Layer -- Maestro-Orchestrator
 
-**Version:** v0.5
+**Version:** v0.6
 **Last Updated:** 2026-03-09
 **Maintainer:** defcon
 
@@ -38,7 +38,9 @@ Every agent implements one method: receive a prompt, return a response string. T
 | Claude Sonnet 4.6    | `Aria`     | Anthropic  | `claude-sonnet-4-6`                  | Contextual analysis                      |
 | Gemini 2.5 Flash     | `Prism`    | Google     | `models/gemini-2.5-flash`            | Pattern-focused, low latency             |
 | Llama 3.3 70B        | `TempAgent`| OpenRouter | `meta-llama/llama-3.3-70b-instruct`  | Diversity anchor (open-weight model)     |
+| ShardNet             | `ShardAgent`| Distributed| `distributed`                       | Proof-of-storage distributed inference   |
 | MockAgent            | `MockAgent`| (built-in) | n/a                                 | Deterministic responses for testing      |
+| MockShardNode        | `MockShardNode`| (built-in)| n/a                              | Mock storage node for testing            |
 
 ---
 
@@ -91,6 +93,32 @@ All agents also use `return_exceptions=True` in `asyncio.gather` (handled in `or
 4. Follow the error handling contract above — return error strings, never raise
 5. Add to `maestro/agents/__init__.py`
 6. Add to the `COUNCIL` list in `backend/orchestrator_foundry.py`
+
+---
+
+## ShardAgent (Distributed Inference)
+
+The ShardAgent is unique among council agents — instead of calling a centralized API, it constructs an inference pipeline across a network of storage nodes, each holding specific weight shards. Compute follows storage.
+
+The orchestrator sees it as just another agent: `fetch(prompt) -> str`. Internally:
+
+1. Queries the `StorageNodeRegistry` for a pipeline covering all model layers
+2. Filters nodes by reputation (minimum threshold, default 0.5)
+3. Sends activation tensors through each pipeline node sequentially
+4. On failure, attempts failover to a redundant node
+5. Returns the decoded response as a string
+
+Error handling follows the same contract as all other agents — typed error strings, never raises.
+
+See [`storage-network.md`](./storage-network.md) for full documentation on the storage network architecture, proof system, and node server.
+
+---
+
+## Plugin-Provided Agents
+
+The Mod Manager allows plugins to register agents dynamically via `PluginContext.register_agent()`. Plugin-registered agents participate in orchestration like any other agent. When the plugin is disabled, its agents are automatically unregistered.
+
+See [`mod-manager.md`](./mod-manager.md) for the plugin protocol and how to write agent plugins.
 
 ---
 
