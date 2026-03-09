@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.4.3] - 2026-03-09
+
+### Added
+
+- **Built-in Auto-Updater**: Check for updates and apply them without re-cloning. Available via Web UI Update panel, REST API (`GET /api/update/check`, `POST /api/update/apply`, `GET/PUT /api/update/remote`), and `make update`.
+- **Update panel in Web UI header**: Persistent panel with check/apply controls, version display, and configurable remote URL.
+- **Docker update support**: Uses `git ls-remote` and `VERSION` file for environments without full git history; git is now included in the Docker image.
+- **`MAESTRO_UPDATE_REMOTE` env var**: Configure the update remote URL for Docker and custom deployments.
+- **System prompts for all agents**: Current date injected into every agent system prompt to prevent models from hallucinating outdated information.
+
+### Fixed
+
+- **Session history blank page**: API response is now correctly unwrapped before rendering in the frontend.
+- **SSE streaming task lookup**: Switched from `asyncio.as_completed` to `asyncio.wait` for reliable task-to-agent mapping during streaming.
+- **Update panel error UX**: Friendly error messages with styled cards instead of raw error strings; graceful handling when git is missing.
+
+### Changed
+
+- Version bumped to v0.4.3 across readme, frontend, roadmap, and changelog.
+
+---
+
 ## [0.4.2] - 2026-03-05
 
 ### Added
