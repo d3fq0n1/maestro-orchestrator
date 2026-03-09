@@ -9,7 +9,7 @@ This system is built for researchers, engineers, and visionaries working at the 
 ## Modules Overview
 
 ### [Agents](agents.md)
-Modular definitions of participating language model agents (GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B). Describes how each agent is invoked, structured, and rotated in a session.
+Modular definitions of participating language model agents (GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B, ShardNet). Describes how each agent is invoked, structured, and rotated in a session.
 
 ### [System Architecture](architecture.md)
 Modular architecture overview covering the orchestration pipeline, agent layer, quorum logic, NCG, R2 Engine, MAGI governance, self-improvement pipeline, CLI, frontend UI, and Docker deployment.
