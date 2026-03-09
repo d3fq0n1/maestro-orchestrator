@@ -24,7 +24,7 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - [Contributing](#contributing)
 - [License](#license)
 - [Author](#author)
-- [Future Work](#future-work)
+- [Roadmap](#roadmap)
 
 ---
 
@@ -159,6 +159,9 @@ See [`docs/ncg.md`](./docs/ncg.md) for the full technical specification.
 ---
 
 ## API Reference
+
+### `GET /api/health`
+Returns `{"status": "ok"}` when the API is ready. Used by Docker HEALTHCHECK and external monitors.
 
 ### `POST /api/ask`
 ```json
@@ -324,6 +327,20 @@ Delete a snapshot.
 ### `GET /api/snapshots/diff/{a}/{b}`
 Compare two snapshots.
 
+### Auto-Updater
+
+### `GET /api/update/check`
+Check if updates are available from the configured remote.
+
+### `POST /api/update/apply`
+Pull latest changes from the remote.
+
+### `GET /api/update/remote`
+Get the configured update remote URL.
+
+### `PUT /api/update/remote`
+Set the update remote URL.
+
 ---
 
 ## Documentation
@@ -340,6 +357,8 @@ Compare two snapshots.
 - [`deployment.md`](./docs/deployment.md) -- Setup & deployment guide
 - [`troubleshooting.md`](./docs/troubleshooting.md) -- Troubleshooting
 - [`ui-guide.md`](./docs/ui-guide.md) -- UI guide
+- [`logging.md`](./docs/logging.md) -- Session logging and persistence
+- [`vision.md`](./docs/vision.md) -- Project vision and design philosophy
 
 ---
 
