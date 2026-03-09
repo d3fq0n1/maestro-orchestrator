@@ -94,6 +94,9 @@ def _print_banner():
     print("    /introspect — analyze code for optimization targets")
     print("    /cycles     — show recent improvement cycles")
     print("    /update     — check for and apply updates")
+    print("    /nodes      — list storage nodes")
+    print("    /plugins    — list loaded plugins")
+    print("    /snapshot   — manage weight state snapshots")
     print("    /help       — show this help text")
     print("    /quit       — exit the CLI")
     print()
@@ -447,6 +450,219 @@ def _run_update():
 
 
 # ---------------------------------------------------------------------------
+# Storage node commands
+# ---------------------------------------------------------------------------
+
+def _show_nodes(args: str = ""):
+    """List or manage storage nodes."""
+    from maestro.shard_registry import StorageNodeRegistry, StorageNode
+
+    parts = args.split() if args else []
+    registry = StorageNodeRegistry()
+
+    if not parts or parts[0] == "list":
+        nodes = registry.list_nodes()
+        print()
+        print(SEPARATOR)
+        print("  Storage Nodes")
+        print(SEPARATOR)
+        if not nodes:
+            print("  No storage nodes registered.")
+        else:
+            print(f"  {'Node ID':<20} {'Host':<20} {'Status':<12} {'Shards':<8} {'Rep':<6}")
+            print(f"  {'─' * 20} {'─' * 20} {'─' * 12} {'─' * 8} {'─' * 6}")
+            for n in nodes:
+                print(f"  {n.node_id:<20} {n.host}:{n.port:<13} {n.status:<12} "
+                      f"{len(n.shards):<8} {n.reputation_score:.2f}")
+        print()
+        print(SEPARATOR)
+        print()
+
+    elif parts[0] == "register" and len(parts) >= 2:
+        host_port = parts[1].split(":")
+        host = host_port[0]
+        port = int(host_port[1]) if len(host_port) > 1 else 8000
+        import uuid
+        node = StorageNode(
+            node_id=f"node-{uuid.uuid4().hex[:8]}",
+            host=host, port=port,
+        )
+        registry.register(node)
+        print(f"  Registered node: {node.node_id} at {host}:{port}")
+
+    elif parts[0] == "remove" and len(parts) >= 2:
+        if registry.unregister(parts[1]):
+            print(f"  Removed node: {parts[1]}")
+        else:
+            print(f"  Node not found: {parts[1]}")
+
+    elif parts[0] == "health":
+        nodes = registry.list_nodes()
+        print()
+        for n in nodes:
+            print(f"  {n.node_id}: status={n.status}, rep={n.reputation_score:.2f}, "
+                  f"latency={n.mean_latency_ms:.1f}ms")
+        print()
+
+    elif parts[0] == "pipeline" and len(parts) >= 2:
+        pipeline = registry.build_inference_pipeline(parts[1])
+        print()
+        if not pipeline:
+            print(f"  No pipeline available for model: {parts[1]}")
+        else:
+            print(f"  Inference pipeline for {parts[1]} ({len(pipeline)} hops):")
+            for i, n in enumerate(pipeline):
+                print(f"    {i + 1}. {n.node_id} ({n.host}:{n.port})")
+        print()
+
+    else:
+        print("  Usage: /nodes [list|register <host:port>|remove <id>|health|pipeline <model>]")
+
+
+# ---------------------------------------------------------------------------
+# Plugin commands
+# ---------------------------------------------------------------------------
+
+def _show_plugins(args: str = ""):
+    """List or manage plugins."""
+    from maestro.plugins.manager import ModManager
+
+    parts = args.split() if args else []
+    manager = ModManager()
+    manager.discover()
+
+    if not parts or parts[0] == "list":
+        plugins = manager.list_plugins()
+        print()
+        print(SEPARATOR)
+        print("  Plugins")
+        print(SEPARATOR)
+        if not plugins:
+            print("  No plugins discovered.")
+        else:
+            print(f"  {'Plugin ID':<30} {'Version':<10} {'Category':<12} {'State':<12}")
+            print(f"  {'─' * 30} {'─' * 10} {'─' * 12} {'─' * 12}")
+            for p in plugins:
+                print(f"  {p['plugin_id']:<30} {p['version']:<10} "
+                      f"{p['category']:<12} {p['state']:<12}")
+        print()
+        print(SEPARATOR)
+        print()
+
+    elif parts[0] == "enable" and len(parts) >= 2:
+        if manager.load(parts[1]) and manager.enable(parts[1]):
+            print(f"  Enabled plugin: {parts[1]}")
+        else:
+            print(f"  Failed to enable plugin: {parts[1]}")
+
+    elif parts[0] == "disable" and len(parts) >= 2:
+        if manager.disable(parts[1]):
+            print(f"  Disabled plugin: {parts[1]}")
+        else:
+            print(f"  Failed to disable plugin: {parts[1]}")
+
+    elif parts[0] == "reload" and len(parts) >= 2:
+        if manager.reload(parts[1]):
+            print(f"  Reloaded plugin: {parts[1]}")
+        else:
+            print(f"  Failed to reload plugin: {parts[1]}")
+
+    elif parts[0] == "health":
+        health = manager.health_check_all()
+        print()
+        for pid, status in health.items():
+            healthy = "OK" if status.get("healthy") else "FAIL"
+            msg = status.get("message", "")
+            print(f"  {pid}: [{healthy}] {msg}")
+        if not health:
+            print("  No enabled plugins to check.")
+        print()
+
+    elif parts[0] == "info" and len(parts) >= 2:
+        info = manager.get_plugin_info(parts[1])
+        if info:
+            print()
+            for k, v in info.items():
+                print(f"  {k}: {v}")
+            print()
+        else:
+            print(f"  Plugin not found: {parts[1]}")
+
+    else:
+        print("  Usage: /plugins [list|enable <id>|disable <id>|reload <id>|health|info <id>]")
+
+
+# ---------------------------------------------------------------------------
+# Snapshot commands
+# ---------------------------------------------------------------------------
+
+def _manage_snapshots(args: str = ""):
+    """Manage weight state snapshots."""
+    from maestro.plugins.manager import ModManager
+
+    parts = args.split() if args else []
+    manager = ModManager()
+
+    if not parts or parts[0] == "list":
+        snapshots = manager.list_snapshots()
+        print()
+        print(SEPARATOR)
+        print("  Weight State Snapshots")
+        print(SEPARATOR)
+        if not snapshots:
+            print("  No snapshots saved.")
+        else:
+            for s in snapshots:
+                print(f"  {s['name']:<20} {s['created_at'][:19]:<22} "
+                      f"plugins: {s['enabled_plugins']}")
+                if s.get("description"):
+                    print(f"    {s['description']}")
+        print()
+        print(SEPARATOR)
+        print()
+
+    elif parts[0] == "save" and len(parts) >= 2:
+        name = parts[1]
+        desc = " ".join(parts[2:]) if len(parts) > 2 else ""
+        snap = manager.save_snapshot(name, desc)
+        print(f"  Snapshot saved: {snap.snapshot_id} ({snap.name})")
+
+    elif parts[0] == "restore" and len(parts) >= 2:
+        # Look up by name or ID
+        snapshots = manager.list_snapshots()
+        target = None
+        for s in snapshots:
+            if s["name"] == parts[1] or s["snapshot_id"] == parts[1]:
+                target = s["snapshot_id"]
+                break
+        if target:
+            if manager.restore_snapshot(target):
+                print(f"  Snapshot restored: {parts[1]}")
+            else:
+                print(f"  Failed to restore snapshot: {parts[1]}")
+        else:
+            print(f"  Snapshot not found: {parts[1]}")
+
+    elif parts[0] == "diff" and len(parts) >= 3:
+        diff = manager.diff_snapshots(parts[1], parts[2])
+        print()
+        if "error" in diff:
+            print(f"  {diff['error']}")
+        else:
+            print(f"  Comparing: {diff['snapshot_a']['name']} vs {diff['snapshot_b']['name']}")
+            if diff.get("plugins_added"):
+                print(f"  Added: {', '.join(diff['plugins_added'])}")
+            if diff.get("plugins_removed"):
+                print(f"  Removed: {', '.join(diff['plugins_removed'])}")
+            if diff.get("config_changes"):
+                print(f"  Config changes: {len(diff['config_changes'])} plugin(s)")
+        print()
+
+    else:
+        print("  Usage: /snapshot [list|save <name> [desc]|restore <name>|diff <a> <b>]")
+
+
+# ---------------------------------------------------------------------------
 # Main interactive loop
 # ---------------------------------------------------------------------------
 
@@ -492,6 +708,29 @@ def interactive_loop():
 
         if lower in ("/update", "/upgrade"):
             _run_update()
+            continue
+
+        if lower.startswith("/nodes"):
+            _show_nodes(user_input[6:].strip())
+            continue
+
+        if lower.startswith("/plugins"):
+            _show_plugins(user_input[8:].strip())
+            continue
+
+        if lower.startswith("/snapshot"):
+            _manage_snapshots(user_input[9:].strip())
+            continue
+
+        if lower.startswith("/challenge"):
+            args = user_input[10:].strip()
+            if args:
+                from maestro.storage_proof import StorageProofEngine
+                engine = StorageProofEngine()
+                challenge = engine.issue_challenge(args, "probe", "latency_probe")
+                print(f"  Challenge issued: {challenge.challenge_id} -> {args}")
+            else:
+                print("  Usage: /challenge <node_id>")
             continue
 
         # --- Run orchestration ---

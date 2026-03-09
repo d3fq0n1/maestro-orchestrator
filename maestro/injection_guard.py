@@ -27,8 +27,8 @@ from maestro.optimization import _THRESHOLD_STRATEGIES, _TEMPERATURE_STRATEGIES
 _DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "data" / "runtime_config.json"
 
 # Categories that may be auto-injected without human review.
-_DEFAULT_INJECTABLE = {"threshold", "agent_config", "token_tuning"}
-_DEFAULT_BLOCKED = {"architecture", "pipeline"}
+_DEFAULT_INJECTABLE = {"threshold", "agent_config", "token_tuning", "storage", "module"}
+_DEFAULT_BLOCKED = {"architecture", "pipeline", "shard_eviction"}
 
 _DEFAULT_MAX_INJECTIONS_PER_HOUR = 5
 _DEFAULT_SMOKE_TEST_MIN_GRADE = "acceptable"
