@@ -1,7 +1,7 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v0.4.3
-**Last Updated:** 2026-03-05
+**Current Version:** v0.5
+**Last Updated:** 2026-03-09
 **Maintainer:** defcon
 
 ---
@@ -36,7 +36,7 @@
 
 ---
 
-## Active Development (v0.5 Goals)
+## Active Development (v0.6 Goals)
 
 - **Token-Level NCG Analysis** -- Bridge from conversational metadata to logprob-level drift measurement across all providers (OpenAI logprobs integration built, pending for Anthropic/Google)
 - **NCG Feedback Loops** -- Reshape prompts based on drift signals before they reach conversational agents

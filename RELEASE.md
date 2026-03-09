@@ -1,38 +1,31 @@
-# Maestro-Orchestrator v0.4.3
+# Maestro-Orchestrator v0.5
 
 **Multi-Agent AI Orchestration with Synthetic Consensus and Dissent**
 
 ---
 
-## What's New in v0.4.3
+## What's New in v0.5
 
-### Built-in Auto-Updater
+### Documentation Overhaul
 
-Stay current without re-cloning. Maestro now ships with a fully integrated update system accessible from both the Web UI and the API.
+All documentation reviewed, corrected, and brought in sync with the current codebase. Version references, agent names, model IDs, API endpoints, and feature descriptions are now consistent across `readme.md`, `docs/`, and the changelog.
 
-- **Update panel in the Web UI header** — check for updates, view available versions, and apply them with a single click
-- **REST API endpoints** — `GET /api/update/check`, `POST /api/update/apply`, `GET/PUT /api/update/remote`
-- **Docker-aware** — uses `git ls-remote` and a `VERSION` file for environments where a full git history isn't available; git is now included in the Docker image
-- **Configurable remote** — set a custom update remote via the `MAESTRO_UPDATE_REMOTE` environment variable or directly from the Update panel
-- **Graceful degradation** — if git is missing or the remote is unreachable, the UI shows friendly error messages instead of crashing
+### Auto-Updater (milestone complete)
 
-### Agent System Prompts
+The built-in update system introduced in v0.4.3 is now a stable, documented feature of the v0.5 baseline:
 
-All four council agents now receive a system prompt with the current date. This prevents models from hallucinating outdated information or behaving as if they are in a prior time period.
-
-### Session History Fix
-
-The session history page no longer renders blank — the API response is now correctly unwrapped before display.
-
-### Streaming Fix
-
-Fixed an issue where SSE streaming could lose track of agent tasks by switching from `asyncio.as_completed` to `asyncio.wait` for reliable task-to-agent mapping.
+- **Web UI Update panel** — check for updates, view available versions, apply with one click
+- **REST API** — `GET /api/update/check`, `POST /api/update/apply`, `GET/PUT /api/update/remote`
+- **CLI** — `/update` command in the interactive REPL
+- **Shell** — `make update` pulls latest and rebuilds Docker
+- **Docker-aware** — uses `git ls-remote` + `VERSION` file where full git history is unavailable
+- **Configurable remote** — `MAESTRO_UPDATE_REMOTE` env var or Update panel setting
 
 ---
 
 ## Highlights from v0.4.x
 
-For users upgrading from v0.3.x, here's what the full v0.4 series brings:
+For users upgrading from v0.3.x, here's what the full v0.4 series brought:
 
 - **SSE Response Streaming** (`/api/ask/stream`) — agent responses render progressively as they arrive
 - **Updated agent models** — GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B
@@ -40,6 +33,7 @@ For users upgrading from v0.3.x, here's what the full v0.4 series brings:
 - **Health endpoint** — `GET /api/health` for monitoring and Docker HEALTHCHECK
 - **Optional `.env`** — configure API keys entirely through the Web UI
 - **Comprehensive error handling** — no silent failures; every agent and API endpoint has typed exception handling
+- **Agent system prompts** — current date injected into every agent system prompt
 
 ---
 
