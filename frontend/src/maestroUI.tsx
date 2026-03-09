@@ -1018,7 +1018,7 @@ export default function MaestroUI() {
     <div className="maestro-root">
       <header className="maestro-header">
         <h1>Maestro-Orchestrator</h1>
-        <span className="version">v0.5.0</span>
+        <span className="version">v0.6.0</span>
         <div className="header-actions">
           <button
             className="toggle-btn settings-btn"
