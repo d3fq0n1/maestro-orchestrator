@@ -1,7 +1,7 @@
 # Quorum Logic – Maestro-Orchestrator
 
-**Version:** v0.4
-**Last Updated:** 2026-03-04
+**Version:** v0.5
+**Last Updated:** 2026-03-09
 **Author:** defcon
 
 Maestro-Orchestrator uses a structured quorum system to synthesize multiple AI model responses into a single representative answer while preserving meaningful dissent.

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5] - 2026-03-09
+
+### Changed
+
+- **Version bumped to v0.5** across readme, frontend, roadmap, release notes, and changelog.
+- **Documentation review**: All docs audited for accuracy — version headers, agent names, model IDs, API endpoint listings, and feature descriptions are now consistent throughout.
+- **Roadmap updated**: Auto-Updater milestone marked complete; v0.5 active development goals promoted to completed milestones section; v0.6 goals outlined.
+
+---
+
 ## [0.4.3] - 2026-03-09
 
 ### Added
