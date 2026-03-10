@@ -1,7 +1,7 @@
 
 # Maestro-Orchestrator
 
-![Version](https://img.shields.io/badge/version-v0.6-blue)
+![Version](https://img.shields.io/badge/version-v0.6.1-blue)
 ![License](https://img.shields.io/badge/license-Custom%20Open%20Use-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-green)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)
@@ -213,8 +213,14 @@ Run MAGI cross-session analysis. Returns confidence trends, agent health, collap
 ### `GET /api/keys`
 List configured API key status (masked values, never exposes raw keys).
 
-### `POST /api/keys/{provider}`
+### `PUT /api/keys/{provider}`
 Set or update an API key for a provider.
+
+### `DELETE /api/keys/{provider}`
+Remove a provider's API key.
+
+### `POST /api/keys/{provider}/validate`
+Validate a single provider's API key against its service endpoint.
 
 ### `POST /api/keys/validate`
 Validate all configured API keys against their respective endpoints.

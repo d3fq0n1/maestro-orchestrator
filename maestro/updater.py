@@ -332,13 +332,13 @@ def _apply_docker_mode(branch: str, rebuild: bool) -> dict:
             if log.returncode == 0:
                 new_commits = [l for l in log.stdout.strip().splitlines() if l]
 
-        # Copy updated directories into the running app
+        # Copy updated directories into the running app, preserving
+        # user-created files like .env (which stores API keys).
         for d in _SYNC_DIRS:
             src = os.path.join(tmp, d)
             dst = os.path.join(_PROJECT_ROOT, d)
             if os.path.isdir(src):
-                shutil.rmtree(dst, ignore_errors=True)
-                shutil.copytree(src, dst)
+                _sync_directory(src, dst)
 
         # Update VERSION file so next check knows where we are
         with open(_VERSION_FILE, "w") as f:
@@ -367,6 +367,26 @@ def _apply_docker_mode(branch: str, rebuild: bool) -> dict:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
+
+# Files in synced directories that must survive an update.
+_PRESERVE_PATTERNS = {".env", ".env.local"}
+
+
+def _sync_directory(src: str, dst: str) -> None:
+    """Replace *dst* with *src*, preserving user-created files like `.env`."""
+    preserved: dict[str, bytes] = {}
+    if os.path.isdir(dst):
+        for name in _PRESERVE_PATTERNS:
+            path = os.path.join(dst, name)
+            if os.path.isfile(path):
+                with open(path, "rb") as f:
+                    preserved[name] = f.read()
+        shutil.rmtree(dst, ignore_errors=True)
+    shutil.copytree(src, dst)
+    for name, data in preserved.items():
+        with open(os.path.join(dst, name), "wb") as f:
+            f.write(data)
+
 
 def _maybe_rebuild(rebuild: bool, new_commits: list) -> bool:
     if not rebuild or not new_commits:

@@ -1,7 +1,7 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v0.6
-**Last Updated:** 2026-03-09
+**Current Version:** v0.6.1
+**Last Updated:** 2026-03-10
 **Maintainer:** defcon
 
 ---

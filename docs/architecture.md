@@ -303,7 +303,9 @@ Plugin system (when mod_manager is active):
 | GET | `/api/sessions/{id}` | Get full session record |
 | GET | `/api/magi` | Run MAGI cross-session analysis |
 | GET | `/api/keys` | List configured API key status |
-| POST | `/api/keys/{provider}` | Set or update an API key |
+| PUT | `/api/keys/{provider}` | Set or update an API key |
+| DELETE | `/api/keys/{provider}` | Remove a provider's API key |
+| POST | `/api/keys/{provider}/validate` | Validate a single provider's key |
 | POST | `/api/keys/validate` | Validate all configured keys |
 | GET | `/api/self-improve` | Self-improvement status and recent cycles |
 | POST | `/api/self-improve/cycle` | Trigger a full self-improvement cycle |

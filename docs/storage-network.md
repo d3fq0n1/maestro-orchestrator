@@ -1,7 +1,7 @@
 # Storage Network — Proof-of-Storage Distributed Inference
 
-**Version:** v0.6
-**Last Updated:** 2026-03-09
+**Version:** v0.6.1
+**Last Updated:** 2026-03-10
 **Maintainer:** defcon
 
 The storage network is Maestro's distributed inference layer. Instead of routing prompts to centralized API endpoints, the ShardAgent constructs inference pipelines across a network of storage nodes, each holding specific weight shards. Compute follows storage — the node that holds the weights runs the forward pass.
