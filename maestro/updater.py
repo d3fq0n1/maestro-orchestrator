@@ -385,21 +385,52 @@ def _apply_docker_mode(branch: str, rebuild: bool) -> dict:
 # Files in synced directories that must survive an update.
 _PRESERVE_PATTERNS = {".env", ".env.local"}
 
+# Subdirectories that only exist in the Docker image (created during the
+# multi-stage build) and are NOT present in the git repository.  These must
+# be preserved across in-app updates or the frontend will be lost.
+_PRESERVE_DIRS = {"frontend/dist"}
+
 
 def _sync_directory(src: str, dst: str) -> None:
-    """Replace *dst* with *src*, preserving user-created files like `.env`."""
-    preserved: dict[str, bytes] = {}
+    """Replace *dst* with *src*, preserving user-created files like `.env`
+    and build-only directories like ``frontend/dist``."""
+    preserved_files: dict[str, bytes] = {}
+    preserved_dirs: dict[str, str] = {}
+
     if os.path.isdir(dst):
+        # Preserve dot-env files
         for name in _PRESERVE_PATTERNS:
             path = os.path.join(dst, name)
             if os.path.isfile(path):
                 with open(path, "rb") as f:
-                    preserved[name] = f.read()
+                    preserved_files[name] = f.read()
+
+        # Preserve build-only directories by moving them to a temp location
+        for reldir in _PRESERVE_DIRS:
+            dirpath = os.path.join(dst, reldir)
+            if os.path.isdir(dirpath):
+                tmp = tempfile.mkdtemp(prefix="maestro_preserve_")
+                saved = os.path.join(tmp, os.path.basename(reldir))
+                shutil.move(dirpath, saved)
+                preserved_dirs[reldir] = saved
+
         shutil.rmtree(dst, ignore_errors=True)
+
     shutil.copytree(src, dst, dirs_exist_ok=True)
-    for name, data in preserved.items():
+
+    # Restore preserved dot-env files
+    for name, data in preserved_files.items():
         with open(os.path.join(dst, name), "wb") as f:
             f.write(data)
+
+    # Restore preserved build-only directories
+    for reldir, saved_path in preserved_dirs.items():
+        target = os.path.join(dst, reldir)
+        if not os.path.isdir(target):
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            shutil.move(saved_path, target)
+        # Clean up the temp directory
+        shutil.rmtree(os.path.dirname(saved_path), ignore_errors=True)
 
 
 def _maybe_rebuild(rebuild: bool, new_commits: list) -> bool:

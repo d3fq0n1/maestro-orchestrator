@@ -109,3 +109,13 @@ if ui_path.exists():
     app.mount("/", StaticFiles(directory=ui_path, html=True), name="static")
 else:
     print(f"[Maestro] UI build not found at {ui_path} -- running in API-only mode")
+
+    @app.get("/")
+    async def fallback_root():
+        return {
+            "status": "api-only",
+            "message": "Maestro-Orchestrator is running but the UI build is missing. "
+                       "Rebuild the Docker image to restore the frontend, or use the API directly.",
+            "health": "/api/health",
+            "ask": "/api/ask",
+        }
