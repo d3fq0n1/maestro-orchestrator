@@ -23,6 +23,14 @@ import threading
 import time
 import webbrowser
 
+# Force UTF-8 output on Windows (winget/Microsoft Store Python defaults to the
+# system code page, e.g. cp1252, which cannot encode the spinner/banner glyphs
+# and raises UnicodeEncodeError before any useful output is shown).
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 URL = "http://localhost:8000"
 HEALTH_ENDPOINT = f"{URL}/api/health"
 HEALTH_RETRIES = 30
