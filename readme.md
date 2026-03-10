@@ -1,7 +1,7 @@
 
 # Maestro-Orchestrator
 
-![Version](https://img.shields.io/badge/version-v0.6.3-blue)
+![Version](https://img.shields.io/badge/version-v0.6.3.1-blue)
 ![License](https://img.shields.io/badge/license-Custom%20Open%20Use-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-green)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)
@@ -286,6 +286,36 @@ Redundancy map (which nodes hold which layers).
 
 ### `GET /api/storage/reputation`
 All node reputations.
+
+### `GET /api/storage/network/topology`
+Full network state: all nodes with reputation details, per-model layer coverage, gaps, mirror status, inference pipeline, redundancy map, and node contributions.
+
+### `GET /api/storage/shards/models`
+List all models with local shards.
+
+### `GET /api/storage/shards/status/{model_id}`
+Detailed shard status for a model (coverage, files, size, download state).
+
+### `POST /api/storage/shards/download`
+Start downloading shards for a model from HuggingFace Hub (runs in background).
+
+### `GET /api/storage/shards/download-status/{model_id}`
+Check download progress for a model.
+
+### `DELETE /api/storage/shards/download-status/{model_id}`
+Clear a completed or errored download status entry.
+
+### `POST /api/storage/shards/verify/{model_id}`
+Verify integrity of all local shards for a model against manifest checksums.
+
+### `GET /api/storage/shards/disk-usage`
+Total disk usage across all local shards.
+
+### `DELETE /api/storage/shards/{model_id}`
+Remove all local shards for a model.
+
+### `POST /api/storage/shards/generate-config`
+Generate a `node_shards.json` config from local shards (optionally filtered to a layer range).
 
 ### Plugin System
 
