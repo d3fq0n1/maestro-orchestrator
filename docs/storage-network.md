@@ -1,6 +1,6 @@
 # Storage Network — Proof-of-Storage Distributed Inference
 
-**Version:** v0.6.2
+**Version:** v0.6.3
 **Last Updated:** 2026-03-10
 **Maintainer:** defcon
 
@@ -351,6 +351,8 @@ The storage network integrates with R2 at two levels:
 
 ## REST API
 
+### Network Management
+
 | Method | Path | Description |
 |---|---|---|
 | POST | `/api/storage/nodes/register` | Register a storage node |
@@ -361,6 +363,21 @@ The storage network integrates with R2 at two levels:
 | GET | `/api/storage/pipeline/{model_id}` | View the current inference pipeline for a model |
 | GET | `/api/storage/redundancy/{model_id}` | Redundancy map (which nodes hold which layers) |
 | GET | `/api/storage/reputation` | All node reputations |
+| GET | `/api/storage/network/topology` | Full network topology with coverage, mirrors, and neighbor nodes |
+
+### Shard Management
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/storage/shards/models` | List all models with local shards |
+| GET | `/api/storage/shards/status/{model_id}` | Detailed shard status for a model |
+| POST | `/api/storage/shards/download` | Start downloading shards (background) |
+| GET | `/api/storage/shards/download-status/{model_id}` | Check download progress |
+| DELETE | `/api/storage/shards/download-status/{model_id}` | Clear download status |
+| POST | `/api/storage/shards/verify/{model_id}` | Verify shard integrity |
+| GET | `/api/storage/shards/disk-usage` | Disk usage for all shards |
+| DELETE | `/api/storage/shards/{model_id}` | Remove all shards for a model |
+| POST | `/api/storage/shards/generate-config` | Generate node_shards.json from local shards |
 
 ---
 

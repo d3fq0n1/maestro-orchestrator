@@ -196,6 +196,120 @@ async def all_reputations():
     return {"reputations": engine.list_reputations()}
 
 
+@router.get("/network/topology")
+async def network_topology():
+    """Full network topology: nodes, their shards, per-model coverage, and mirror status."""
+    registry = _get_registry()
+    engine = _get_proof_engine()
+    nodes = registry.list_nodes()
+
+    # Collect all model IDs across the network
+    model_ids: set[str] = set()
+    for node in nodes:
+        for shard in node.shards:
+            mid = shard.get("model_id", "") if isinstance(shard, dict) else getattr(shard, "model_id", "")
+            if mid:
+                model_ids.add(mid)
+
+    # Per-model: compute coverage, redundancy, pipeline, and mirror status
+    models = []
+    for model_id in sorted(model_ids):
+        redundancy = registry.get_redundancy_map(model_id)
+        pipeline = registry.build_inference_pipeline(model_id)
+
+        # Compute total layer coverage across all nodes
+        all_layers: set[int] = set()
+        node_contributions: list[dict] = []
+        for node in nodes:
+            if node.status in ("offline", "evicted"):
+                continue
+            for shard in node.shards:
+                s_model = shard.get("model_id", "") if isinstance(shard, dict) else getattr(shard, "model_id", "")
+                s_range = shard.get("layer_range", []) if isinstance(shard, dict) else getattr(shard, "layer_range", [])
+                if s_model == model_id and len(s_range) >= 2:
+                    for layer in range(s_range[0], s_range[1] + 1):
+                        all_layers.add(layer)
+                    node_contributions.append({
+                        "node_id": node.node_id,
+                        "layer_range": list(s_range[:2]),
+                        "reputation": node.reputation_score,
+                        "latency_ms": node.mean_latency_ms,
+                        "status": node.status,
+                    })
+
+        # Determine if layers form a complete mirror (contiguous from 0)
+        total_layers = (max(all_layers) + 1) if all_layers else 0
+        covered_count = len(all_layers)
+        coverage_pct = round(covered_count / total_layers * 100, 1) if total_layers > 0 else 0
+        is_mirror = (
+            total_layers > 0
+            and covered_count == total_layers
+            and min(all_layers) == 0
+        )
+
+        # Build sorted coverage ranges
+        coverage_ranges = []
+        if all_layers:
+            sorted_layers = sorted(all_layers)
+            start = sorted_layers[0]
+            prev = start
+            for layer in sorted_layers[1:]:
+                if layer != prev + 1:
+                    coverage_ranges.append([start, prev])
+                    start = layer
+                prev = layer
+            coverage_ranges.append([start, prev])
+
+        # Identify gaps
+        gaps = []
+        if all_layers and total_layers > 0:
+            for i in range(total_layers):
+                if i not in all_layers:
+                    if not gaps or gaps[-1][1] != i - 1:
+                        gaps.append([i, i])
+                    else:
+                        gaps[-1][1] = i
+
+        models.append({
+            "model_id": model_id,
+            "total_layers": total_layers,
+            "covered_layers": covered_count,
+            "coverage_pct": coverage_pct,
+            "coverage_ranges": coverage_ranges,
+            "gaps": gaps,
+            "is_mirror": is_mirror,
+            "pipeline_hops": len(pipeline),
+            "pipeline": [{"node_id": n.node_id, "host": n.host, "port": n.port} for n in pipeline],
+            "redundancy_map": redundancy,
+            "node_contributions": node_contributions,
+        })
+
+    # Node summary with reputation details
+    node_list = []
+    for node in nodes:
+        rep = engine.get_reputation(node.node_id)
+        node_list.append({
+            "node_id": node.node_id,
+            "host": node.host,
+            "port": node.port,
+            "status": node.status,
+            "reputation_score": node.reputation_score,
+            "reputation_status": rep.status,
+            "mean_latency_ms": node.mean_latency_ms,
+            "shard_count": len(node.shards),
+            "shards": node.shards,
+            "capabilities": node.capabilities,
+            "last_heartbeat": node.last_heartbeat,
+        })
+
+    return {
+        "node_count": len(nodes),
+        "model_count": len(models),
+        "nodes": node_list,
+        "models": models,
+    }
+
+
 # --- Shard management endpoints ---
 
 @router.get("/shards/models")

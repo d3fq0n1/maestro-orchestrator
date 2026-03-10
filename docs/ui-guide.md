@@ -47,6 +47,12 @@ This guide outlines the structure and behavior of the Maestro-Orchestrator front
 * **API Key Configuration Panel:**
   * Configure, validate, and update API keys in-app
 
+* **Storage Network Panel:**
+  * **Network tab** — Full network topology showing which nodes contribute shards to each model, mirror completeness status (full mirror when all layers covered), inference pipeline visualization with hop ordering, neighbor node listing with reputation/latency, redundancy map showing how many nodes hold each layer range, layer coverage bar with visual gap detection
+  * **Shard Map tab** — Visual grid of nodes vs layer blocks showing shard distribution across the network, per-node color-coded coverage, aggregate network coverage row with redundancy indicators (green = 2x+, yellow = 1x, red = gap)
+  * **Nodes tab** — List of registered storage nodes with status tags (available/busy/probation/offline/evicted), reputation percentages, latency, shard pills, heartbeat timestamps, challenge and remove actions
+  * **Shards tab** — Download form for HuggingFace model shards with layer range selection, live download status polling, per-model cards showing layer coverage, completeness, precision, file count, disk usage, verify/generate-config/remove actions
+
 * **System Update Panel:**
   * Check for updates from the configured remote repository
   * View new commits available with one-line summaries

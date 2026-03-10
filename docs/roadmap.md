@@ -1,6 +1,6 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v0.6.2
+**Current Version:** v0.6.3
 **Last Updated:** 2026-03-10
 **Maintainer:** defcon
 
@@ -37,6 +37,7 @@
 - **Modular Plugin Architecture (v0.6)** -- Mod Manager with full plugin lifecycle (discover/validate/load/enable/disable/unload/reload), 8 pipeline hook points, event bus, PluginContext with controlled access to internals, hook ownership tracking for clean deactivation
 - **Weight State Snapshots (v0.6)** -- Save/restore/diff system configurations (plugins, agents, thresholds, runtime config); snapshot CRUD via REST API and CLI
 - **Remote Compute Node Validation (v0.6)** -- Full MAGI_VIR validation on remote Maestro nodes via the compute node registry and storage network infrastructure
+- **Storage Network Dashboard (v0.6.3)** -- Network topology visualization with mirror completeness tracking, visual shard map grid (nodes x layer blocks), neighbor node display, pipeline hop visualization, redundancy indicators, gap detection, and coverage bars. Accessible via Storage button in the Web-UI header.
 
 ---
 
@@ -46,7 +47,6 @@
 - **NCG Feedback Loops** -- Reshape prompts based on drift signals before they reach conversational agents
 - **Reinforcement Loop** -- Feed consensus outcomes into fine-tuning or snapshot logs
 - **Plugin Marketplace** -- Curated plugin registry with versioning, dependency resolution, and one-click install
-- **Storage Network Dashboard** -- Real-time visualization of node topology, shard distribution, proof challenge history, and reputation trends
 
 ---
 

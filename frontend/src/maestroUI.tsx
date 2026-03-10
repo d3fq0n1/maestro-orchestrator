@@ -889,6 +889,35 @@ interface DownloadStatus {
   layer_end?: number;
 }
 
+interface NodeContribution {
+  node_id: string;
+  layer_range: number[];
+  reputation: number;
+  latency_ms: number;
+  status: string;
+}
+
+interface NetworkModel {
+  model_id: string;
+  total_layers: number;
+  covered_layers: number;
+  coverage_pct: number;
+  coverage_ranges: number[][];
+  gaps: number[][];
+  is_mirror: boolean;
+  pipeline_hops: number;
+  pipeline: { node_id: string; host: string; port: number }[];
+  redundancy_map: Record<string, string[]>;
+  node_contributions: NodeContribution[];
+}
+
+interface NetworkTopology {
+  node_count: number;
+  model_count: number;
+  nodes: (StorageNodeInfo & { reputation_status: string; shard_count: number })[];
+  models: NetworkModel[];
+}
+
 function nodeStatusColor(status: string): string {
   switch (status) {
     case "available": return "var(--color-ok)";
@@ -901,7 +930,7 @@ function nodeStatusColor(status: string): string {
 }
 
 function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const [tab, setTab] = useState<"nodes" | "shards">("nodes");
+  const [tab, setTab] = useState<"nodes" | "shards" | "shard-map" | "network">("network");
 
   // Nodes tab state
   const [nodes, setNodes] = useState<StorageNodeInfo[]>([]);
@@ -925,6 +954,22 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
   // Generate config state
   const [configModel, setConfigModel] = useState("");
   const [configResult, setConfigResult] = useState<string | null>(null);
+
+  // Network topology state
+  const [topology, setTopology] = useState<NetworkTopology | null>(null);
+  const [topoLoading, setTopoLoading] = useState(false);
+
+  const loadTopology = async () => {
+    setTopoLoading(true);
+    try {
+      const res = await fetch("/api/storage/network/topology");
+      if (res.ok) {
+        const data: NetworkTopology = await res.json();
+        setTopology(data);
+      }
+    } catch { /* ignore */ }
+    setTopoLoading(false);
+  };
 
   const loadNodes = async () => {
     setNodesLoading(true);
@@ -960,7 +1005,8 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
   useEffect(() => {
     if (visible) {
       if (tab === "nodes") loadNodes();
-      else loadModels();
+      else if (tab === "shards") loadModels();
+      else if (tab === "network" || tab === "shard-map") loadTopology();
     }
   }, [visible, tab]);
 
@@ -1094,6 +1140,18 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
         {/* Tab bar */}
         <div className="storage-tabs">
           <button
+            className={`storage-tab${tab === "network" ? " storage-tab-active" : ""}`}
+            onClick={() => setTab("network")}
+          >
+            Network
+          </button>
+          <button
+            className={`storage-tab${tab === "shard-map" ? " storage-tab-active" : ""}`}
+            onClick={() => setTab("shard-map")}
+          >
+            Shard Map
+          </button>
+          <button
             className={`storage-tab${tab === "nodes" ? " storage-tab-active" : ""}`}
             onClick={() => setTab("nodes")}
           >
@@ -1108,6 +1166,273 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
         </div>
 
         <div className="settings-body">
+
+          {/* ── Network tab — topology, mirrors, neighbors ── */}
+          {tab === "network" && (
+            <>
+              <div className="storage-tab-header">
+                <span className="muted">
+                  {topology ? `${topology.node_count} node${topology.node_count !== 1 ? "s" : ""}, ${topology.model_count} model${topology.model_count !== 1 ? "s" : ""}` : "Loading..."}
+                </span>
+                <button className="toggle-btn" onClick={loadTopology} disabled={topoLoading}>
+                  {topoLoading ? "Loading..." : "Refresh"}
+                </button>
+              </div>
+
+              {topology && topology.models.length === 0 && topology.nodes.length === 0 && (
+                <div className="storage-empty">
+                  <p className="muted">No storage nodes or models in the network.</p>
+                  <p className="muted" style={{ fontSize: "0.78rem" }}>
+                    Start a node with: <code>python -m maestro.node_cli start --orchestrator http://...</code>
+                  </p>
+                </div>
+              )}
+
+              {/* Per-model mirror status */}
+              {topology?.models.map((model) => (
+                <div key={model.model_id} className="storage-network-model">
+                  <div className="storage-model-header">
+                    <span className="storage-model-id">{model.model_id}</span>
+                    <span
+                      className="tag"
+                      style={{
+                        background: model.is_mirror ? "var(--color-ok)" : model.coverage_pct > 0 ? "var(--color-warn)" : "var(--color-muted)",
+                        color: model.is_mirror ? "#fff" : model.coverage_pct > 0 ? "#000" : "#fff",
+                      }}
+                    >
+                      {model.is_mirror ? "FULL MIRROR" : `${model.coverage_pct}% coverage`}
+                    </span>
+                  </div>
+
+                  {/* Layer coverage bar */}
+                  <div className="shard-layer-bar-container">
+                    <div className="shard-layer-bar">
+                      {model.total_layers > 0 && model.node_contributions.map((nc, i) => {
+                        const left = (nc.layer_range[0] / model.total_layers) * 100;
+                        const width = ((nc.layer_range[1] - nc.layer_range[0] + 1) / model.total_layers) * 100;
+                        const hue = (i * 137) % 360;
+                        return (
+                          <div
+                            key={`${nc.node_id}-${i}`}
+                            className="shard-layer-segment"
+                            style={{
+                              left: `${left}%`,
+                              width: `${width}%`,
+                              background: `hsla(${hue}, 65%, 55%, 0.8)`,
+                            }}
+                            title={`${nc.node_id}: layers ${nc.layer_range[0]}-${nc.layer_range[1]}`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="shard-layer-labels">
+                      <span>L0</span>
+                      <span>L{model.total_layers > 0 ? model.total_layers - 1 : 0}</span>
+                    </div>
+                  </div>
+
+                  {/* Gaps warning */}
+                  {model.gaps.length > 0 && (
+                    <p className="storage-gaps-warning">
+                      Missing layers: {model.gaps.map(g => g[0] === g[1] ? `${g[0]}` : `${g[0]}-${g[1]}`).join(", ")}
+                    </p>
+                  )}
+
+                  {/* Pipeline */}
+                  {model.pipeline.length > 0 && (
+                    <div className="shard-pipeline">
+                      <span className="muted" style={{ fontSize: "0.78rem" }}>Pipeline: </span>
+                      {model.pipeline.map((hop, i) => (
+                        <span key={hop.node_id} className="shard-pipeline-hop">
+                          {i > 0 && <span className="shard-pipeline-arrow">&rarr;</span>}
+                          <span className="storage-shard-pill">{hop.node_id}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Neighbor nodes contributing to this model */}
+                  <div className="shard-neighbors">
+                    <span className="muted" style={{ fontSize: "0.78rem" }}>
+                      Neighbor nodes ({model.node_contributions.length}):
+                    </span>
+                    {model.node_contributions.map((nc) => (
+                      <div key={nc.node_id} className="shard-neighbor-row">
+                        <span className="storage-shard-pill" style={{ minWidth: "auto" }}>
+                          {nc.node_id}
+                        </span>
+                        <span className="muted" style={{ fontSize: "0.75rem" }}>
+                          L{nc.layer_range[0]}-{nc.layer_range[1]}
+                        </span>
+                        <span style={{ fontSize: "0.75rem", color: nc.reputation >= 0.7 ? "var(--color-ok)" : nc.reputation >= 0.3 ? "var(--color-warn)" : "var(--color-err)" }}>
+                          {(nc.reputation * 100).toFixed(0)}% rep
+                        </span>
+                        <span className="muted" style={{ fontSize: "0.75rem" }}>
+                          {nc.latency_ms.toFixed(0)}ms
+                        </span>
+                        <span
+                          className="tag"
+                          style={{
+                            background: nodeStatusColor(nc.status),
+                            fontSize: "0.6rem",
+                            padding: "0.1rem 0.3rem",
+                          }}
+                        >
+                          {nc.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Redundancy map */}
+                  {Object.keys(model.redundancy_map).length > 0 && (
+                    <div className="shard-redundancy">
+                      <span className="muted" style={{ fontSize: "0.78rem" }}>Redundancy:</span>
+                      {Object.entries(model.redundancy_map).map(([range, nodeIds]) => (
+                        <div key={range} className="shard-redundancy-row">
+                          <span className="mono" style={{ fontSize: "0.75rem" }}>L{range}</span>
+                          <span style={{ fontSize: "0.75rem", color: nodeIds.length >= 2 ? "var(--color-ok)" : "var(--color-warn)" }}>
+                            {nodeIds.length}x
+                          </span>
+                          <span className="muted" style={{ fontSize: "0.72rem" }}>
+                            {nodeIds.join(", ")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* ── Shard Map tab — visual grid of nodes x layers ── */}
+          {tab === "shard-map" && (
+            <>
+              <div className="storage-tab-header">
+                <span className="muted">
+                  {topology ? `Shard distribution across ${topology.node_count} node${topology.node_count !== 1 ? "s" : ""}` : "Loading..."}
+                </span>
+                <button className="toggle-btn" onClick={loadTopology} disabled={topoLoading}>
+                  {topoLoading ? "Loading..." : "Refresh"}
+                </button>
+              </div>
+
+              {topology && topology.models.length === 0 && (
+                <div className="storage-empty">
+                  <p className="muted">No models with shards in the network.</p>
+                </div>
+              )}
+
+              {topology?.models.map((model) => {
+                // Build a grid: rows = nodes, columns = layer blocks
+                const blockSize = Math.max(1, Math.ceil(model.total_layers / 32));
+                const blockCount = Math.ceil(model.total_layers / blockSize);
+
+                // Map which nodes cover which blocks
+                const nodeBlocks: Record<string, Set<number>> = {};
+                model.node_contributions.forEach((nc) => {
+                  if (!nodeBlocks[nc.node_id]) nodeBlocks[nc.node_id] = new Set();
+                  for (let l = nc.layer_range[0]; l <= nc.layer_range[1]; l++) {
+                    nodeBlocks[nc.node_id].add(Math.floor(l / blockSize));
+                  }
+                });
+                const nodeIds = Object.keys(nodeBlocks);
+
+                return (
+                  <div key={model.model_id} className="shard-map-model">
+                    <div className="storage-model-header">
+                      <span className="storage-model-id">{model.model_id}</span>
+                      <span
+                        className="tag"
+                        style={{
+                          background: model.is_mirror ? "var(--color-ok)" : "var(--color-warn)",
+                          color: model.is_mirror ? "#fff" : "#000",
+                        }}
+                      >
+                        {model.is_mirror ? "MIRROR" : `${model.coverage_pct}%`}
+                      </span>
+                    </div>
+
+                    {/* Layer index header */}
+                    <div className="shard-map-grid">
+                      <div className="shard-map-row shard-map-header-row">
+                        <span className="shard-map-label"></span>
+                        <div className="shard-map-cells">
+                          {Array.from({ length: blockCount }, (_, b) => (
+                            <span
+                              key={b}
+                              className="shard-map-cell shard-map-cell-header"
+                              title={`Layers ${b * blockSize}-${Math.min((b + 1) * blockSize - 1, model.total_layers - 1)}`}
+                            >
+                              {b % Math.max(1, Math.floor(blockCount / 8)) === 0 ? b * blockSize : ""}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* One row per node */}
+                      {nodeIds.map((nodeId, ni) => {
+                        const blocks = nodeBlocks[nodeId];
+                        const hue = (ni * 137) % 360;
+                        return (
+                          <div key={nodeId} className="shard-map-row">
+                            <span className="shard-map-label" title={nodeId}>
+                              {nodeId.length > 12 ? nodeId.slice(0, 12) + "..." : nodeId}
+                            </span>
+                            <div className="shard-map-cells">
+                              {Array.from({ length: blockCount }, (_, b) => (
+                                <span
+                                  key={b}
+                                  className={`shard-map-cell ${blocks.has(b) ? "shard-map-cell-active" : "shard-map-cell-empty"}`}
+                                  style={blocks.has(b) ? { background: `hsla(${hue}, 65%, 55%, 0.8)` } : undefined}
+                                  title={blocks.has(b) ? `${nodeId}: L${b * blockSize}-${Math.min((b + 1) * blockSize - 1, model.total_layers - 1)}` : `empty`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Network coverage row (aggregate) */}
+                      <div className="shard-map-row shard-map-aggregate-row">
+                        <span className="shard-map-label" style={{ fontWeight: 700 }}>Network</span>
+                        <div className="shard-map-cells">
+                          {Array.from({ length: blockCount }, (_, b) => {
+                            const coveredNodes = nodeIds.filter(n => nodeBlocks[n].has(b)).length;
+                            return (
+                              <span
+                                key={b}
+                                className={`shard-map-cell ${coveredNodes > 0 ? "shard-map-cell-covered" : "shard-map-cell-gap"}`}
+                                style={coveredNodes > 0 ? {
+                                  background: coveredNodes >= 2 ? "var(--color-ok)" : "var(--color-warn)",
+                                  opacity: Math.min(1, 0.4 + coveredNodes * 0.2),
+                                } : undefined}
+                                title={coveredNodes > 0 ? `${coveredNodes}x redundancy` : "gap — no coverage"}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Legend */}
+                    <div className="shard-map-legend">
+                      <span className="muted" style={{ fontSize: "0.72rem" }}>
+                        {model.total_layers} layers, {blockSize > 1 ? `${blockSize} layers/block` : "1:1"}
+                      </span>
+                      <span style={{ fontSize: "0.72rem" }}>
+                        <span className="shard-map-legend-dot" style={{ background: "var(--color-ok)" }} /> 2x+ redundancy
+                        <span className="shard-map-legend-dot" style={{ background: "var(--color-warn)", marginLeft: "0.5rem" }} /> 1x
+                        <span className="shard-map-legend-dot" style={{ background: "var(--color-err)", marginLeft: "0.5rem" }} /> gap
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+
           {/* ── Nodes tab ── */}
           {tab === "nodes" && (
             <>
@@ -1348,7 +1673,11 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
         </div>
 
         <p className="settings-footer">
-          {tab === "nodes"
+          {tab === "network"
+            ? "Neighbor nodes sharing shards form mirrors when full layer coverage is achieved."
+            : tab === "shard-map"
+            ? "Visual grid of which nodes hold which layer blocks. Green = redundant, yellow = single copy."
+            : tab === "nodes"
             ? "Nodes auto-register when started with --orchestrator."
             : "Download shards from HuggingFace, then generate a node config to start serving."}
         </p>
@@ -1365,6 +1694,7 @@ export default function MaestroUI() {
   const [loading, setLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
+  const [storageOpen, setStorageOpen] = useState(false);
 
   // Streaming state: the in-progress result being built up from SSE events
   const [streamEntry, setStreamEntry] = useState<Partial<OrchestratorResponse> | null>(null);
@@ -1559,8 +1889,15 @@ export default function MaestroUI() {
     <div className="maestro-root">
       <header className="maestro-header">
         <h1>Maestro-Orchestrator</h1>
-        <span className="version">v0.6.2</span>
+        <span className="version">v0.6.3</span>
         <div className="header-actions">
+          <button
+            className="toggle-btn settings-btn"
+            onClick={() => setStorageOpen(true)}
+            title="Storage Network"
+          >
+            Storage
+          </button>
           <button
             className="toggle-btn settings-btn"
             onClick={() => setUpdateOpen(true)}
@@ -1578,6 +1915,7 @@ export default function MaestroUI() {
         </div>
       </header>
 
+      <StoragePanel visible={storageOpen} onClose={() => setStorageOpen(false)} />
       <UpdatePanel visible={updateOpen} onClose={() => setUpdateOpen(false)} />
       <ApiKeySettings visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
