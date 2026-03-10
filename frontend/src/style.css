@@ -825,6 +825,49 @@ code {
   padding: 2rem 1rem;
 }
 
+/* ── Command snippet with copy button ───────────────────────── */
+
+.command-snippet {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.4rem 0.5rem;
+  margin-top: 0.5rem;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.command-snippet-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow-x: auto;
+  padding: 0.1em 0;
+  background: transparent;
+}
+
+.command-snippet-copy {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.command-snippet-copy:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 .storage-node-card,
 .storage-model-card,
 .storage-network-model,
@@ -848,12 +891,20 @@ code {
 .storage-model-id {
   font-weight: 700;
   font-size: 0.88rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .storage-node-host {
   font-size: 0.78rem;
   color: var(--text-muted);
   font-family: "SF Mono", "Fira Code", monospace;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .storage-node-stats,
