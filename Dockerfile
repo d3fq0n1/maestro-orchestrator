@@ -58,6 +58,10 @@ ENV MAESTRO_ENV_FILE=/app/backend/env/.env
 # Override with MAESTRO_MODE=cli to use the terminal REPL instead.
 ENV MAESTRO_MODE=web
 
+# Default remote URL for the auto-updater. Override via .env or
+# docker-compose environment to point at a fork.
+ENV MAESTRO_UPDATE_REMOTE=https://github.com/d3fq0n1/maestro-orchestrator.git
+
 # Copy Vite frontend build output into the path expected by backend/main.py
 COPY --from=frontend-builder /app/frontend/dist ./backend/frontend/dist
 

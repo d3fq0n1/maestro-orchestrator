@@ -47,6 +47,13 @@ This guide outlines the structure and behavior of the Maestro-Orchestrator front
 * **API Key Configuration Panel:**
   * Configure, validate, and update API keys in-app
 
+* **System Update Panel:**
+  * Check for updates from the configured remote repository
+  * View new commits available with one-line summaries
+  * Apply updates with an indeterminate progress bar during the process
+  * Configurable remote repository URL (defaults to `https://github.com/d3fq0n1/maestro-orchestrator.git`)
+  * Red "Restart server" button after a successful update to reload changes
+
 ---
 
 ## Behavior Flow
@@ -69,6 +76,7 @@ User types -> Clicks Submit -> Loading state
 * **Emoji Mapping:** Helps humanize model identity
 * **Session History:** Browse past sessions from the UI
 * **Key Management:** Configure and validate API keys without editing `.env`
+* **System Update:** Check, apply, and restart from the UI with progress feedback
 * **Error Handling:** API failure messages shown inline
 * **Local Dev Support:** Fully CORS-compliant for FastAPI
 

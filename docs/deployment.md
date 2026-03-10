@@ -184,7 +184,11 @@ Ensure proper firewall rules are in place for ports `8000` (API) and `80/443` (f
 
 ## Updating
 
-Maestro includes a built-in auto-updater so you don't need to re-clone the repo.
+Maestro includes a built-in auto-updater so you don't need to re-clone the repo. The remote URL defaults to `https://github.com/d3fq0n1/maestro-orchestrator.git` and can be changed in the Web-UI or via the `MAESTRO_UPDATE_REMOTE` environment variable.
+
+### From the Web-UI
+
+Open the **System Update** panel from the header. The panel shows available commits, lets you apply updates with a progress bar, and offers a **Restart server** button to reload changes after a successful update.
 
 ### From the CLI
 

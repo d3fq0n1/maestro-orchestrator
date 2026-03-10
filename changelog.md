@@ -2,15 +2,25 @@
 
 ## [0.6.1] - 2026-03-10
 
+### Added
+
+- **Update progress bar**: Indeterminate progress bar shown in the Update panel while an update is being applied.
+- **Restart server button**: Red "Restart server" button on the success card after a successful update, with `POST /api/update/restart` backend endpoint that sends SIGTERM to trigger Docker's restart policy.
+- **Default remote URL**: The updater now defaults to `https://github.com/d3fq0n1/maestro-orchestrator.git` when no remote URL is configured (set via `MAESTRO_UPDATE_REMOTE` in Dockerfile and as a frontend fallback).
+
 ### Fixed
 
 - **API keys deleted on update**: Docker-mode auto-updater now preserves `.env` files when syncing the `backend/` directory, preventing API keys from being wiped during system updates.
 - **Placeholder consistency in key validation**: `validate_key()` now uses the same placeholder value list as `list_keys()`, so template values from `.env.example` are no longer sent to provider APIs for validation.
 - **API endpoint documentation**: Corrected HTTP methods in readme, architecture, and changelog — key update uses `PUT` (not `POST`), added missing `DELETE /api/keys/{provider}` and `POST /api/keys/{provider}/validate` endpoints.
+- **Double "Update failed" prefix**: Error messages from Docker-mode updates no longer show "Update failed: Update failed: ..." — removed duplicate prefix from the backend.
+- **Errno 17 File exists during update**: `_sync_directory` now uses `dirs_exist_ok=True` so `shutil.copytree` succeeds even when `rmtree` silently fails to remove the destination.
+- **Overlapping update UI cards**: The "Update available" card is now hidden when an error is displayed, preventing both cards from showing simultaneously after a failed apply.
+- **Python startup warning in Docker**: Added `PYTHONHOME=/usr/local` to Dockerfile to suppress "Could not find platform independent libraries" warning on container startup.
 
 ### Changed
 
-- **Version bumped to v0.6.1** across readme, frontend, docs, roadmap, and changelog.
+- **Version bumped to v0.6.1** across readme, frontend, docs, roadmap, backend (`manager.py`, `node_server.py`), and changelog.
 
 ---
 

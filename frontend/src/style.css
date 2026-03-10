@@ -639,6 +639,45 @@ code {
   font-size: 0.82rem;
 }
 
+.update-restart-btn {
+  display: inline-block;
+  padding: 0.4rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-err);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.update-restart-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+.update-restart-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.update-progress-bar {
+  margin-top: 0.5rem;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.update-progress-bar-fill {
+  height: 100%;
+  width: 40%;
+  border-radius: 2px;
+  background: var(--accent);
+  animation: update-progress-slide 1.2s ease-in-out infinite;
+}
+@keyframes update-progress-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
 .update-commit-list {
   margin-top: 0.5rem;
   padding-top: 0.5rem;

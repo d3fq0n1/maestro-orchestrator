@@ -610,6 +610,7 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [restarting, setRestarting] = useState(false);
 
   // Remote URL config
   const [remoteUrl, setRemoteUrl] = useState("");
@@ -622,7 +623,7 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
       const res = await fetch("/api/update/remote");
       if (res.ok) {
         const data = await res.json();
-        setRemoteUrl(data.url || "");
+        setRemoteUrl(data.url || "https://github.com/d3fq0n1/maestro-orchestrator.git");
         setRemoteLoaded(true);
       }
     } catch { /* ignore */ }
@@ -691,6 +692,13 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
     setApplying(false);
   };
 
+  const handleRestart = async () => {
+    setRestarting(true);
+    try {
+      await fetch("/api/update/restart", { method: "POST" });
+    } catch { /* expected — server is shutting down */ }
+  };
+
   if (!visible) return null;
 
   return (
@@ -729,10 +737,27 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
             </div>
           )}
 
+          {applying && (
+            <div className="update-result-card update-result-available">
+              <p className="update-result-text">Updating...</p>
+              <div className="update-progress-bar">
+                <div className="update-progress-bar-fill" />
+              </div>
+            </div>
+          )}
+
           {applied && (
             <div className="update-result-card update-result-success">
               <p className="update-result-text">{applied}</p>
               <p className="muted">Restart the server to use the new version.</p>
+              <button
+                className="update-restart-btn"
+                onClick={handleRestart}
+                disabled={restarting}
+                style={{ marginTop: "0.75rem" }}
+              >
+                {restarting ? "Restarting..." : "Restart server"}
+              </button>
             </div>
           )}
 
