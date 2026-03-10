@@ -363,7 +363,7 @@ def _apply_docker_mode(branch: str, rebuild: bool) -> dict:
     except Exception as exc:
         return {
             "success": False,
-            "message": f"Update failed: {exc}",
+            "message": str(exc),
             "commits_pulled": 0,
             "rebuilt": False,
         }
@@ -396,7 +396,7 @@ def _sync_directory(src: str, dst: str) -> None:
                 with open(path, "rb") as f:
                     preserved[name] = f.read()
         shutil.rmtree(dst, ignore_errors=True)
-    shutil.copytree(src, dst)
+    shutil.copytree(src, dst, dirs_exist_ok=True)
     for name, data in preserved.items():
         with open(os.path.join(dst, name), "wb") as f:
             f.write(data)

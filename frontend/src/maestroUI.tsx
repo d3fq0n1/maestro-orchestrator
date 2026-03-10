@@ -749,7 +749,7 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
             </div>
           )}
 
-          {info && info.available && (
+          {info && info.available && !error && (
             <div className="update-result-card update-result-available">
               {info.local_unknown ? (
                 <>
