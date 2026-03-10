@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.3.1] - 2026-03-10
+
+### Fixed
+
+- **setup.py crash on Windows (UnicodeEncodeError)** — Python installed via winget or the Microsoft Store defaults to the system code page (e.g. cp1252) instead of UTF-8. The banner (`♫`), Braille spinner frames (`⠋⠙⠹…`), and status glyphs (`✓`, `⚠`) all raised `UnicodeEncodeError` before any output was visible, causing the terminal window to flash and close. Fixed by calling `sys.stdout/stderr.reconfigure(encoding="utf-8", errors="replace")` immediately after imports.
+- **setup.py "no configuration file provided: not found"** — `docker compose up` was called without a working directory, so running `python setup.py` from any path other than the project root caused Docker Compose to fail silently (error visible only in `.setup-build.log`). Fixed by resolving `PROJECT_ROOT` from `__file__` and calling `os.chdir(PROJECT_ROOT)` at module load time. Log file path also pinned to `PROJECT_ROOT` for consistency.
+
+### Changed
+
+- **Version bumped to v0.6.3.1** across readme, frontend, docs, roadmap, node server, plugin manager, and changelog.
+
+---
+
 ## [0.6.3] - 2026-03-10
 
 ### Added

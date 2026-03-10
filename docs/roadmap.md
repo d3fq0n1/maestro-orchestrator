@@ -1,6 +1,6 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v0.6.3
+**Current Version:** v0.6.3.1
 **Last Updated:** 2026-03-10
 **Maintainer:** defcon
 
@@ -38,6 +38,7 @@
 - **Weight State Snapshots (v0.6)** -- Save/restore/diff system configurations (plugins, agents, thresholds, runtime config); snapshot CRUD via REST API and CLI
 - **Remote Compute Node Validation (v0.6)** -- Full MAGI_VIR validation on remote Maestro nodes via the compute node registry and storage network infrastructure
 - **Storage Network Dashboard (v0.6.3)** -- Network topology visualization with mirror completeness tracking, visual shard map grid (nodes x layer blocks), neighbor node display, pipeline hop visualization, redundancy indicators, gap detection, and coverage bars. Accessible via Storage button in the Web-UI header.
+- **Windows Setup Fix (v0.6.3.1)** -- `setup.py` now works correctly when Python is installed via winget or the Microsoft Store: UTF-8 output encoding forced at startup (fixes `UnicodeEncodeError` crash-on-launch), and working directory pinned to the project root (fixes "no configuration file provided" Docker Compose error when run from a non-root path).
 
 ---
 

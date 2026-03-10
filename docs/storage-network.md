@@ -1,6 +1,6 @@
 # Storage Network — Proof-of-Storage Distributed Inference
 
-**Version:** v0.6.3
+**Version:** v0.6.3.1
 **Last Updated:** 2026-03-10
 **Maintainer:** defcon
 
