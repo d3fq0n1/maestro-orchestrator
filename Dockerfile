@@ -47,9 +47,15 @@ COPY entrypoint.py ./entrypoint.py
 # Create persistent data directories
 RUN mkdir -p data/sessions data/r2 backend/env
 
-# Copy environment template as fallback (override via env_file or -e flags)
+# Copy environment template as fallback for local dev (override via env_file or -e flags)
 COPY .env.example ./backend/.env
-COPY .env.example ./backend/env/.env
+
+# Create an empty .env in the volume-backed path so the keyring has a file
+# to write to.  We intentionally do NOT copy .env.example here — its
+# placeholder values (e.g. "your-openai-key-here") would be persisted into
+# the Docker volume on first run and then shadow real keys saved via the
+# Web-UI on subsequent restarts (load_dotenv override interaction).
+RUN touch backend/env/.env
 
 # Point keyring at the volume-backed env file so keys survive rebuilds
 ENV MAESTRO_ENV_FILE=/app/backend/env/.env

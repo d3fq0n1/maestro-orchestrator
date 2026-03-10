@@ -5,8 +5,14 @@ from dotenv import load_dotenv
 
 # Load .env — prefer MAESTRO_ENV_FILE (set in Docker for volume-backed persistence),
 # then fall back to the same directory as this script.
+#
+# override=True ensures the volume-backed file is the canonical source of
+# truth for API keys.  Without it, placeholder values injected by
+# docker-compose's env_file directive (from the host's .env) would shadow
+# the real keys the user saved via the Web-UI, causing keys to appear
+# "MISSING" after every container restart.
 dotenv_path = os.environ.get("MAESTRO_ENV_FILE") or os.path.join(os.path.dirname(__file__), ".env")
-load_dotenv(dotenv_path=dotenv_path)
+load_dotenv(dotenv_path=dotenv_path, override=True)
 
 # Allow imports from the project root so the maestro package is visible
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
