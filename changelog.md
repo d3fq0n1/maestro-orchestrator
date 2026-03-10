@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.6.3] - 2026-03-10
+
+### Added
+
+- **Storage Network Dashboard** — Full GUI for visualizing shard distribution, node topology, and mirror completeness. Accessible via the "Storage" button in the Web-UI header.
+  - **Network tab** — Per-model mirror status (full mirror vs partial coverage %), layer coverage bar with color-coded node segments, inference pipeline visualization with hop ordering, neighbor node listing with reputation/latency/status, redundancy map showing replication factor per layer range, gap detection for missing layers.
+  - **Shard Map tab** — Visual grid of nodes x layer blocks. Per-node rows with color-coded coverage, aggregate network row with redundancy indicators (green = 2x+, yellow = 1x, red dashed = gap). Scales to any layer count via automatic block sizing.
+- **Network topology API endpoint** (`GET /api/storage/network/topology`) — Returns full network state: all nodes with reputation details, per-model layer coverage/gaps/mirror status, inference pipeline, redundancy map, and neighbor node contributions.
+- **Shard management API endpoints** documented in REST API table — download, verify, disk-usage, generate-config, and remove endpoints.
+
+### Fixed
+
+- **Node server version mismatch** — `node_server.py` FastAPI version now matches the system version instead of being hardcoded to `0.7.0`.
+- **Storage panel not mounted** — `StoragePanel` component was defined but never wired into the main `MaestroUI` component. Now accessible via the header button.
+- **Deployment docs missing env vars** — Added `MAESTRO_ORCHESTRATOR_URL`, `MAESTRO_ADVERTISED_HOST`, `MAESTRO_HEARTBEAT_INTERVAL`, `MAESTRO_NODE_PORT` to `deployment.md`.
+
+### Changed
+
+- **Version bumped to v0.6.3** across readme, frontend, docs, roadmap, node server, and changelog.
+- **Roadmap updated** — "Storage Network Dashboard" moved from v0.7 goals to completed milestones.
+
+---
+
 ## [0.6.2] - 2026-03-10
 
 ### Added

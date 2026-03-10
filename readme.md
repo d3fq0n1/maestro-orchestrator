@@ -1,7 +1,7 @@
 
 # Maestro-Orchestrator
 
-![Version](https://img.shields.io/badge/version-v0.6.2-blue)
+![Version](https://img.shields.io/badge/version-v0.6.3-blue)
 ![License](https://img.shields.io/badge/license-Custom%20Open%20Use-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-green)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)

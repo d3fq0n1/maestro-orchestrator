@@ -115,18 +115,23 @@ GOOGLE_API_KEY=...
 OPENROUTER_API_KEY=...
 ```
 
-### Storage Network (v0.6)
+### Storage Network (v0.6+)
 
 The following environment variables configure storage nodes (used when running a standalone node server):
 
 ```env
 MAESTRO_NODE_ID=gpu-node-1              # Unique node identifier
 MAESTRO_SHARD_CONFIG=data/node_shards.json  # Path to shard declarations
+MAESTRO_ORCHESTRATOR_URL=http://localhost:8000  # Orchestrator for auto-registration (optional)
+MAESTRO_ADVERTISED_HOST=192.168.1.100   # Public hostname/IP for the orchestrator (optional)
+MAESTRO_HEARTBEAT_INTERVAL=60           # Heartbeat interval in seconds (default: 60)
+MAESTRO_NODE_PORT=8001                  # Listen port (default: 8001)
 ```
 
-To start a storage node:
+To start a storage node with auto-registration:
 ```bash
 MAESTRO_NODE_ID=gpu-node-1 \
+MAESTRO_ORCHESTRATOR_URL=http://maestro-host:8000 \
 uvicorn maestro.node_server:app --host 0.0.0.0 --port 8001
 ```
 

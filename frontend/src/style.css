@@ -779,6 +779,368 @@ code {
   to { transform: rotate(360deg); }
 }
 
+/* ── Storage Network Panel ────────────────────────────────────── */
+
+.storage-panel {
+  max-width: 680px;
+}
+
+.storage-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+
+.storage-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  padding: 0.5rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.storage-tab:hover {
+  color: var(--text);
+}
+
+.storage-tab-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.storage-tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.storage-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.storage-node-card,
+.storage-model-card,
+.storage-network-model,
+.shard-map-model {
+  background: var(--bg-section);
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.storage-node-header,
+.storage-model-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.storage-node-id,
+.storage-model-id {
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.storage-node-host {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-family: "SF Mono", "Fira Code", monospace;
+}
+
+.storage-node-stats,
+.storage-model-stats {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.storage-node-shards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+}
+
+.storage-shard-pill {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.storage-node-heartbeat {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: 0.2rem 0 0.4rem;
+}
+
+.storage-node-actions,
+.storage-model-actions {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+
+.storage-challenge-result,
+.storage-config-result {
+  font-size: 0.82rem;
+  color: var(--accent);
+  margin: 0.3rem 0;
+}
+
+.storage-download-form {
+  background: var(--bg-section);
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.storage-download-form h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.storage-download-row {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  margin-bottom: 0.3rem;
+}
+
+.storage-dl-status {
+  font-size: 0.82rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  margin-top: 0.3rem;
+}
+
+.storage-dl-downloading,
+.storage-dl-starting {
+  color: var(--accent);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.storage-dl-complete {
+  color: var(--color-ok);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.storage-dl-error {
+  color: var(--color-err);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.storage-verify-results {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0.3rem 0;
+}
+
+/* ── Layer coverage bar ─────────────────────────────────────── */
+
+.shard-layer-bar-container {
+  margin: 0.5rem 0;
+}
+
+.shard-layer-bar {
+  position: relative;
+  height: 16px;
+  background: var(--bg-card);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.shard-layer-segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 2px;
+  transition: opacity 0.15s;
+}
+
+.shard-layer-segment:hover {
+  opacity: 1 !important;
+  outline: 1px solid var(--text);
+  z-index: 1;
+}
+
+.shard-layer-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+/* ── Pipeline visualization ─────────────────────────────────── */
+
+.shard-pipeline {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin: 0.4rem 0;
+}
+
+.shard-pipeline-hop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.shard-pipeline-arrow {
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* ── Neighbor nodes ─────────────────────────────────────────── */
+
+.shard-neighbors {
+  margin-top: 0.4rem;
+}
+
+.shard-neighbor-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+}
+
+/* ── Redundancy map ─────────────────────────────────────────── */
+
+.shard-redundancy {
+  margin-top: 0.4rem;
+}
+
+.shard-redundancy-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+}
+
+/* ── Gaps warning ───────────────────────────────────────────── */
+
+.storage-gaps-warning {
+  font-size: 0.78rem;
+  color: var(--color-err);
+  margin: 0.2rem 0;
+  padding: 0.3rem 0.5rem;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: 3px;
+}
+
+/* ── Shard Map grid ─────────────────────────────────────────── */
+
+.shard-map-grid {
+  margin: 0.5rem 0;
+  overflow-x: auto;
+}
+
+.shard-map-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 2px;
+}
+
+.shard-map-label {
+  min-width: 90px;
+  max-width: 90px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: right;
+  padding-right: 0.3rem;
+}
+
+.shard-map-cells {
+  display: flex;
+  gap: 1px;
+  flex: 1;
+}
+
+.shard-map-cell {
+  flex: 1;
+  min-width: 4px;
+  height: 14px;
+  border-radius: 1px;
+  font-size: 0.55rem;
+  text-align: center;
+  line-height: 14px;
+  color: var(--text-muted);
+}
+
+.shard-map-cell-header {
+  height: auto;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+.shard-map-cell-active {
+  cursor: pointer;
+}
+
+.shard-map-cell-active:hover {
+  outline: 1px solid var(--text);
+  z-index: 1;
+}
+
+.shard-map-cell-empty {
+  background: var(--bg-card);
+}
+
+.shard-map-cell-covered {
+  cursor: pointer;
+}
+
+.shard-map-cell-gap {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px dashed rgba(239, 68, 68, 0.4);
+}
+
+.shard-map-aggregate-row {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.shard-map-legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.3rem;
+}
+
+.shard-map-legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 0.2rem;
+  vertical-align: middle;
+}
+
 /* Fade-in for progressively arriving agent cards */
 .agent-card {
   animation: fade-slide-in 0.3s ease-out;
