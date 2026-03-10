@@ -5,10 +5,13 @@ GET  /api/update/check    — check if updates are available
 POST /api/update/apply    — pull latest changes
 GET  /api/update/remote   — get configured remote URL
 PUT  /api/update/remote   — set the remote URL
+POST /api/update/restart  — restart the server process
 """
 
 import os
 import shutil
+import signal
+import sys
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
@@ -83,3 +86,16 @@ async def set_remote(body: SetRemoteRequest):
     # Reflect into current process
     os.environ[_REMOTE_ENV_VAR] = url
     return {"url": url, "configured": True}
+
+
+@router.post("/restart")
+async def restart_server():
+    """Restart the server process by re-executing the entrypoint."""
+    # Send SIGHUP to PID 1 (Docker entrypoint) so the container restarts,
+    # or fall back to terminating the current process which triggers
+    # Docker's restart policy (restart: unless-stopped).
+    try:
+        os.kill(1, signal.SIGTERM)
+    except OSError:
+        os.kill(os.getpid(), signal.SIGTERM)
+    return {"restarting": True}
