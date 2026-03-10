@@ -596,6 +596,7 @@ function ApiKeySettings({ visible, onClose }: { visible: boolean; onClose: () =>
 interface UpdateInfo {
   available: boolean;
   local_commit: string;
+  local_unknown?: boolean;
   remote_commit: string;
   new_commits: string[];
   branch: string;
@@ -750,13 +751,25 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
 
           {info && info.available && (
             <div className="update-result-card update-result-available">
-              <p className="update-result-text">
-                {info.new_commits.length} new commit{info.new_commits.length !== 1 ? "s" : ""} available
-              </p>
-              <p className="muted">
-                <code>{info.local_commit}</code> &rarr; <code>{info.remote_commit}</code>
-                &nbsp; on <code>{info.branch}</code>
-              </p>
+              {info.local_unknown ? (
+                <>
+                  <p className="update-result-text">Update available</p>
+                  <p className="muted">
+                    Current version could not be determined. Latest remote
+                    is <code>{info.remote_commit}</code> on <code>{info.branch}</code>.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="update-result-text">
+                    {info.new_commits.length} new commit{info.new_commits.length !== 1 ? "s" : ""} available
+                  </p>
+                  <p className="muted">
+                    <code>{info.local_commit}</code> &rarr; <code>{info.remote_commit}</code>
+                    &nbsp; on <code>{info.branch}</code>
+                  </p>
+                </>
+              )}
 
               {info.new_commits.length > 0 && (
                 <div className="update-commit-list">
@@ -808,9 +821,11 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
           </div>
         )}
 
-        <p className="settings-footer">
-          Set your repository URL above, then check for updates.
-        </p>
+        {!info?.git_missing && (
+          <p className="settings-footer">
+            Set your repository URL above, then check for updates.
+          </p>
+        )}
       </div>
     </div>
   );
