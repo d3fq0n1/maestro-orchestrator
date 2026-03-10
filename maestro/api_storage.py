@@ -1,19 +1,30 @@
 """
 API routes for the storage network and proof-of-storage system.
+
+Covers two concerns:
+  1. Network management — nodes, reputation, pipelines, challenges
+  2. Shard management — download, index, verify local weight shards
 """
 
-from fastapi import APIRouter, HTTPException
+import asyncio
+from dataclasses import asdict
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from typing import Optional
 
 from maestro.shard_registry import StorageNodeRegistry, StorageNode
 from maestro.storage_proof import StorageProofEngine
+from maestro.shard_manager import ShardManager
 
 router = APIRouter(prefix="/api/storage", tags=["storage"])
 
 # Shared instances (created on first use)
 _registry: Optional[StorageNodeRegistry] = None
 _proof_engine: Optional[StorageProofEngine] = None
+_shard_manager: Optional[ShardManager] = None
+
+# Track in-progress downloads
+_active_downloads: dict[str, dict] = {}
 
 
 def _get_registry() -> StorageNodeRegistry:
@@ -30,6 +41,13 @@ def _get_proof_engine() -> StorageProofEngine:
     return _proof_engine
 
 
+def _get_shard_manager() -> ShardManager:
+    global _shard_manager
+    if _shard_manager is None:
+        _shard_manager = ShardManager()
+    return _shard_manager
+
+
 # --- Request models ---
 
 class NodeRegistration(BaseModel):
@@ -44,6 +62,20 @@ class NodeRegistration(BaseModel):
 class ChallengeRequest(BaseModel):
     challenge_type: str = "byte_range_hash"
     shard_id: str = ""
+
+
+class ShardDownloadRequest(BaseModel):
+    model_id: str
+    layer_start: int = 0
+    layer_end: int = -1
+    token: str = ""
+
+
+class GenerateConfigRequest(BaseModel):
+    model_id: str
+    layer_start: Optional[int] = None
+    layer_end: Optional[int] = None
+    output_path: str = "data/node_shards.json"
 
 
 # --- Endpoints ---
@@ -162,3 +194,149 @@ async def get_redundancy(model_id: str):
 async def all_reputations():
     engine = _get_proof_engine()
     return {"reputations": engine.list_reputations()}
+
+
+# --- Shard management endpoints ---
+
+@router.get("/shards/models")
+async def list_shard_models():
+    """List all models with local shards."""
+    manager = _get_shard_manager()
+    models = manager.list_models()
+    results = []
+    for model_id in models:
+        manifest = manager.load_manifest(model_id)
+        usage = manager.disk_usage(model_id)
+        results.append({
+            "model_id": model_id,
+            "total_layers": manifest.total_layers if manifest else 0,
+            "layer_coverage": manifest.layer_coverage if manifest else [],
+            "complete": manifest.complete if manifest else False,
+            "precision": manifest.precision if manifest else "",
+            "files": usage.get("files", 0),
+            "total_gb": usage.get("total_gb", 0),
+        })
+    return {"models": results}
+
+
+@router.get("/shards/status/{model_id:path}")
+async def shard_status(model_id: str):
+    """Get detailed shard status for a model."""
+    manager = _get_shard_manager()
+    manifest = manager.load_manifest(model_id)
+    if not manifest:
+        # Try indexing
+        manifest = manager.index_shards(model_id)
+    usage = manager.disk_usage(model_id)
+    downloading = _active_downloads.get(model_id)
+    return {
+        "model_id": model_id,
+        "total_layers": manifest.total_layers,
+        "layer_coverage": manifest.layer_coverage,
+        "complete": manifest.complete,
+        "precision": manifest.precision,
+        "files": manifest.files,
+        "total_size_bytes": manifest.total_size_bytes,
+        "total_gb": usage.get("total_gb", 0),
+        "downloading": downloading is not None,
+        "download_status": downloading,
+    }
+
+
+@router.post("/shards/download")
+async def download_shards(req: ShardDownloadRequest, background_tasks: BackgroundTasks):
+    """Start downloading shards for a model (runs in background)."""
+    model_id = req.model_id
+    if model_id in _active_downloads:
+        return {"status": "already_downloading", "model_id": model_id}
+
+    _active_downloads[model_id] = {"status": "starting", "model_id": model_id}
+
+    def _do_download():
+        try:
+            _active_downloads[model_id] = {
+                "status": "downloading",
+                "model_id": model_id,
+                "layer_start": req.layer_start,
+                "layer_end": req.layer_end,
+            }
+            manager = _get_shard_manager()
+            downloaded = manager.download_model_shards(
+                model_id=model_id,
+                layer_start=req.layer_start,
+                layer_end=req.layer_end,
+                token=req.token or None,
+            )
+            _active_downloads[model_id] = {
+                "status": "complete",
+                "model_id": model_id,
+                "files_downloaded": len(downloaded),
+            }
+        except Exception as e:
+            _active_downloads[model_id] = {
+                "status": "error",
+                "model_id": model_id,
+                "error": str(e),
+            }
+
+    background_tasks.add_task(_do_download)
+    return {"status": "started", "model_id": model_id}
+
+
+@router.get("/shards/download-status/{model_id:path}")
+async def download_status(model_id: str):
+    """Check download status for a model."""
+    status = _active_downloads.get(model_id)
+    if not status:
+        return {"status": "idle", "model_id": model_id}
+    return status
+
+
+@router.delete("/shards/download-status/{model_id:path}")
+async def clear_download_status(model_id: str):
+    """Clear completed/errored download status."""
+    _active_downloads.pop(model_id, None)
+    return {"status": "cleared", "model_id": model_id}
+
+
+@router.post("/shards/verify/{model_id:path}")
+async def verify_shards(model_id: str):
+    """Verify integrity of local shards for a model."""
+    manager = _get_shard_manager()
+    results = manager.verify_all(model_id)
+    return {"model_id": model_id, **results}
+
+
+@router.get("/shards/disk-usage")
+async def shard_disk_usage():
+    """Get disk usage for all local shards."""
+    manager = _get_shard_manager()
+    return manager.disk_usage()
+
+
+@router.delete("/shards/{model_id:path}")
+async def remove_model_shards(model_id: str):
+    """Remove all local shards for a model."""
+    manager = _get_shard_manager()
+    if manager.remove_model(model_id):
+        return {"status": "removed", "model_id": model_id}
+    raise HTTPException(status_code=404, detail=f"No shards found for: {model_id}")
+
+
+@router.post("/shards/generate-config")
+async def generate_shard_config(req: GenerateConfigRequest):
+    """Generate a node_shards.json config from local shards."""
+    manager = _get_shard_manager()
+    config = manager.generate_shard_config(
+        model_id=req.model_id,
+        layer_start=req.layer_start,
+        layer_end=req.layer_end,
+        output_path=req.output_path,
+    )
+    return {
+        "status": "generated",
+        "model_id": req.model_id,
+        "output_path": req.output_path,
+        "shard_count": len(config),
+        "shards": config,
+    }

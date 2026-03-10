@@ -1,6 +1,6 @@
 # Storage Network — Proof-of-Storage Distributed Inference
 
-**Version:** v0.6.1
+**Version:** v0.6.2
 **Last Updated:** 2026-03-10
 **Maintainer:** defcon
 
@@ -222,6 +222,120 @@ uvicorn maestro.node_server:app --host 0.0.0.0 --port 8001
 **Configuration via environment variables:**
 - `MAESTRO_NODE_ID` — Unique node identifier (default: `node-default`)
 - `MAESTRO_SHARD_CONFIG` — Path to shard declarations JSON (default: `data/node_shards.json`)
+- `MAESTRO_ORCHESTRATOR_URL` — Orchestrator URL for auto-registration and heartbeats (optional)
+- `MAESTRO_ADVERTISED_HOST` — Public hostname/IP the orchestrator uses to reach this node (optional)
+- `MAESTRO_HEARTBEAT_INTERVAL` — Heartbeat interval in seconds (default: `60`)
+- `MAESTRO_NODE_PORT` — Listen port (default: `8001`)
+
+**v0.6.2 features:**
+- **Auto-registration** — If `MAESTRO_ORCHESTRATOR_URL` is set, the node automatically registers on startup and sends periodic heartbeats
+- **Real byte-range proof challenges** — When shard files exist on disk, the `/challenge` endpoint hashes actual file bytes instead of using deterministic mocks. Falls back to mock hashes for backwards compatibility.
+
+---
+
+### Shard Utilities (`maestro/shard_utils.py`)
+
+Low-level tools for working with safetensors weight files:
+
+- **Header parsing** — Read safetensors metadata without loading tensor data
+- **Layer mapping** — Extract layer indices from tensor names (supports Llama, GPT-2, BERT, GGUF conventions)
+- **Byte-range hashing** — SHA-256 of arbitrary byte ranges (core primitive for PoRep challenges)
+- **Shard descriptors** — Build `ShardDescriptor` objects from actual files on disk
+- **Directory scanning** — Find and index all safetensors files in a directory
+
+```python
+from maestro.shard_utils import (
+    read_safetensors_header,
+    get_layer_range_from_file,
+    hash_byte_range,
+    build_shard_descriptor,
+    scan_shard_directory,
+)
+
+# Parse header without loading tensor data
+header = read_safetensors_header("model-00001-of-00004.safetensors")
+
+# What layers does this file cover?
+start, end = get_layer_range_from_file("model-00001-of-00004.safetensors")
+
+# Hash bytes at offset 1024, length 4096 (for proof challenges)
+h = hash_byte_range("model-00001-of-00004.safetensors", offset=1024, length=4096)
+```
+
+---
+
+### Shard Manager (`maestro/shard_manager.py`)
+
+High-level manager for downloading and organizing weight shards:
+
+- **Download from HuggingFace** — Fetch specific safetensors files for a model, with smart layer-range filtering using the model's index file
+- **Manifest generation** — Scan local files and build an index of layer coverage, checksums, and precision
+- **Node config generation** — Produce the `node_shards.json` config that the node server reads
+- **Integrity verification** — Verify all local shards against stored checksums
+- **Inventory** — List models, report disk usage, clean up
+
+```python
+from maestro.shard_manager import ShardManager
+
+manager = ShardManager()
+
+# Download layers 0-15 of Llama 3.3 70B
+manager.download_model_shards(
+    model_id="meta-llama/Llama-3.3-70B-Instruct",
+    layer_start=0,
+    layer_end=15,
+    token="hf_...",
+)
+
+# Generate node config
+config = manager.generate_shard_config(
+    "meta-llama/Llama-3.3-70B-Instruct",
+    output_path="data/node_shards.json",
+)
+
+# Verify integrity
+results = manager.verify_all("meta-llama/Llama-3.3-70B-Instruct")
+```
+
+Storage layout:
+```
+data/shards/
+  meta-llama__Llama-3.3-70B-Instruct/
+    model-00001-of-00004.safetensors
+    model-00002-of-00004.safetensors
+    manifest.json
+```
+
+---
+
+### Node CLI (`maestro/node_cli.py`)
+
+Command-line interface for node operators:
+
+```bash
+# Download shards and generate config
+python -m maestro.node_cli setup --model meta-llama/Llama-3.3-70B-Instruct --layers 0-15
+
+# Start the node server with auto-registration
+python -m maestro.node_cli start --port 8001 --orchestrator http://maestro-host:8080
+
+# Show local shard inventory
+python -m maestro.node_cli status
+
+# Verify shard integrity
+python -m maestro.node_cli verify --model meta-llama/Llama-3.3-70B-Instruct
+
+# Show what the node would serve
+python -m maestro.node_cli shards
+```
+
+| Command | Description |
+|---|---|
+| `setup` | Download model shards from HuggingFace and generate node config |
+| `start` | Start the node server (with optional auto-registration) |
+| `status` | Show local shard inventory across all models |
+| `verify` | Verify shard integrity against manifest checksums |
+| `shards` | Show the node's shard config (what it would serve) |
 
 ---
 
@@ -267,6 +381,11 @@ data/storage_nodes/
 data/storage_proofs/
   reputations.json            — All node reputation data
   cycle_{timestamp}.json      — Challenge cycle records
+data/shards/
+  {model_id_safe}/
+    *.safetensors             — Downloaded weight shard files
+    manifest.json             — Shard index (layers, checksums, precision)
+data/node_shards.json         — Node server shard config (what this node serves)
 ```
 
 All data is human-readable JSON. No databases.
