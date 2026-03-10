@@ -102,6 +102,6 @@ npm install
 npm run dev
 ```
 
-Frontend runs on `http://localhost:5173` and sends requests to `http://localhost:8000/api/ask`
+Frontend runs on `http://localhost:5173` and sends requests to `http://localhost:8000/api/ask/stream`
 
 Ensure backend (`backend/main.py`) is running simultaneously via `uvicorn backend.main:app --reload --port 8000`.

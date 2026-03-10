@@ -1311,7 +1311,7 @@ function renderSessionRows() {
 
     return `<tr onclick="openSession('${s.session_id}')">
       <td class="mono text-muted">${time}</td>
-      <td class="prompt-cell">${escHtml(prompt)}</td>
+      <td class="prompt-cell" title="${escHtml(prompt)}">${escHtml(prompt)}</td>
       <td><span class="grade-pill ${gradeCls}">${grade}</span></td>
       <td>${quorumBar}</td>
       <td>${agreeStr}</td>
