@@ -856,6 +856,507 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
   );
 }
 
+/* ── Storage Network Panel ────────────────────────────────────── */
+
+interface StorageNodeInfo {
+  node_id: string;
+  host: string;
+  port: number;
+  status: string;
+  shards: { model_id?: string; layer_range?: number[]; shard_id?: string }[];
+  capabilities: string[];
+  reputation_score: number;
+  mean_latency_ms: number;
+  last_heartbeat: string;
+}
+
+interface ShardModel {
+  model_id: string;
+  total_layers: number;
+  layer_coverage: number[][];
+  complete: boolean;
+  precision: string;
+  files: number;
+  total_gb: number;
+}
+
+interface DownloadStatus {
+  status: string;
+  model_id?: string;
+  error?: string;
+  files_downloaded?: number;
+  layer_start?: number;
+  layer_end?: number;
+}
+
+function nodeStatusColor(status: string): string {
+  switch (status) {
+    case "available": return "var(--color-ok)";
+    case "busy": return "var(--color-warn)";
+    case "probation": return "var(--color-warn)";
+    case "offline": return "var(--color-muted)";
+    case "evicted": return "var(--color-err)";
+    default: return "var(--color-muted)";
+  }
+}
+
+function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const [tab, setTab] = useState<"nodes" | "shards">("nodes");
+
+  // Nodes tab state
+  const [nodes, setNodes] = useState<StorageNodeInfo[]>([]);
+  const [nodesLoading, setNodesLoading] = useState(false);
+  const [challengeResult, setChallengeResult] = useState<string | null>(null);
+
+  // Shards tab state
+  const [models, setModels] = useState<ShardModel[]>([]);
+  const [shardsLoading, setShardsLoading] = useState(false);
+  const [diskUsage, setDiskUsage] = useState<{ total_gb: number; total_files: number } | null>(null);
+  const [verifyResults, setVerifyResults] = useState<Record<string, { passed: string[]; failed: string[]; missing: string[] }>>({});
+  const [verifying, setVerifying] = useState<Record<string, boolean>>({});
+
+  // Download form state
+  const [dlModelId, setDlModelId] = useState("");
+  const [dlLayers, setDlLayers] = useState("");
+  const [dlToken, setDlToken] = useState("");
+  const [dlStatus, setDlStatus] = useState<DownloadStatus | null>(null);
+  const [dlPolling, setDlPolling] = useState(false);
+
+  // Generate config state
+  const [configModel, setConfigModel] = useState("");
+  const [configResult, setConfigResult] = useState<string | null>(null);
+
+  const loadNodes = async () => {
+    setNodesLoading(true);
+    try {
+      const res = await fetch("/api/storage/nodes");
+      if (res.ok) {
+        const data = await res.json();
+        setNodes(data.nodes ?? []);
+      }
+    } catch { /* ignore */ }
+    setNodesLoading(false);
+  };
+
+  const loadModels = async () => {
+    setShardsLoading(true);
+    try {
+      const [modelsRes, usageRes] = await Promise.all([
+        fetch("/api/storage/shards/models"),
+        fetch("/api/storage/shards/disk-usage"),
+      ]);
+      if (modelsRes.ok) {
+        const data = await modelsRes.json();
+        setModels(data.models ?? []);
+      }
+      if (usageRes.ok) {
+        const data = await usageRes.json();
+        setDiskUsage(data);
+      }
+    } catch { /* ignore */ }
+    setShardsLoading(false);
+  };
+
+  useEffect(() => {
+    if (visible) {
+      if (tab === "nodes") loadNodes();
+      else loadModels();
+    }
+  }, [visible, tab]);
+
+  const triggerChallenge = async (nodeId: string) => {
+    setChallengeResult(null);
+    try {
+      const res = await fetch(`/api/storage/challenge/${nodeId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge_type: "byte_range_hash" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setChallengeResult(`Challenge ${data.challenge_id.slice(0, 8)}... issued to ${nodeId}`);
+      }
+    } catch {
+      setChallengeResult("Failed to issue challenge.");
+    }
+  };
+
+  const removeNode = async (nodeId: string) => {
+    try {
+      await fetch(`/api/storage/nodes/${nodeId}`, { method: "DELETE" });
+      await loadNodes();
+    } catch { /* ignore */ }
+  };
+
+  const startDownload = async () => {
+    if (!dlModelId.trim()) return;
+    let layerStart = 0;
+    let layerEnd = -1;
+    if (dlLayers.trim()) {
+      const parts = dlLayers.split("-");
+      layerStart = parseInt(parts[0]) || 0;
+      layerEnd = parts.length > 1 ? parseInt(parts[1]) || -1 : layerStart;
+    }
+    try {
+      const res = await fetch("/api/storage/shards/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model_id: dlModelId.trim(),
+          layer_start: layerStart,
+          layer_end: layerEnd,
+          token: dlToken.trim(),
+        }),
+      });
+      if (res.ok) {
+        setDlStatus({ status: "starting", model_id: dlModelId.trim() });
+        setDlPolling(true);
+      }
+    } catch {
+      setDlStatus({ status: "error", error: "Network error." });
+    }
+  };
+
+  // Poll download status
+  useEffect(() => {
+    if (!dlPolling || !dlModelId.trim()) return;
+    const modelId = dlModelId.trim();
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/storage/shards/download-status/${encodeURIComponent(modelId)}`);
+        if (res.ok) {
+          const data: DownloadStatus = await res.json();
+          setDlStatus(data);
+          if (data.status === "complete" || data.status === "error" || data.status === "idle") {
+            setDlPolling(false);
+            if (data.status === "complete") {
+              loadModels();
+              // Clear the download status on the backend
+              fetch(`/api/storage/shards/download-status/${encodeURIComponent(modelId)}`, { method: "DELETE" });
+            }
+          }
+        }
+      } catch { /* ignore */ }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [dlPolling, dlModelId]);
+
+  const handleVerify = async (modelId: string) => {
+    setVerifying((p) => ({ ...p, [modelId]: true }));
+    try {
+      const res = await fetch(`/api/storage/shards/verify/${encodeURIComponent(modelId)}`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setVerifyResults((p) => ({ ...p, [modelId]: data }));
+      }
+    } catch { /* ignore */ }
+    setVerifying((p) => ({ ...p, [modelId]: false }));
+  };
+
+  const handleRemoveModel = async (modelId: string) => {
+    try {
+      await fetch(`/api/storage/shards/${encodeURIComponent(modelId)}`, { method: "DELETE" });
+      await loadModels();
+    } catch { /* ignore */ }
+  };
+
+  const handleGenerateConfig = async (modelId: string) => {
+    setConfigResult(null);
+    try {
+      const res = await fetch("/api/storage/shards/generate-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model_id: modelId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setConfigResult(`Generated ${data.shard_count} shard(s) to ${data.output_path}`);
+      }
+    } catch {
+      setConfigResult("Failed to generate config.");
+    }
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div className="settings-overlay" onClick={onClose}>
+      <div className="settings-panel storage-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="settings-header">
+          <h2>Storage Network</h2>
+          <div className="settings-header-actions">
+            <button className="settings-close" onClick={onClose} aria-label="Close">
+              x
+            </button>
+          </div>
+        </div>
+
+        {/* Tab bar */}
+        <div className="storage-tabs">
+          <button
+            className={`storage-tab${tab === "nodes" ? " storage-tab-active" : ""}`}
+            onClick={() => setTab("nodes")}
+          >
+            Nodes
+          </button>
+          <button
+            className={`storage-tab${tab === "shards" ? " storage-tab-active" : ""}`}
+            onClick={() => setTab("shards")}
+          >
+            Shards
+          </button>
+        </div>
+
+        <div className="settings-body">
+          {/* ── Nodes tab ── */}
+          {tab === "nodes" && (
+            <>
+              <div className="storage-tab-header">
+                <span className="muted">{nodes.length} node{nodes.length !== 1 ? "s" : ""} registered</span>
+                <button className="toggle-btn" onClick={loadNodes} disabled={nodesLoading}>
+                  {nodesLoading ? "Loading..." : "Refresh"}
+                </button>
+              </div>
+
+              {challengeResult && (
+                <p className="storage-challenge-result">{challengeResult}</p>
+              )}
+
+              {nodes.length === 0 && !nodesLoading && (
+                <div className="storage-empty">
+                  <p className="muted">No storage nodes registered.</p>
+                  <p className="muted" style={{ fontSize: "0.78rem" }}>
+                    Start a node with: <code>python -m maestro.node_cli start --orchestrator http://...</code>
+                  </p>
+                </div>
+              )}
+
+              {nodes.map((node) => (
+                <div key={node.node_id} className="storage-node-card">
+                  <div className="storage-node-header">
+                    <span className="storage-node-id">{node.node_id}</span>
+                    <span
+                      className="tag"
+                      style={{ background: nodeStatusColor(node.status) }}
+                    >
+                      {node.status}
+                    </span>
+                    <span className="storage-node-host">
+                      {node.host}:{node.port}
+                    </span>
+                  </div>
+
+                  <div className="storage-node-stats">
+                    <span>
+                      Reputation: <strong>{(node.reputation_score * 100).toFixed(0)}%</strong>
+                    </span>
+                    <span>
+                      Latency: <strong>{node.mean_latency_ms.toFixed(0)}ms</strong>
+                    </span>
+                    <span>
+                      Shards: <strong>{node.shards.length}</strong>
+                    </span>
+                  </div>
+
+                  {node.shards.length > 0 && (
+                    <div className="storage-node-shards">
+                      {node.shards.map((s, i) => (
+                        <span key={i} className="storage-shard-pill">
+                          {s.model_id?.split("/").pop() || "unknown"}
+                          {s.layer_range && s.layer_range.length >= 2 && (
+                            <> L{s.layer_range[0]}-{s.layer_range[1]}</>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {node.last_heartbeat && (
+                    <p className="storage-node-heartbeat">
+                      Last heartbeat: {new Date(node.last_heartbeat).toLocaleString()}
+                    </p>
+                  )}
+
+                  <div className="storage-node-actions">
+                    <button className="toggle-btn" onClick={() => triggerChallenge(node.node_id)}>
+                      Challenge
+                    </button>
+                    <button
+                      className="toggle-btn key-btn-danger"
+                      onClick={() => removeNode(node.node_id)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* ── Shards tab ── */}
+          {tab === "shards" && (
+            <>
+              {/* Download form */}
+              <div className="storage-download-form">
+                <h3>Download Shards</h3>
+                <div className="storage-download-row">
+                  <input
+                    type="text"
+                    className="key-input"
+                    placeholder="Model ID (e.g. meta-llama/Llama-3.3-70B-Instruct)"
+                    value={dlModelId}
+                    onChange={(e) => setDlModelId(e.target.value)}
+                  />
+                </div>
+                <div className="storage-download-row">
+                  <input
+                    type="text"
+                    className="key-input"
+                    placeholder="Layers (e.g. 0-15, blank for all)"
+                    value={dlLayers}
+                    onChange={(e) => setDlLayers(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <input
+                    type="password"
+                    className="key-input"
+                    placeholder="HF Token (optional)"
+                    value={dlToken}
+                    onChange={(e) => setDlToken(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    className="submit-btn"
+                    onClick={startDownload}
+                    disabled={!dlModelId.trim() || dlPolling}
+                    style={{ marginTop: 0 }}
+                  >
+                    {dlPolling ? "Downloading..." : "Download"}
+                  </button>
+                </div>
+
+                {dlStatus && (
+                  <div className={`storage-dl-status storage-dl-${dlStatus.status}`}>
+                    {dlStatus.status === "downloading" && (
+                      <>
+                        <span className="stage-spinner" /> Downloading {dlStatus.model_id}
+                        {dlStatus.layer_start !== undefined && dlStatus.layer_end !== undefined && dlStatus.layer_end !== -1 && (
+                          <> (layers {dlStatus.layer_start}-{dlStatus.layer_end})</>
+                        )}
+                        ...
+                      </>
+                    )}
+                    {dlStatus.status === "starting" && (
+                      <><span className="stage-spinner" /> Starting download...</>
+                    )}
+                    {dlStatus.status === "complete" && (
+                      <>Download complete: {dlStatus.files_downloaded} file(s)</>
+                    )}
+                    {dlStatus.status === "error" && (
+                      <>Download failed: {dlStatus.error}</>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Disk usage */}
+              <div className="storage-tab-header">
+                <span className="muted">
+                  {models.length} model{models.length !== 1 ? "s" : ""}
+                  {diskUsage && <> &mdash; {diskUsage.total_gb} GB total</>}
+                </span>
+                <button className="toggle-btn" onClick={loadModels} disabled={shardsLoading}>
+                  {shardsLoading ? "Loading..." : "Refresh"}
+                </button>
+              </div>
+
+              {models.length === 0 && !shardsLoading && (
+                <div className="storage-empty">
+                  <p className="muted">No local shards. Use the download form above or the CLI.</p>
+                </div>
+              )}
+
+              {models.map((m) => (
+                <div key={m.model_id} className="storage-model-card">
+                  <div className="storage-model-header">
+                    <span className="storage-model-id">{m.model_id}</span>
+                    <span
+                      className="tag"
+                      style={{ background: m.complete ? "var(--color-ok)" : "var(--color-warn)", color: m.complete ? "#fff" : "#000" }}
+                    >
+                      {m.complete ? "complete" : "partial"}
+                    </span>
+                  </div>
+
+                  <div className="storage-model-stats">
+                    <span>Layers: <strong>{m.total_layers}</strong></span>
+                    <span>Coverage: <strong>{m.layer_coverage.map(r => `${r[0]}-${r[1]}`).join(", ")}</strong></span>
+                    <span>Precision: <strong>{m.precision}</strong></span>
+                    <span>Files: <strong>{m.files}</strong></span>
+                    <span>Size: <strong>{m.total_gb} GB</strong></span>
+                  </div>
+
+                  {verifyResults[m.model_id] && (
+                    <div className="storage-verify-results">
+                      {verifyResults[m.model_id].passed.length > 0 && (
+                        <span style={{ color: "var(--color-ok)", fontSize: "0.78rem" }}>
+                          {verifyResults[m.model_id].passed.length} passed
+                        </span>
+                      )}
+                      {verifyResults[m.model_id].failed.length > 0 && (
+                        <span style={{ color: "var(--color-err)", fontSize: "0.78rem" }}>
+                          {verifyResults[m.model_id].failed.length} failed
+                        </span>
+                      )}
+                      {verifyResults[m.model_id].missing.length > 0 && (
+                        <span style={{ color: "var(--color-warn)", fontSize: "0.78rem" }}>
+                          {verifyResults[m.model_id].missing.length} missing
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {configResult && configModel === m.model_id && (
+                    <p className="storage-config-result">{configResult}</p>
+                  )}
+
+                  <div className="storage-model-actions">
+                    <button
+                      className="toggle-btn"
+                      onClick={() => handleVerify(m.model_id)}
+                      disabled={verifying[m.model_id]}
+                    >
+                      {verifying[m.model_id] ? "Verifying..." : "Verify"}
+                    </button>
+                    <button
+                      className="toggle-btn"
+                      onClick={() => { setConfigModel(m.model_id); handleGenerateConfig(m.model_id); }}
+                    >
+                      Generate Config
+                    </button>
+                    <button
+                      className="toggle-btn key-btn-danger"
+                      onClick={() => handleRemoveModel(m.model_id)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+
+        <p className="settings-footer">
+          {tab === "nodes"
+            ? "Nodes auto-register when started with --orchestrator."
+            : "Download shards from HuggingFace, then generate a node config to start serving."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main ────────────────────────────────────────────────────── */
 
 export default function MaestroUI() {
