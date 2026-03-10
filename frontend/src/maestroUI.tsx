@@ -929,6 +929,30 @@ function nodeStatusColor(status: string): string {
   }
 }
 
+function CommandSnippet({ command }: { command: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(command).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="command-snippet">
+      <code className="command-snippet-text">{command}</code>
+      <button
+        className="command-snippet-copy"
+        onClick={handleCopy}
+        title="Copy to clipboard"
+      >
+        {copied ? "Copied!" : "Copy"}
+      </button>
+    </div>
+  );
+}
+
 function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<"nodes" | "shards" | "shard-map" | "network">("network");
 
@@ -1182,9 +1206,7 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
               {topology && topology.models.length === 0 && topology.nodes.length === 0 && (
                 <div className="storage-empty">
                   <p className="muted">No storage nodes or models in the network.</p>
-                  <p className="muted" style={{ fontSize: "0.78rem" }}>
-                    Start a node with: <code>python -m maestro.node_cli start --orchestrator http://...</code>
-                  </p>
+                  <CommandSnippet command={`python -m maestro.node_cli start --orchestrator ${window.location.origin}`} />
                 </div>
               )}
 
@@ -1192,7 +1214,7 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
               {topology?.models.map((model) => (
                 <div key={model.model_id} className="storage-network-model">
                   <div className="storage-model-header">
-                    <span className="storage-model-id">{model.model_id}</span>
+                    <span className="storage-model-id" title={model.model_id}>{model.model_id}</span>
                     <span
                       className="tag"
                       style={{
@@ -1342,7 +1364,7 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
                 return (
                   <div key={model.model_id} className="shard-map-model">
                     <div className="storage-model-header">
-                      <span className="storage-model-id">{model.model_id}</span>
+                      <span className="storage-model-id" title={model.model_id}>{model.model_id}</span>
                       <span
                         className="tag"
                         style={{
@@ -1450,23 +1472,21 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
               {nodes.length === 0 && !nodesLoading && (
                 <div className="storage-empty">
                   <p className="muted">No storage nodes registered.</p>
-                  <p className="muted" style={{ fontSize: "0.78rem" }}>
-                    Start a node with: <code>python -m maestro.node_cli start --orchestrator http://...</code>
-                  </p>
+                  <CommandSnippet command={`python -m maestro.node_cli start --orchestrator ${window.location.origin}`} />
                 </div>
               )}
 
               {nodes.map((node) => (
                 <div key={node.node_id} className="storage-node-card">
                   <div className="storage-node-header">
-                    <span className="storage-node-id">{node.node_id}</span>
+                    <span className="storage-node-id" title={node.node_id}>{node.node_id}</span>
                     <span
                       className="tag"
                       style={{ background: nodeStatusColor(node.status) }}
                     >
                       {node.status}
                     </span>
-                    <span className="storage-node-host">
+                    <span className="storage-node-host" title={`${node.host}:${node.port}`}>
                       {node.host}:{node.port}
                     </span>
                   </div>
@@ -1604,7 +1624,7 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
               {models.map((m) => (
                 <div key={m.model_id} className="storage-model-card">
                   <div className="storage-model-header">
-                    <span className="storage-model-id">{m.model_id}</span>
+                    <span className="storage-model-id" title={m.model_id}>{m.model_id}</span>
                     <span
                       className="tag"
                       style={{ background: m.complete ? "var(--color-ok)" : "var(--color-warn)", color: m.complete ? "#fff" : "#000" }}
