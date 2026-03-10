@@ -31,9 +31,10 @@ for p in (_project_root, _backend_dir):
 
 from dotenv import load_dotenv
 
-# Load .env using the same logic as orchestrator_foundry.py
+# Load .env using the same logic as orchestrator_foundry.py.
+# override=True ensures the volume-backed file wins over docker-compose env vars.
 _dotenv_path = os.environ.get("MAESTRO_ENV_FILE") or os.path.join(_backend_dir, ".env")
-load_dotenv(dotenv_path=_dotenv_path)
+load_dotenv(dotenv_path=_dotenv_path, override=True)
 
 from maestro.agents.sol import Sol
 from maestro.agents.aria import Aria
