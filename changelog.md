@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.6.2] - 2026-03-10
+
+### Added
+
+- **Shard Utilities** (`maestro/shard_utils.py`): Low-level tools for working with safetensors weight files — header parsing, layer index extraction (supports Llama, GPT-2, BERT, GGUF naming), byte-range SHA-256 hashing for proof-of-replication challenges, shard descriptor generation, and directory scanning.
+- **Shard Manager** (`maestro/shard_manager.py`): High-level manager for downloading weight shards from HuggingFace Hub, indexing local shards into manifests, generating `node_shards.json` configs, verifying shard integrity, and reporting disk usage.
+- **Node CLI** (`maestro/node_cli.py`): Command-line interface for storage node operators — `setup` (download shards), `start` (run node server), `status` (inventory), `verify` (integrity check), `shards` (config view). Run via `python -m maestro.node_cli`.
+- **Real byte-range proof challenges**: Node server `/challenge` endpoint now hashes actual file bytes when shard files exist on disk, with backwards-compatible fallback to deterministic mocks.
+- **Node auto-registration**: Node server automatically registers with the orchestrator on startup when `MAESTRO_ORCHESTRATOR_URL` is set, with periodic heartbeats.
+- **New environment variables**: `MAESTRO_ORCHESTRATOR_URL`, `MAESTRO_ADVERTISED_HOST`, `MAESTRO_HEARTBEAT_INTERVAL`, `MAESTRO_NODE_PORT` for node server configuration.
+- **New dependencies**: `safetensors>=0.4.0`, `huggingface_hub>=0.20.0` added to requirements.
+- **Tests**: 47 new tests for shard_utils and shard_manager (87 total storage/shard tests passing).
+
+### Changed
+
+- **Node server rewrite** (`maestro/node_server.py`): FastAPI lifespan management, shard file map for proof challenges, enriched `/health` and `/shards` endpoints showing on-disk verification status. Version bumped to 0.7.0.
+- **Version bumped to v0.6.2** across readme, frontend, docs, roadmap, backend (`manager.py`, `node_server.py`), and changelog.
+
+---
+
 ## [0.6.1] - 2026-03-10
 
 ### Added
