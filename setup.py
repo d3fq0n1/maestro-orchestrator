@@ -31,6 +31,12 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
+# Always run relative to the directory that contains this script so that
+# Docker Compose can find docker-compose.yml regardless of where Python is
+# invoked from (e.g. double-clicking on Windows, launchers, CI, etc.).
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+os.chdir(PROJECT_ROOT)
+
 URL = "http://localhost:8000"
 HEALTH_ENDPOINT = f"{URL}/api/health"
 HEALTH_RETRIES = 30
@@ -180,7 +186,7 @@ def build_and_start(compose: list[str], verbose: bool = False) -> None:
         return
 
     spinner = Spinner(SETUP_MESSAGES).start()
-    logfile = os.path.join(os.getcwd(), ".setup-build.log")
+    logfile = os.path.join(PROJECT_ROOT, ".setup-build.log")
     try:
         with open(logfile, "w") as log:
             result = subprocess.run(
