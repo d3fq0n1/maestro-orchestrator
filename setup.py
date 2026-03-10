@@ -9,13 +9,17 @@ Usage:
     python setup.py          # Build, start, wait for healthy, open browser
     python setup.py --no-browser   # Skip opening the browser
     python setup.py --dev    # Local dev mode (no Docker)
+    python setup.py --verbose      # Show full Docker build output
 """
 
+import itertools
 import os
 import platform
+import random
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import webbrowser
 
@@ -23,6 +27,97 @@ URL = "http://localhost:8000"
 HEALTH_ENDPOINT = f"{URL}/api/health"
 HEALTH_RETRIES = 30
 HEALTH_DELAY = 2
+
+SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+
+SETUP_MESSAGES = [
+    "Reticulating splines",
+    "Cogitating deeply",
+    "Herding containers",
+    "Convincing electrons to cooperate",
+    "Warming up the flux capacitor",
+    "Asking Docker nicely",
+    "Untangling dependencies",
+    "Compiling good vibes",
+    "Negotiating with the kernel",
+    "Aligning bits and bytes",
+    "Summoning daemons",
+    "Consulting the oracle",
+    "Feeding the hamsters",
+    "Calibrating the cloud",
+    "Brewing digital coffee",
+    "Polishing the pixels",
+    "Teaching containers to dance",
+    "Defragmenting the astral plane",
+    "Transcribing ancient scrolls",
+    "Wrangling microservices",
+    "Tuning the hypervisors",
+    "Charging the lasers",
+    "Resolving existential conflicts",
+    "Spooling up the turbines",
+]
+
+HEALTH_MESSAGES = [
+    "Poking Maestro gently",
+    "Checking for signs of life",
+    "Listening for a heartbeat",
+    "Waiting for Maestro to wake up",
+    "Knocking on port 8000",
+    "Sending good vibes",
+    "Whispering sweet nothings to the API",
+    "Patiently lingering",
+]
+
+
+# ---------------------------------------------------------------------------
+# Spinner
+# ---------------------------------------------------------------------------
+
+class Spinner:
+    """Animated spinner with rotating status messages."""
+
+    def __init__(self, messages: list[str], message_interval: float = 3.0):
+        self._messages = messages[:]
+        random.shuffle(self._messages)
+        self._message_cycle = itertools.cycle(self._messages)
+        self._message_interval = message_interval
+        self._frames = SPINNER_FRAMES
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._final_message = ""
+
+    def _animate(self) -> None:
+        frame_cycle = itertools.cycle(self._frames)
+        current_msg = next(self._message_cycle)
+        last_switch = time.monotonic()
+
+        while not self._stop_event.is_set():
+            now = time.monotonic()
+            if now - last_switch >= self._message_interval:
+                current_msg = next(self._message_cycle)
+                last_switch = now
+
+            frame = next(frame_cycle)
+            line = f"\r  {frame} {current_msg} ..."
+            sys.stdout.write(f"{line:<60}")
+            sys.stdout.flush()
+            self._stop_event.wait(0.08)
+
+        # Clear the spinner line
+        sys.stdout.write("\r" + " " * 60 + "\r")
+        sys.stdout.flush()
+
+    def start(self) -> "Spinner":
+        self._thread = threading.Thread(target=self._animate, daemon=True)
+        self._thread.start()
+        return self
+
+    def stop(self, final: str = "") -> None:
+        self._stop_event.set()
+        if self._thread:
+            self._thread.join()
+        if final:
+            print(final)
 
 
 # ---------------------------------------------------------------------------
@@ -36,7 +131,6 @@ def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
 
 def find_compose_cmd() -> list[str]:
     """Return the Docker Compose command as a list, or exit if not found."""
-    # Try "docker compose" (v2) first, then "docker-compose" (v1)
     for cmd in [["docker", "compose"], ["docker-compose"]]:
         try:
             result = subprocess.run(
@@ -67,25 +161,71 @@ def check_deps() -> None:
         sys.exit(1)
 
 
-def wait_for_healthy() -> bool:
-    """Poll the health endpoint until it responds or we time out."""
-    print("  Waiting for Maestro to start ", end="", flush=True)
+def build_and_start(compose: list[str], verbose: bool = False) -> None:
+    """Build and start containers, with spinner or verbose output."""
+    if verbose:
+        print("  Building and starting container ...\n")
+        result = run(compose + ["up", "-d", "--build"])
+        if result.returncode != 0:
+            print("  Error: docker compose failed. Check the output above.")
+            sys.exit(1)
+        return
 
-    for _ in range(HEALTH_RETRIES):
+    spinner = Spinner(SETUP_MESSAGES).start()
+    logfile = os.path.join(os.getcwd(), ".setup-build.log")
+    try:
+        with open(logfile, "w") as log:
+            result = subprocess.run(
+                compose + ["up", "-d", "--build"],
+                stdout=log,
+                stderr=subprocess.STDOUT,
+            )
+    finally:
+        spinner.stop()
+
+    if result.returncode != 0:
+        print("  Error: Docker build failed. Here's the tail of the log:\n")
         try:
-            import urllib.request
-            with urllib.request.urlopen(HEALTH_ENDPOINT, timeout=3) as resp:
-                if resp.status == 200:
-                    print(" ready!")
-                    return True
+            with open(logfile) as f:
+                lines = f.readlines()
+            for line in lines[-30:]:
+                print(f"    {line}", end="")
         except Exception:
             pass
-        print(".", end="", flush=True)
-        time.sleep(HEALTH_DELAY)
+        print(f"\n  Full log: {logfile}")
+        sys.exit(1)
 
-    print()
+    # Clean up log on success
+    try:
+        os.remove(logfile)
+    except OSError:
+        pass
+
+    print("  ✓ Container built and started")
+
+
+def wait_for_healthy() -> bool:
+    """Poll the health endpoint with a spinner until it responds or times out."""
+    spinner = Spinner(HEALTH_MESSAGES, message_interval=4.0).start()
+
+    try:
+        for _ in range(HEALTH_RETRIES):
+            try:
+                import urllib.request
+                with urllib.request.urlopen(HEALTH_ENDPOINT, timeout=3) as resp:
+                    if resp.status == 200:
+                        spinner.stop("  ✓ Maestro is up and healthy")
+                        return True
+            except Exception:
+                pass
+            time.sleep(HEALTH_DELAY)
+    except KeyboardInterrupt:
+        spinner.stop()
+        raise
+
+    spinner.stop()
     total = HEALTH_RETRIES * HEALTH_DELAY
-    print(f"  Warning: Maestro did not respond within {total}s.")
+    print(f"  ⚠ Maestro did not respond within {total}s.")
     if platform.system() == "Windows":
         print("  Check logs with: docker compose logs -f")
     else:
@@ -97,7 +237,7 @@ def open_browser(url: str) -> None:
     """Open the user's default browser."""
     try:
         webbrowser.open(url)
-        print(f"  Browser opened to {url}")
+        print(f"  ✓ Browser opened to {url}")
     except Exception:
         print(f"  Open your browser to: {url}")
 
@@ -106,29 +246,35 @@ def open_browser(url: str) -> None:
 # Modes
 # ---------------------------------------------------------------------------
 
-def docker_setup(skip_browser: bool = False) -> None:
+BANNER = r"""
+       ___  ___                _
+       |  \/  |               | |
+       | .  . | __ _  ___  ___| |_ _ __ ___
+       | |\/| |/ _` |/ _ \/ __| __| '__/ _ \
+       | |  | | (_| |  __/\__ \ |_| | | (_) |
+       \_|  |_/\__,_|\___||___/\__|_|  \___/
+
+          ♫  Orchestrator Setup  ♫
+"""
+
+
+def docker_setup(skip_browser: bool = False, verbose: bool = False) -> None:
     """Build and start the container, wait for healthy, open browser."""
-    print()
-    print("  +--------------------------------------+")
-    print("  |    Maestro-Orchestrator Setup         |")
-    print("  +--------------------------------------+")
-    print()
+    print(BANNER)
 
     check_deps()
+    print("  ✓ Dependencies verified\n")
 
-    compose = find_compose_cmd()
-
-    print("  Building and starting container ...")
-    result = run(compose + ["up", "-d", "--build"])
-    if result.returncode != 0:
-        print("  Error: docker compose failed. Check the output above.")
-        sys.exit(1)
-
+    build_and_start(find_compose_cmd(), verbose=verbose)
     print()
-    if wait_for_healthy() and not skip_browser:
+
+    healthy = wait_for_healthy()
+    print()
+
+    if healthy and not skip_browser:
         open_browser(URL)
+        print()
 
-    print()
     print(f"  Maestro is running at {URL}")
     print()
     if platform.system() != "Windows":
@@ -215,7 +361,8 @@ def main() -> None:
         dev_setup()
     else:
         skip_browser = "--no-browser" in args
-        docker_setup(skip_browser=skip_browser)
+        verbose = "--verbose" in args
+        docker_setup(skip_browser=skip_browser, verbose=verbose)
 
 
 if __name__ == "__main__":
