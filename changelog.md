@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.1] - 2026-03-10
+
+### Fixed
+
+- **API keys deleted on update**: Docker-mode auto-updater now preserves `.env` files when syncing the `backend/` directory, preventing API keys from being wiped during system updates.
+- **Placeholder consistency in key validation**: `validate_key()` now uses the same placeholder value list as `list_keys()`, so template values from `.env.example` are no longer sent to provider APIs for validation.
+- **API endpoint documentation**: Corrected HTTP methods in readme, architecture, and changelog — key update uses `PUT` (not `POST`), added missing `DELETE /api/keys/{provider}` and `POST /api/keys/{provider}/validate` endpoints.
+
+### Changed
+
+- **Version bumped to v0.6.1** across readme, frontend, docs, roadmap, and changelog.
+
+---
+
 ## [0.6] - 2026-03-09
 
 ### Added
@@ -139,7 +153,7 @@
 
 - MAGI meta-agent governance (`maestro/magi.py`) — cross-session pattern analysis with structured recommendations
 - API key management (`maestro/keyring.py`, `maestro/api_keys.py`, `maestro/cli_keys.py`) — in-app key configuration, validation, and secure `.env` persistence
-- Key management REST endpoints: `GET /api/keys`, `POST /api/keys/{provider}`, `POST /api/keys/validate`
+- Key management REST endpoints: `GET /api/keys`, `PUT /api/keys/{provider}`, `DELETE /api/keys/{provider}`, `POST /api/keys/{provider}/validate`, `POST /api/keys/validate`
 - Key management test suite (`tests/test_keyring.py`)
 - MAGI REST endpoint: `GET /api/magi`
 - Frontend key configuration panel in the web UI

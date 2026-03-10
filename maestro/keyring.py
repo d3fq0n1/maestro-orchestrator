@@ -51,6 +51,14 @@ PROVIDERS = {
 }
 
 
+# Values treated as "not configured" (template placeholders, etc.)
+_PLACEHOLDER_VALUES = frozenset({
+    "", "sk-...", "...",
+    "your-openai-key-here", "your-anthropic-key-here",
+    "your-google-api-key-here", "your-openrouter-key-here",
+})
+
+
 @dataclass
 class KeyStatus:
     """Status of a single API key."""
@@ -103,11 +111,7 @@ def list_keys() -> list[KeyStatus]:
     statuses = []
     for provider, info in PROVIDERS.items():
         raw = os.environ.get(info["env_var"]) or ""
-        # Ignore placeholder values from templates
-        is_placeholder = raw in ("", "sk-...", "...", "your-openai-key-here",
-                                 "your-anthropic-key-here", "your-google-api-key-here",
-                                 "your-openrouter-key-here")
-        configured = bool(raw) and not is_placeholder
+        configured = bool(raw) and raw not in _PLACEHOLDER_VALUES
         statuses.append(KeyStatus(
             provider=provider,
             label=info["label"],
@@ -178,7 +182,7 @@ async def validate_key(provider: str) -> KeyStatus:
         raise ValueError(f"Unknown provider: {provider}")
 
     raw = os.environ.get(info["env_var"]) or ""
-    configured = bool(raw) and raw not in ("sk-...", "...")
+    configured = bool(raw) and raw not in _PLACEHOLDER_VALUES
     status = KeyStatus(
         provider=provider,
         label=info["label"],
