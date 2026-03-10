@@ -157,6 +157,7 @@ entrypoint.py                # Unified startup wrapper (dialog GUI for mode sele
   api_magi.py                # MAGI analysis REST API
   api_keys.py                # Key management REST API
   api_self_improve.py        # Self-improvement + injection REST API
+  api_update.py              # Auto-updater REST API (check, apply, restart)
   api_storage.py             # Storage network REST API
   api_plugins.py             # Plugin system REST API
   storage_proof.py           # Storage proof engine (challenges, reputation)
@@ -341,6 +342,11 @@ Plugin system (when mod_manager is active):
 | GET | `/api/snapshots/{id}` | Load snapshot data |
 | DELETE | `/api/snapshots/{id}` | Delete a snapshot |
 | GET | `/api/snapshots/diff/{a}/{b}` | Compare two snapshots |
+| GET | `/api/update/check` | Check for available updates |
+| POST | `/api/update/apply` | Pull latest changes from remote |
+| GET | `/api/update/remote` | Get configured remote URL |
+| PUT | `/api/update/remote` | Set remote repository URL |
+| POST | `/api/update/restart` | Restart the server process |
 
 ---
 

@@ -31,7 +31,7 @@ from pydantic import BaseModel, Field
 # App
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="Maestro Storage Node", version="0.6.0")
+app = FastAPI(title="Maestro Storage Node", version="0.6.1")
 
 # Node identity — set via environment variables
 NODE_ID = os.environ.get("MAESTRO_NODE_ID", "node-default")
