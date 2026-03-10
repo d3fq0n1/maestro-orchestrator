@@ -64,7 +64,7 @@ def _get_branch() -> str:
 # ── Local commit ──────────────────────────────────────────────────────
 
 def get_local_commit() -> str:
-    """Return the current local HEAD commit hash."""
+    """Return the current local HEAD commit hash, or empty string if unknown."""
     # Git mode
     if _is_git_repo():
         result = _run(["git", "rev-parse", "HEAD"])
@@ -73,7 +73,10 @@ def get_local_commit() -> str:
     # Docker mode — read baked-in VERSION file
     if os.path.isfile(_VERSION_FILE):
         with open(_VERSION_FILE) as f:
-            return f.read().strip()
+            value = f.read().strip()
+            # The Dockerfile defaults GIT_COMMIT to "unknown"; treat that as empty.
+            if value and value.lower() != "unknown":
+                return value
     return ""
 
 
@@ -187,6 +190,17 @@ def check_for_updates(branch: str | None = None) -> dict:
             "new_commits": [],
             "branch": branch,
             "error": msg,
+        }
+
+    # If local commit is unknown, we can't compare — recommend updating.
+    if not local:
+        return {
+            "available": True,
+            "local_commit": "",
+            "local_unknown": True,
+            "remote_commit": remote[:8],
+            "new_commits": [],
+            "branch": branch,
         }
 
     available = local != remote
