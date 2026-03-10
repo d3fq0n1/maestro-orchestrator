@@ -1,6 +1,6 @@
 # Quorum Logic – Maestro-Orchestrator
 
-**Version:** v0.6.2
+**Version:** v0.6.3
 **Last Updated:** 2026-03-10
 **Author:** defcon
 
