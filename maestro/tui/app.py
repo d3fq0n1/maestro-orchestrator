@@ -26,6 +26,7 @@ from maestro.tui.widgets import (
     AgentPanel,
     ConsensusPanel,
     ResponseViewer,
+    ShardDiscoveryPanel,
     ShardNetworkPanel,
     StatusBar,
 )
@@ -73,6 +74,7 @@ class HelpScreen(ModalScreen[None]):
             yield Static(
                 "[bold]Prompt Commands[/]\n"
                 "  [b]/nodes[/]     List storage nodes\n"
+                "  [b]/shards[/]    Show LAN shard discovery status\n"
                 "  [b]/keys[/]      Show API key status\n"
                 "  [b]/deps[/]      Dependency health check\n"
                 "  [b]/history[/]   Recent session history\n"
@@ -292,6 +294,7 @@ class MaestroTUI(App):
         super().__init__(**kwargs)
         self._backend = backend
         self._busy = False
+        self._discovery_engine = None
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -299,6 +302,7 @@ class MaestroTUI(App):
             yield AgentPanel(id="agent-panel")
             yield ConsensusPanel(id="consensus-panel")
         yield ResponseViewer(id="response-viewer")
+        yield ShardDiscoveryPanel(id="discovery-panel")
         yield ShardNetworkPanel(id="shard-panel")
         yield Input(placeholder="Enter prompt (or /help for commands)...", id="prompt-input")
         yield StatusBar()
@@ -307,6 +311,7 @@ class MaestroTUI(App):
         self.query_one("#prompt-input", Input).focus()
         self._refresh_nodes()
         self._startup_dep_check()
+        self._start_discovery()
 
     # ── Input handling ──────────────────────────────────────────────
 
@@ -334,6 +339,9 @@ class MaestroTUI(App):
             return
         if lower in ("/keys",):
             self.action_show_keys()
+            return
+        if lower in ("/shards", "/discovery", "/lan"):
+            self._show_discovery_status()
             return
         if lower in ("/history",):
             self._show_history()
@@ -506,3 +514,77 @@ class MaestroTUI(App):
                 viewer.write_info(f"  {sid}  {grade:<12} {prompt_text}")
         except Exception as exc:
             viewer.write_error(f"Could not load history: {exc}")
+
+    # ── LAN Shard Discovery ────────────────────────────────────────
+
+    @work(thread=False)
+    async def _show_discovery_status(self) -> None:
+        """Show detailed LAN discovery status in the response viewer."""
+        viewer = self.query_one("#response-viewer", ResponseViewer)
+        if not self._discovery_engine:
+            viewer.write_info("LAN discovery is not running.")
+            return
+
+        snap = self._discovery_engine.snapshot()
+        ident = snap["identity"]
+        viewer.write_stage("LAN Shard Discovery")
+        viewer.write_info(
+            f"  Identity: {ident['human_name']} ({ident['uid'][:8]})"
+        )
+        viewer.write_info(f"  Host: {ident['host']}:{ident['port']}")
+        viewer.write_info(
+            f"  Peers: {snap['peer_count']} discovered, "
+            f"{snap['alive_count']} alive, "
+            f"{snap['adjacent_count']} adjacent"
+        )
+
+        node = snap["node_status"]
+        if node["formed"]:
+            names = ", ".join(node["member_names"])
+            viewer.write_info(f"  Maestro Node: FORMED [{names}]")
+        else:
+            viewer.write_info("  Maestro Node: not formed (need 3 adjacent shards)")
+
+        if snap["peers"]:
+            viewer.write_info("")
+            for uid, p in snap["peers"].items():
+                alive_icon = "[green]OK[/]" if p["is_alive"] else "[red]DOWN[/]"
+                adj = p["adjacency"]
+                lat = f" {p['latency_ms']:.0f}ms" if p["latency_ms"] else ""
+                viewer.write_info(
+                    f"  {alive_icon} {p['human_name']:<18} "
+                    f"{uid[:8]}  {p['host']:<15} {adj}{lat}"
+                )
+
+    @work(thread=False)
+    async def _start_discovery(self) -> None:
+        """Start the LAN shard discovery engine and refresh loop."""
+        try:
+            from maestro.lan_discovery import ShardDiscoveryEngine
+            self._discovery_engine = ShardDiscoveryEngine()
+            await self._discovery_engine.start()
+            discovery_panel = self.query_one("#discovery-panel", ShardDiscoveryPanel)
+            discovery_panel.update_identity(self._discovery_engine.identity.to_dict())
+            discovery_panel.update_node_status(self._discovery_engine.node_status.to_dict())
+            viewer = self.query_one("#response-viewer", ResponseViewer)
+            viewer.write_info(
+                f"LAN discovery started: {self._discovery_engine.identity.human_name} "
+                f"({self._discovery_engine.identity.uid[:8]})"
+            )
+            # Start periodic refresh
+            self._refresh_discovery_loop()
+        except Exception as exc:
+            viewer = self.query_one("#response-viewer", ResponseViewer)
+            viewer.write_info(f"LAN discovery unavailable: {exc}")
+
+    @work(thread=False)
+    async def _refresh_discovery_loop(self) -> None:
+        """Periodically update the discovery panel with latest peer state."""
+        while self._discovery_engine and self._discovery_engine._running:
+            try:
+                snapshot = self._discovery_engine.snapshot()
+                discovery_panel = self.query_one("#discovery-panel", ShardDiscoveryPanel)
+                discovery_panel.update_full(snapshot)
+            except Exception:
+                pass
+            await asyncio.sleep(2.0)

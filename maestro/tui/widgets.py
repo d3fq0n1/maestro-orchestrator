@@ -285,6 +285,119 @@ class ShardNetworkPanel(Widget):
 
 
 # ---------------------------------------------------------------------------
+# LAN Discovery panel
+# ---------------------------------------------------------------------------
+
+_ADJACENCY_ICONS = {
+    "discovered":     ("[yellow]\u25cb[/]",  "discovered"),
+    "handshake_sent": ("[yellow]\u25d4[/]",  "handshake..."),
+    "handshake_acked":("[yellow]\u25d1[/]",  "ack'd"),
+    "confirmed":      ("[green]\u25cf[/]",   "adjacent"),
+    "stale":          ("[red]\u25cf[/]",      "offline"),
+}
+
+
+class ShardDiscoveryPanel(Widget):
+    """Panel showing LAN shard discovery, adjacencies, and Maestro Node status."""
+
+    DEFAULT_CSS = """
+    ShardDiscoveryPanel {
+        height: auto;
+        max-height: 10;
+        border: solid $primary;
+        padding: 0 1;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        yield Label(" LAN Shards", id="discovery-panel-title")
+        yield Static(" [dim]identity[/]: ---", id="discovery-identity")
+        yield Static(" [dim]maestro node[/]: ---", id="discovery-node-status")
+        yield Static(" [dim]waiting for beacons...[/]", id="discovery-peer-list")
+
+    def update_identity(self, identity: dict) -> None:
+        """Update the local shard identity display."""
+        name = identity.get("human_name", "?")
+        uid_short = identity.get("uid", "?")[:8]
+        host = identity.get("host", "?")
+        port = identity.get("port", "?")
+        self.query_one("#discovery-identity", Static).update(
+            f" [bold cyan]\u2726[/] [bold]{name}[/] "
+            f"[dim]({uid_short})[/]  {host}:{port}"
+        )
+
+    def update_node_status(self, node_status: dict) -> None:
+        """Update the Maestro Node formation status."""
+        formed = node_status.get("formed", False)
+        if formed:
+            names = node_status.get("member_names", [])
+            label = ", ".join(names[:3])
+            self.query_one("#discovery-node-status", Static).update(
+                f" [bold green]\u2714 MAESTRO NODE[/]  [{label}]"
+            )
+        else:
+            self.query_one("#discovery-node-status", Static).update(
+                f" [dim]\u25cb maestro node: not formed (need 3 shards)[/]"
+            )
+
+    def update_peers(self, peers: list[dict]) -> None:
+        """Update the peer list with adjacency status lights."""
+        if not peers:
+            self.query_one("#discovery-peer-list", Static).update(
+                " [dim]no neighbors discovered yet[/]"
+            )
+            return
+
+        lines = []
+        for p in peers[:6]:
+            adj_state = p.get("adjacency", "discovered")
+            icon, adj_label = _ADJACENCY_ICONS.get(
+                adj_state, ("[dim]\u25cb[/]", "?")
+            )
+            name = p.get("name", "?")
+            host = p.get("host", "?")
+            uid_short = p.get("uid_short", "?")
+            latency = p.get("latency_ms", 0)
+
+            alive = p.get("alive", False)
+            if not alive and adj_state != "stale":
+                icon = "[red]\u25cf[/]"
+                adj_label = "offline"
+
+            latency_str = f" {latency:.0f}ms" if latency > 0 else ""
+            line = (
+                f" {icon} {name:<18} "
+                f"[dim]{uid_short}[/]  {host:<15} "
+                f"{adj_label}{latency_str}"
+            )
+            lines.append(line)
+
+        if len(peers) > 6:
+            lines.append(f" ... and {len(peers) - 6} more")
+
+        self.query_one("#discovery-peer-list", Static).update("\n".join(lines))
+
+    def update_full(self, snapshot: dict) -> None:
+        """Convenience: update all sub-elements from a full discovery snapshot."""
+        self.update_identity(snapshot.get("identity", {}))
+        self.update_node_status(snapshot.get("node_status", {}))
+        # Convert peers dict to list for display
+        peers_dict = snapshot.get("peers", {})
+        peer_list = []
+        for uid, pdata in peers_dict.items():
+            peer_list.append({
+                "uid_short": uid[:8],
+                "name": pdata.get("human_name", "?"),
+                "host": pdata.get("host", "?"),
+                "adjacency": pdata.get("adjacency", "discovered"),
+                "alive": pdata.get("is_alive", False),
+                "adjacent": pdata.get("is_adjacent", False),
+                "latency_ms": pdata.get("latency_ms", 0),
+            })
+        self.update_peers(peer_list)
+
+
+# ---------------------------------------------------------------------------
 # Status bar
 # ---------------------------------------------------------------------------
 

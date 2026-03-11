@@ -15,6 +15,7 @@ from typing import Optional
 from maestro.shard_registry import StorageNodeRegistry, StorageNode
 from maestro.storage_proof import StorageProofEngine
 from maestro.shard_manager import ShardManager
+from maestro.lan_discovery import ShardDiscoveryEngine
 
 router = APIRouter(prefix="/api/storage", tags=["storage"])
 
@@ -22,6 +23,7 @@ router = APIRouter(prefix="/api/storage", tags=["storage"])
 _registry: Optional[StorageNodeRegistry] = None
 _proof_engine: Optional[StorageProofEngine] = None
 _shard_manager: Optional[ShardManager] = None
+_discovery_engine: Optional[ShardDiscoveryEngine] = None
 
 # Track in-progress downloads
 _active_downloads: dict[str, dict] = {}
@@ -46,6 +48,14 @@ def _get_shard_manager() -> ShardManager:
     if _shard_manager is None:
         _shard_manager = ShardManager()
     return _shard_manager
+
+
+async def _get_discovery_engine() -> ShardDiscoveryEngine:
+    global _discovery_engine
+    if _discovery_engine is None:
+        _discovery_engine = ShardDiscoveryEngine()
+        await _discovery_engine.start()
+    return _discovery_engine
 
 
 # --- Request models ---
@@ -454,3 +464,26 @@ async def generate_shard_config(req: GenerateConfigRequest):
         "shard_count": len(config),
         "shards": config,
     }
+
+
+# --- LAN Discovery endpoints ---
+
+@router.get("/discovery")
+async def discovery_status():
+    """Get LAN shard discovery status: identity, peers, adjacencies, node formation."""
+    engine = await _get_discovery_engine()
+    return engine.snapshot()
+
+
+@router.get("/discovery/peers")
+async def discovery_peers():
+    """List discovered peers with adjacency state."""
+    engine = await _get_discovery_engine()
+    return {"peers": engine.peer_summary()}
+
+
+@router.get("/discovery/node")
+async def discovery_node_status():
+    """Get Maestro Node formation status."""
+    engine = await _get_discovery_engine()
+    return engine.node_status.to_dict()

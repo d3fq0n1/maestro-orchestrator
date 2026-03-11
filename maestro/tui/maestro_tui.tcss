@@ -58,6 +58,19 @@ Header {
     padding: 0 1;
 }
 
+/* ── LAN Discovery panel ─────────────────────────────────────── */
+
+#discovery-panel {
+    height: auto;
+    max-height: 10;
+    min-height: 4;
+}
+
+#discovery-panel-title {
+    text-style: bold;
+    color: $text;
+}
+
 /* ── Shard network panel ──────────────────────────────────────── */
 
 #shard-panel {
