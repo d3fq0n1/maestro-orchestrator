@@ -95,6 +95,8 @@ No `.env` file is required. Keys are saved through the Web-UI and persist across
 | Container status | `make status` | `docker compose ps` |
 | Remove all data | `make clean` | `docker compose down -v` |
 | Local dev (no Docker) | `make dev` | `python setup.py --dev` |
+| TUI dashboard | `make tui` | `.venv/bin/python -m maestro.tui --mode http` |
+| Interactive CLI | `make cli` | `.venv/bin/python -m maestro.cli` |
 
 > **CLI mode:** Set `MAESTRO_MODE=cli` in a `.env` file or pass it as an environment variable to use the interactive terminal REPL instead.
 >
@@ -117,8 +119,8 @@ Or start services individually:
 ```bash
 uvicorn backend.main:app --reload --port 8000   # backend
 cd frontend && npm install && npm run dev        # frontend (separate terminal)
-python -m maestro.cli                            # CLI mode (no web)
-python -m maestro.tui                            # TUI dashboard (Raspi5 optimized)
+make cli                                         # CLI mode (no web)
+make tui                                         # TUI dashboard (Raspi5 optimized)
 python -m maestro.tui --mode http --url URL      # TUI connecting to remote server
 ```
 

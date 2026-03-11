@@ -1,4 +1,4 @@
-.PHONY: up down build logs status clean dev setup update help
+.PHONY: up down build logs status clean dev setup update help tui cli
 
 # Default target
 help:
@@ -15,6 +15,8 @@ help:
 	@echo "  make clean    Stop container and remove volumes"
 	@echo "  make update   Pull latest changes and rebuild"
 	@echo "  make dev      Start local dev servers (no Docker)"
+	@echo "  make tui      Launch TUI dashboard (connects to running server)"
+	@echo "  make cli      Launch interactive CLI (connects to running server)"
 	@echo ""
 
 # First-time setup: build, start, wait for healthy, open browser
@@ -72,3 +74,19 @@ dev:
 		(cd backend && uvicorn main:app --reload --port 8000) & \
 		(cd frontend && npm install --silent && npm run dev) & \
 		wait
+
+# Ensure .venv exists with TUI/CLI dependencies
+.venv/bin/python:
+	@echo "  Creating virtual environment (.venv) ..."
+	@python3 -m venv .venv
+	@echo "  Installing dependencies ..."
+	@.venv/bin/pip install -q -r backend/requirements.txt
+	@echo "  ✓ Virtual environment ready"
+
+# TUI dashboard (connects to running Maestro server via HTTP)
+tui: .venv/bin/python
+	@.venv/bin/python -m maestro.tui --mode http
+
+# Interactive CLI
+cli: .venv/bin/python
+	@.venv/bin/python -m maestro.cli

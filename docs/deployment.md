@@ -40,6 +40,8 @@ After initial setup, use `docker compose up -d` / `docker compose down` to start
 | Remove all data | `make clean` | `docker compose down -v` |
 | Update to latest | `make update` | `git pull && docker compose up -d --build` |
 | Local dev (no Docker) | `make dev` | `python setup.py --dev` |
+| TUI dashboard | `make tui` | `.venv/bin/python -m maestro.tui --mode http` |
+| Interactive CLI | `make cli` | `.venv/bin/python -m maestro.cli` |
 
 ### Health Check
 
@@ -80,7 +82,8 @@ Frontend dev server: `http://localhost:5173` (proxies API calls to the backend)
 ### Interactive CLI
 
 ```bash
-python -m maestro.cli
+make cli                                       # Recommended (auto-creates .venv)
+python -m maestro.cli                          # If already in a virtualenv
 ```
 
 Type prompts at the `maestro>` prompt. Results include agent responses, consensus, dissent analysis, NCG benchmark, and R2 grade. Type `/help` for available commands.
@@ -88,7 +91,8 @@ Type prompts at the `maestro>` prompt. Results include agent responses, consensu
 ### TUI Dashboard (Raspberry Pi 5 / SoC)
 
 ```bash
-python -m maestro.tui                          # Direct import mode (default)
+make tui                                       # Recommended (auto-creates .venv)
+python -m maestro.tui                          # Direct import mode (if in a virtualenv)
 python -m maestro.tui --mode http              # HTTP client to localhost:8000
 python -m maestro.tui --mode http --url URL    # HTTP client to remote server
 ```

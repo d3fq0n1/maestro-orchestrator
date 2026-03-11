@@ -123,7 +123,8 @@ The TUI is a Textual-based terminal dashboard designed for SoC devices like the 
 ### Launch
 
 ```bash
-python -m maestro.tui                          # Direct import mode
+make tui                                       # Recommended (auto-creates .venv, HTTP mode)
+python -m maestro.tui                          # Direct import mode (if in a virtualenv)
 python -m maestro.tui --mode http              # HTTP client to localhost:8000
 python -m maestro.tui --mode http --url URL    # HTTP client to remote server
 MAESTRO_MODE=tui python entrypoint.py          # Via startup wrapper

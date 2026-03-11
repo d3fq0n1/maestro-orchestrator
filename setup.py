@@ -440,10 +440,10 @@ def _has_graphical_browser() -> bool:
 VENV_DIR = os.path.join(PROJECT_ROOT, ".venv")
 
 
-def _ensure_venv() -> str | None:
-    """Create a project venv (if needed), install TUI deps, return venv python path.
+def _ensure_venv() -> bool:
+    """Create a project venv with dependencies for TUI/CLI use.
 
-    Returns None if the venv could not be created or deps failed to install.
+    Returns True if the venv is ready, False on failure.
     """
     venv_python = os.path.join(
         VENV_DIR, "Scripts" if platform.system() == "Windows" else "bin", "python"
@@ -460,15 +460,12 @@ def _ensure_venv() -> str | None:
         if result.returncode != 0:
             stderr = result.stderr.decode(errors="replace").strip()
             print(f"  ⚠ Could not create venv: {stderr}")
-            print("  You can create one manually:")
-            print(f"    python3 -m venv {VENV_DIR}")
-            print(f"    {VENV_DIR}/bin/pip install textual rich")
-            return None
+            return False
         print("  ✓ Virtual environment created")
 
-    # Install TUI deps into the venv (skip if already present)
+    # Install deps into the venv (skip if already present)
     check = subprocess.run(
-        [venv_python, "-c", "import textual, rich"],
+        [venv_python, "-c", "import textual, rich, httpx"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -476,35 +473,41 @@ def _ensure_venv() -> str | None:
         venv_pip = os.path.join(
             VENV_DIR, "Scripts" if platform.system() == "Windows" else "bin", "pip"
         )
-        print("  Installing TUI dependencies (textual, rich) ...")
+        print("  Installing dependencies ...")
+        req_file = os.path.join(PROJECT_ROOT, "backend", "requirements.txt")
         result = subprocess.run(
-            [venv_pip, "install", "textual>=0.85.0", "rich>=13.0.0"],
+            [venv_pip, "install", "-q", "-r", req_file],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
         )
         if result.returncode != 0:
             stderr = result.stderr.decode(errors="replace").strip()
-            print(f"  ⚠ Could not install TUI dependencies: {stderr}")
-            print(f"  You can install them manually: {venv_pip} install textual rich")
-            return None
-        print("  ✓ TUI dependencies installed")
+            print(f"  ⚠ Could not install dependencies: {stderr}")
+            return False
+        print("  ✓ Dependencies installed")
 
-    return venv_python
+    return True
 
 
 def open_browser(url: str) -> None:
     """Open the user's default browser, or suggest TUI when only text browsers exist."""
     if not _has_graphical_browser():
-        venv_python = _ensure_venv()
-        python_cmd = venv_python if venv_python else "python"
+        _ensure_venv()
         print(f"  No graphical browser detected (text browsers like lynx are not suitable).")
         print(f"  The Maestro API is running at {url}")
         print()
-        print("  To use Maestro from this terminal, launch the TUI dashboard:")
-        print(f"    {python_cmd} -m maestro.tui --mode http")
-        print()
-        print("  Or launch the interactive CLI:")
-        print(f"    {python_cmd} -m maestro.cli")
+        if platform.system() != "Windows":
+            print("  To use Maestro from this terminal, launch the TUI dashboard:")
+            print("    make tui")
+            print()
+            print("  Or launch the interactive CLI:")
+            print("    make cli")
+        else:
+            print("  To use Maestro from this terminal, launch the TUI dashboard:")
+            print(f"    .venv\\Scripts\\python -m maestro.tui --mode http")
+            print()
+            print("  Or launch the interactive CLI:")
+            print(f"    .venv\\Scripts\\python -m maestro.cli")
         return
     try:
         webbrowser.open(url)

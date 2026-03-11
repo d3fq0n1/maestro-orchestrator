@@ -6,7 +6,7 @@
 
 You need at least one provider key. There are several ways to configure them:
 
-1. **TUI setup wizard** (recommended for terminal users): Launch the TUI (`python -m maestro.tui`) and press `S` to open the setup wizard. It walks through each provider and lets you paste keys directly. On first launch the wizard opens automatically.
+1. **TUI setup wizard** (recommended for terminal users): Launch the TUI (`make tui`) and press `S` to open the setup wizard. It walks through each provider and lets you paste keys directly. On first launch the wizard opens automatically.
 
 2. **Web-UI**: The settings panel opens automatically on first launch in the browser.
 

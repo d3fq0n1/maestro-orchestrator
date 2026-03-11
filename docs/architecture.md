@@ -102,7 +102,7 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 - Typed prompts flow through the same agent council, dissent analysis, NCG, R2, and session logging as the Web-UI
 - Renders agent responses, consensus, dissent metrics, NCG benchmark, and R2 grade in a formatted terminal layout
 - Built-in commands: `/keys` (show API key status), `/improve` (run self-improvement cycle), `/introspect` (analyze code for optimization targets), `/cycles` (show improvement history), `/nodes` (storage nodes), `/plugins` (plugin management), `/snapshot` (weight snapshots), `/challenge` (proof challenges), `/help`, `/quit`
-- Can be run standalone (`python -m maestro.cli`) or via the startup wrapper
+- Can be run standalone (`make cli` or `python -m maestro.cli`) or via the startup wrapper
 
 ### TUI Dashboard (`maestro/tui/`)
 - Textual-based terminal dashboard optimized for SoC devices (Raspberry Pi 5)
@@ -117,7 +117,7 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
   - **HTTP client**: connects to a running Maestro server via SSE, supports multi-device clusters
 - Single-key actions: `?` (help), `S` (setup wizard), `K` (keys), `N` (nodes), `D` (deps), `H` (history), `I` (improve), `U` (update), `L` (clear), `P` (focus prompt), `Q` (quit). Function keys also supported as alternatives
 - Slash commands still work in the prompt input: `/nodes`, `/keys`, `/setup`, `/shards`, `/history`, `/deps`, `/update`, `/clear`, `/quit`
-- Can be run standalone (`python -m maestro.tui`) or via the startup wrapper (`MAESTRO_MODE=tui`)
+- Can be run standalone (`make tui` or `python -m maestro.tui`) or via the startup wrapper (`MAESTRO_MODE=tui`)
 - See [`ui-guide.md`](./ui-guide.md) for the full TUI reference
 
 ### Frontend UI (React + Vite)
