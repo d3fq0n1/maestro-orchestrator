@@ -1706,6 +1706,180 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
   );
 }
 
+/* ── Dependency Health Panel ──────────────────────────────────── */
+
+interface DepCheck {
+  name: string;
+  category: string;
+  severity: "ok" | "warn" | "error";
+  message: string;
+  hint: string;
+}
+
+interface DepReport {
+  healthy: boolean;
+  total: number;
+  ok: number;
+  warnings: number;
+  errors: number;
+  checks: DepCheck[];
+}
+
+function severityIcon(s: string): string {
+  switch (s) {
+    case "ok": return "\u2714";
+    case "warn": return "\u26a0";
+    case "error": return "\u2718";
+    default: return "?";
+  }
+}
+
+function severityColor(s: string): string {
+  switch (s) {
+    case "ok": return "var(--color-ok)";
+    case "warn": return "var(--color-warn)";
+    case "error": return "var(--color-err)";
+    default: return "var(--color-muted)";
+  }
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  runtime: "Runtime",
+  python: "Python Packages",
+  system: "System Tools",
+  api_key: "API Keys",
+};
+
+function DependencyPanel({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const [report, setReport] = useState<DepReport | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadReport = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/health/dependencies");
+      if (res.ok) {
+        setReport(await res.json());
+      } else {
+        setError(`Server returned ${res.status}`);
+      }
+    } catch {
+      setError("Could not reach the backend.");
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (visible) loadReport();
+  }, [visible]);
+
+  if (!visible) return null;
+
+  const categories = ["runtime", "python", "system", "api_key"];
+
+  return (
+    <div className="settings-overlay" onClick={onClose}>
+      <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="settings-header">
+          <h2>Dependency Health</h2>
+          <div className="settings-header-actions">
+            <button className="toggle-btn" onClick={loadReport} disabled={loading}>
+              {loading ? "Checking..." : "Re-check"}
+            </button>
+            <button className="settings-close" onClick={onClose} aria-label="Close">
+              x
+            </button>
+          </div>
+        </div>
+
+        <div className="settings-body">
+          {error && (
+            <div className="agent-warning-item agent-warning-error">
+              <span className="agent-warning-title">Check failed</span>
+              <span className="agent-warning-detail">{error}</span>
+            </div>
+          )}
+
+          {loading && !report && <p className="muted">Running dependency checks...</p>}
+
+          {report && (
+            <>
+              {/* Summary */}
+              <div
+                className="dep-summary"
+                style={{
+                  padding: "0.75rem 1rem",
+                  borderRadius: "6px",
+                  marginBottom: "1rem",
+                  background: report.healthy
+                    ? "rgba(76, 175, 80, 0.1)"
+                    : "rgba(244, 67, 54, 0.1)",
+                  border: `1px solid ${report.healthy ? "var(--color-ok)" : "var(--color-err)"}`,
+                }}
+              >
+                <p style={{ margin: 0, fontWeight: 600, color: report.healthy ? "var(--color-ok)" : "var(--color-err)" }}>
+                  {report.healthy
+                    ? `All clear \u2014 ${report.ok} passed, ${report.warnings} warning(s)`
+                    : `Issues found \u2014 ${report.errors} error(s), ${report.warnings} warning(s), ${report.ok} ok`}
+                </p>
+              </div>
+
+              {/* Checks grouped by category */}
+              {categories.map((cat) => {
+                const items = report.checks.filter((c) => c.category === cat);
+                if (!items.length) return null;
+                return (
+                  <div key={cat} className="dep-category" style={{ marginBottom: "1rem" }}>
+                    <h3 style={{ margin: "0 0 0.4rem 0", fontSize: "0.9rem" }}>
+                      {CATEGORY_LABELS[cat] || cat}
+                    </h3>
+                    {items.map((c, i) => (
+                      <div
+                        key={i}
+                        className="dep-check-row"
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          padding: "0.3rem 0.5rem",
+                          borderLeft: `3px solid ${severityColor(c.severity)}`,
+                          marginBottom: "0.3rem",
+                          background: c.severity === "error"
+                            ? "rgba(244, 67, 54, 0.05)"
+                            : c.severity === "warn"
+                            ? "rgba(255, 152, 0, 0.05)"
+                            : "transparent",
+                        }}
+                      >
+                        <span style={{ fontSize: "0.85rem" }}>
+                          <span style={{ color: severityColor(c.severity), marginRight: "0.4rem" }}>
+                            {severityIcon(c.severity)}
+                          </span>
+                          {c.message}
+                        </span>
+                        {c.hint && (
+                          <span className="muted" style={{ fontSize: "0.78rem", marginLeft: "1.4rem" }}>
+                            {c.hint}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+
+        <p className="settings-footer">
+          Checks Python packages, system tools, API keys, and runtime environment.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main ────────────────────────────────────────────────────── */
 
 export default function MaestroUI() {
@@ -1715,6 +1889,7 @@ export default function MaestroUI() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
   const [storageOpen, setStorageOpen] = useState(false);
+  const [depsOpen, setDepsOpen] = useState(false);
 
   // Streaming state: the in-progress result being built up from SSE events
   const [streamEntry, setStreamEntry] = useState<Partial<OrchestratorResponse> | null>(null);
@@ -1913,6 +2088,13 @@ export default function MaestroUI() {
         <div className="header-actions">
           <button
             className="toggle-btn settings-btn"
+            onClick={() => setDepsOpen(true)}
+            title="Dependency Health Check"
+          >
+            Health
+          </button>
+          <button
+            className="toggle-btn settings-btn"
             onClick={() => setStorageOpen(true)}
             title="Storage Network"
           >
@@ -1935,6 +2117,7 @@ export default function MaestroUI() {
         </div>
       </header>
 
+      <DependencyPanel visible={depsOpen} onClose={() => setDepsOpen(false)} />
       <StoragePanel visible={storageOpen} onClose={() => setStorageOpen(false)} />
       <UpdatePanel visible={updateOpen} onClose={() => setUpdateOpen(false)} />
       <ApiKeySettings visible={settingsOpen} onClose={() => setSettingsOpen(false)} />

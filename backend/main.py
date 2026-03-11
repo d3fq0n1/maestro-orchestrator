@@ -43,6 +43,12 @@ app.include_router(plugins_router)
 async def health():
     return {"status": "ok"}
 
+@app.get("/api/health/dependencies")
+async def health_dependencies():
+    from maestro.dependency_resolver import resolve_all
+    report = resolve_all()
+    return report.to_dict()
+
 # === Request model ===
 class Prompt(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=10000)
