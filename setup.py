@@ -13,6 +13,7 @@ Usage:
 """
 
 import itertools
+import math
 import os
 import platform
 import random
@@ -88,9 +89,26 @@ HEALTH_MESSAGES = [
 # ---------------------------------------------------------------------------
 
 class Spinner:
-    """Animated spinner with rotating status messages."""
+    """Animated spinner with rotating status messages and optional progress bar.
 
-    def __init__(self, messages: list[str], message_interval: float = 3.0):
+    Progress can be driven in two ways:
+
+    1. **Time-based (default)** – pass ``estimated_seconds`` and the bar fills
+       along a curve that moves quickly at first and slows as it approaches
+       ~95 %, giving a realistic feel without requiring actual progress data.
+    2. **Manual** – call :meth:`set_progress` from the outside to set an exact
+       0.0–1.0 value (useful when you know the real percentage, e.g. health-
+       check retries).
+    """
+
+    BAR_WIDTH = 24  # characters inside the [ ] brackets
+
+    def __init__(
+        self,
+        messages: list[str],
+        message_interval: float = 3.0,
+        estimated_seconds: float = 0,
+    ):
         self._messages = messages[:]
         random.shuffle(self._messages)
         self._message_cycle = itertools.cycle(self._messages)
@@ -99,11 +117,45 @@ class Spinner:
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._final_message = ""
+        # Progress state
+        self._estimated_seconds = estimated_seconds
+        self._manual_progress: float | None = None  # None → use time curve
+        self._lock = threading.Lock()
+        self._start_time = 0.0
+
+    # -- public helpers ------------------------------------------------------
+
+    def set_progress(self, value: float) -> None:
+        """Manually set progress (0.0 – 1.0)."""
+        with self._lock:
+            self._manual_progress = max(0.0, min(1.0, value))
+
+    # -- internal ------------------------------------------------------------
+
+    def _current_progress(self) -> float:
+        """Return the current progress fraction (0.0 – 1.0)."""
+        with self._lock:
+            if self._manual_progress is not None:
+                return self._manual_progress
+        if self._estimated_seconds <= 0:
+            return 0.0
+        elapsed = time.monotonic() - self._start_time
+        # Asymptotic curve: approaches 1.0 but never quite reaches it.
+        # At t == estimated_seconds the bar is at ~63 %; at 2× it's ~86 %.
+        return 1.0 - math.exp(-elapsed / self._estimated_seconds)
+
+    @staticmethod
+    def _render_bar(progress: float, width: int) -> str:
+        filled = int(progress * width)
+        rest = width - filled
+        pct = int(progress * 100)
+        return f"[{'█' * filled}{'░' * rest}] {pct:>3}%"
 
     def _animate(self) -> None:
         frame_cycle = itertools.cycle(self._frames)
         current_msg = next(self._message_cycle)
         last_switch = time.monotonic()
+        show_bar = self._estimated_seconds > 0 or self._manual_progress is not None
 
         while not self._stop_event.is_set():
             now = time.monotonic()
@@ -112,16 +164,21 @@ class Spinner:
                 last_switch = now
 
             frame = next(frame_cycle)
-            line = f"\r  {frame} {current_msg} ..."
-            sys.stdout.write(f"{line:<60}")
+            if show_bar or self._manual_progress is not None:
+                bar = self._render_bar(self._current_progress(), self.BAR_WIDTH)
+                line = f"\r  {frame} {bar}  {current_msg} ..."
+            else:
+                line = f"\r  {frame} {current_msg} ..."
+            sys.stdout.write(f"{line:<80}")
             sys.stdout.flush()
             self._stop_event.wait(0.08)
 
         # Clear the spinner line
-        sys.stdout.write("\r" + " " * 60 + "\r")
+        sys.stdout.write("\r" + " " * 80 + "\r")
         sys.stdout.flush()
 
     def start(self) -> "Spinner":
+        self._start_time = time.monotonic()
         self._thread = threading.Thread(target=self._animate, daemon=True)
         self._thread.start()
         return self
@@ -266,7 +323,7 @@ def check_deps() -> None:
                 sys.exit(1)
 
             print()
-            spinner = Spinner(["Waiting for Docker daemon to be ready"]).start()
+            spinner = Spinner(["Waiting for Docker daemon to be ready"], estimated_seconds=60).start()
             ok = wait_for_daemon(timeout=120)
             spinner.stop()
 
@@ -293,7 +350,10 @@ def build_and_start(compose: list[str], verbose: bool = False) -> None:
             sys.exit(1)
         return
 
-    spinner = Spinner(SETUP_MESSAGES).start()
+    # estimated_seconds drives the progress bar curve.  On a Raspberry Pi a
+    # first build can easily take 5-10 minutes; 300 s keeps the bar moving at
+    # a reassuring pace without stalling early.
+    spinner = Spinner(SETUP_MESSAGES, estimated_seconds=300).start()
     logfile = os.path.join(PROJECT_ROOT, ".setup-build.log")
     try:
         with open(logfile, "w") as log:
@@ -328,14 +388,18 @@ def build_and_start(compose: list[str], verbose: bool = False) -> None:
 
 def wait_for_healthy() -> bool:
     """Poll the health endpoint with a spinner until it responds or times out."""
-    spinner = Spinner(HEALTH_MESSAGES, message_interval=4.0).start()
+    spinner = Spinner(HEALTH_MESSAGES, message_interval=4.0)
+    spinner.set_progress(0.0)
+    spinner.start()
 
     try:
-        for _ in range(HEALTH_RETRIES):
+        for attempt in range(HEALTH_RETRIES):
+            spinner.set_progress(attempt / HEALTH_RETRIES)
             try:
                 import urllib.request
                 with urllib.request.urlopen(HEALTH_ENDPOINT, timeout=3) as resp:
                     if resp.status == 200:
+                        spinner.set_progress(1.0)
                         spinner.stop("  ✓ Maestro is up and healthy")
                         return True
             except Exception:
