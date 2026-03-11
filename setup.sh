@@ -70,6 +70,9 @@ main() {
 
     check_deps
 
+    # Ensure .env exists so docker-compose doesn't error on a missing env_file.
+    touch .env
+
     echo "  Building and starting container ..."
     $COMPOSE up -d --build
 
