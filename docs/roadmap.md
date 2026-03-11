@@ -44,7 +44,9 @@
 
 ## Active Development (v0.7 Goals)
 
-- **TUI Dashboard (Raspberry Pi 5 / SoC)** -- Textual-based terminal dashboard optimized for SoC devices. Full orchestration pipeline with live agent status, consensus/quorum/R2/dissent/NCG metrics, scrollable response viewer, shard network monitor. Dual backend modes: direct import (in-process) and HTTP client (multi-device clusters). 80x24 minimum with responsive scaling. Accessible via `python -m maestro.tui` or `MAESTRO_MODE=tui`.
+- **TUI Dashboard (Raspberry Pi 5 / SoC)** -- Textual-based terminal dashboard optimized for SoC devices. Mainframe-style single-keypress navigation, first-run API key setup wizard, BTOP-style shard network monitor with animated indicators, LAN shard discovery panel. Full orchestration pipeline with live agent status, consensus/quorum/R2/dissent/NCG metrics, scrollable response viewer. Dual backend modes: direct import (in-process) and HTTP client (multi-device clusters). 80x24 minimum with responsive scaling. Accessible via `python -m maestro.tui` or `MAESTRO_MODE=tui`.
+- **LAN Shard Discovery** -- UDP beacon-based peer discovery with handshake protocol, adjacency tracking, and automatic Maestro Node formation when 3+ adjacent shards are found
+- **TUI Auto-Updater** -- In-TUI update checking and application with commit preview
 - **Token-Level NCG Analysis** -- Bridge from conversational metadata to logprob-level drift measurement across all providers (OpenAI logprobs integration built, pending for Anthropic/Google)
 - **NCG Feedback Loops** -- Reshape prompts based on drift signals before they reach conversational agents
 - **Reinforcement Loop** -- Feed consensus outcomes into fine-tuning or snapshot logs

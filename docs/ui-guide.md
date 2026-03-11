@@ -112,7 +112,7 @@ Ensure backend (`backend/main.py`) is running simultaneously via `uvicorn backen
 
 ### Overview
 
-The TUI is a Textual-based terminal dashboard designed for SoC devices like the Raspberry Pi 5. It provides the full orchestration experience in a terminal interface optimized for 80x24 minimum displays.
+The TUI is a Textual-based terminal dashboard designed for SoC devices like the Raspberry Pi 5. It provides the full orchestration experience in a terminal interface optimized for 80x24 minimum displays. Navigation is **mainframe-style** — most actions are bound to a single keypress so you never need to type long commands.
 
 ### Stack
 
@@ -129,35 +129,60 @@ python -m maestro.tui --mode http --url URL    # HTTP client to remote server
 MAESTRO_MODE=tui python entrypoint.py          # Via startup wrapper
 ```
 
+### First-Run Setup
+
+On first launch the TUI detects that no API keys are configured and automatically opens the **Setup Wizard** (`S` key). The wizard walks through each provider (OpenAI, Anthropic, Google, OpenRouter), shows where to get a key, and lets you paste it directly. Keys are validated in real-time and saved to `.env`.
+
+Tips for entering keys:
+* Copy the key from your provider's dashboard
+* Right-click or `Ctrl+Shift+V` to paste in most terminals
+* Press `Enter` to save, `Tab` to skip a provider, `Escape` to close
+* Keys are saved locally to `.env` and never leave your machine
+
 ### Layout
 
 * **Header:** Application title and clock
 * **Agent Panel (top-left):** Live status indicators for each agent in the council (ready/running/done/error)
 * **Consensus Panel (top-right):** Real-time metrics -- agreement ratio, quorum status, confidence level, dissent level, R2 grade, NCG drift
 * **Response Viewer (center):** Scrollable log showing agent responses and consensus output as they stream in
-* **Shard Network Panel:** Compact view of storage nodes with status, layer assignments, reputation scores, and memory usage
-* **Prompt Input:** Text input for submitting prompts or commands
-* **Status Bar:** Current pipeline stage and keybinding hints
+* **LAN Discovery Panel:** Shows local shard identity, Maestro Node formation status, and discovered LAN peers with adjacency indicators
+* **Shard Network Panel:** BTOP-style view of storage nodes with spinning green asterisk indicators for connected nodes, red indicators for offline/missing nodes, memory usage bars, and reputation scores
+* **Prompt Input:** Text input for submitting prompts (press `P` to focus)
+* **Status Bar:** Current pipeline stage and single-key action hints
 
-### Keybindings
+### Single-Key Actions (Mainframe-Style)
+
+Press these keys anywhere (except when typing in the prompt input):
 
 | Key | Action |
 |-----|--------|
-| Enter | Submit prompt |
-| F1 | Help screen |
-| F2 | Refresh shard network / node details |
-| F3 | API key status |
-| F5 | Self-improvement (planned) |
-| Ctrl+L | Clear response log |
-| F10 / Ctrl+C | Quit |
+| `?` | Help screen (quick reference) |
+| `S` | API key setup wizard |
+| `K` | Show API key status |
+| `N` | Shard network / node details |
+| `D` | Dependency health check |
+| `H` | Recent session history |
+| `I` | Self-improvement (planned) |
+| `U` | Check for updates |
+| `L` | Clear response log |
+| `P` | Focus the prompt input |
+| `Q` | Quit |
+
+Function keys still work as alternatives: `F1` (help), `F2` (nodes), `F3` (keys), `F4` (deps), `F5` (improve), `F6` (update), `Ctrl+L` (clear), `F10` (quit).
 
 ### Prompt Commands
+
+Slash commands are still supported for power users when the prompt input is focused:
 
 | Command | Action |
 |---------|--------|
 | `/nodes` | List storage nodes |
 | `/keys` | Show API key status |
+| `/setup` | Run the API key setup wizard |
+| `/shards` | Show LAN shard discovery status |
 | `/history` | Recent session history |
+| `/deps` | Dependency health check |
+| `/update` | Check for updates |
 | `/clear` | Clear response log |
 | `/quit` | Exit the TUI |
 

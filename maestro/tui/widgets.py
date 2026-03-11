@@ -7,6 +7,9 @@ All widgets are lightweight and avoid expensive reflows.
 
 from __future__ import annotations
 
+import asyncio
+import time
+
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
@@ -214,42 +217,83 @@ class ResponseViewer(Widget):
 
 
 # ---------------------------------------------------------------------------
-# Shard network panel
+# BTOP-style shard network monitor
 # ---------------------------------------------------------------------------
 
+# Spinner frames for connected shards (bright green asterisk cycle)
+_SPINNER_FRAMES = ["\u2736", "\u2737", "\u2738", "\u2739", "\u273a", "\u2739", "\u2738", "\u2737"]
+_SPINNER_LEN = len(_SPINNER_FRAMES)
+
+
 class ShardNetworkPanel(Widget):
-    """Compact panel showing storage node status."""
+    """BTOP-style panel showing storage node status with animated indicators.
+
+    Connected/available nodes show a spinning bright-green asterisk.
+    Missing/offline nodes show a static red indicator.
+    """
 
     DEFAULT_CSS = """
     ShardNetworkPanel {
         height: auto;
-        max-height: 8;
+        max-height: 10;
         border: solid $primary;
         padding: 0 1;
     }
     """
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._nodes: list[dict] = []
+        self._frame = 0
+        self._timer = None
+
     def compose(self) -> ComposeResult:
         yield Label(" Shard Network", id="shard-panel-title")
-        yield Static(" No nodes registered", id="shard-node-list")
+        yield Static(" [dim]No nodes registered[/]", id="shard-node-list")
+
+    def on_mount(self) -> None:
+        self._timer = self.set_interval(0.25, self._tick)
+
+    def _tick(self) -> None:
+        """Advance spinner frame and re-render if nodes exist."""
+        if not self._nodes:
+            return
+        self._frame = (self._frame + 1) % _SPINNER_LEN
+        self._render_nodes()
 
     def update_nodes(self, nodes: list[dict]) -> None:
-        if not nodes:
-            self.query_one("#shard-node-list", Static).update(" No nodes registered")
+        self._nodes = nodes
+        self._render_nodes()
+
+    def _render_nodes(self) -> None:
+        if not self._nodes:
+            self.query_one("#shard-node-list", Static).update(
+                " [dim]No nodes registered[/]"
+            )
             return
 
         lines = []
-        for n in nodes[:6]:
+        for n in self._nodes[:6]:
             node_id = n.get("node_id", "?")[:16]
             status = n.get("status", "?")
             rep = n.get("reputation_score", 0.0)
             shards = n.get("shards", [])
             shard_count = len(shards)
 
-            status_style = {
-                "available": "green", "busy": "yellow",
-                "probation": "red", "offline": "dim", "evicted": "dim red",
-            }.get(status, "dim")
+            # BTOP-style status indicators
+            if status in ("available", "busy"):
+                # Spinning bright-green asterisk for connected nodes
+                spinner = _SPINNER_FRAMES[self._frame]
+                if status == "busy":
+                    icon = f"[bold yellow]{spinner}[/]"
+                else:
+                    icon = f"[bold green]{spinner}[/]"
+            elif status == "probation":
+                icon = "[bold red]\u2718[/]"
+            elif status in ("offline", "evicted"):
+                icon = "[red]\u25cf[/]"
+            else:
+                icon = "[dim]\u25cb[/]"
 
             # Build compact layer range summary
             layer_info = ""
@@ -262,30 +306,34 @@ class ShardNetworkPanel(Widget):
                 if ranges:
                     layer_info = f"L[{','.join(ranges)}]"
 
-            # Memory bar
+            # Memory bar (BTOP-style block meter)
             total_mem = n.get("total_memory_mb", 0)
             used_mem = n.get("used_memory_mb", 0)
             mem_str = ""
             if total_mem > 0:
                 pct = min(used_mem / total_mem, 1.0)
                 filled = int(pct * 8)
-                mem_str = f"\u2588" * filled + "\u2591" * (8 - filled)
-                mem_str = f" {mem_str} {used_mem}M"
+                bar = "\u2588" * filled + "\u2591" * (8 - filled)
+                mem_color = "green" if pct < 0.6 else "yellow" if pct < 0.85 else "red"
+                mem_str = f" [{mem_color}]{bar}[/] {used_mem}M"
+
+            # Reputation color
+            rep_color = "green" if rep >= 0.7 else "yellow" if rep >= 0.4 else "red"
 
             line = (
-                f" [{status_style}]\u25cf[/] {node_id:<16} "
-                f"{layer_info:<12} rep:{rep:.2f}{mem_str}"
+                f" {icon} {node_id:<16} "
+                f"{layer_info:<12} [{rep_color}]rep:{rep:.2f}[/]{mem_str}"
             )
             lines.append(line)
 
-        if len(nodes) > 6:
-            lines.append(f" ... and {len(nodes) - 6} more nodes")
+        if len(self._nodes) > 6:
+            lines.append(f" [dim]... and {len(self._nodes) - 6} more nodes[/]")
 
         self.query_one("#shard-node-list", Static).update("\n".join(lines))
 
 
 # ---------------------------------------------------------------------------
-# LAN Discovery panel
+# LAN Discovery panel (BTOP-style with spinners)
 # ---------------------------------------------------------------------------
 
 _ADJACENCY_ICONS = {
@@ -298,7 +346,11 @@ _ADJACENCY_ICONS = {
 
 
 class ShardDiscoveryPanel(Widget):
-    """Panel showing LAN shard discovery, adjacencies, and Maestro Node status."""
+    """Panel showing LAN shard discovery, adjacencies, and Maestro Node status.
+
+    Adjacent/confirmed peers show spinning green asterisks.
+    Stale/offline peers show static red indicators.
+    """
 
     DEFAULT_CSS = """
     ShardDiscoveryPanel {
@@ -309,14 +361,32 @@ class ShardDiscoveryPanel(Widget):
     }
     """
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._peers: list[dict] = []
+        self._identity: dict = {}
+        self._node_status: dict = {}
+        self._frame = 0
+        self._timer = None
+
     def compose(self) -> ComposeResult:
         yield Label(" LAN Shards", id="discovery-panel-title")
         yield Static(" [dim]identity[/]: ---", id="discovery-identity")
         yield Static(" [dim]maestro node[/]: ---", id="discovery-node-status")
         yield Static(" [dim]waiting for beacons...[/]", id="discovery-peer-list")
 
+    def on_mount(self) -> None:
+        self._timer = self.set_interval(0.25, self._tick_peers)
+
+    def _tick_peers(self) -> None:
+        if not self._peers:
+            return
+        self._frame = (self._frame + 1) % _SPINNER_LEN
+        self._render_peers()
+
     def update_identity(self, identity: dict) -> None:
         """Update the local shard identity display."""
+        self._identity = identity
         name = identity.get("human_name", "?")
         uid_short = identity.get("uid", "?")[:8]
         host = identity.get("host", "?")
@@ -328,6 +398,7 @@ class ShardDiscoveryPanel(Widget):
 
     def update_node_status(self, node_status: dict) -> None:
         """Update the Maestro Node formation status."""
+        self._node_status = node_status
         formed = node_status.get("formed", False)
         if formed:
             names = node_status.get("member_names", [])
@@ -342,27 +413,41 @@ class ShardDiscoveryPanel(Widget):
 
     def update_peers(self, peers: list[dict]) -> None:
         """Update the peer list with adjacency status lights."""
-        if not peers:
+        self._peers = peers
+        self._render_peers()
+
+    def _render_peers(self) -> None:
+        if not self._peers:
             self.query_one("#discovery-peer-list", Static).update(
                 " [dim]no neighbors discovered yet[/]"
             )
             return
 
         lines = []
-        for p in peers[:6]:
+        for p in self._peers[:6]:
             adj_state = p.get("adjacency", "discovered")
-            icon, adj_label = _ADJACENCY_ICONS.get(
-                adj_state, ("[dim]\u25cb[/]", "?")
-            )
             name = p.get("name", "?")
             host = p.get("host", "?")
             uid_short = p.get("uid_short", "?")
             latency = p.get("latency_ms", 0)
-
             alive = p.get("alive", False)
-            if not alive and adj_state != "stale":
+
+            # BTOP-style: spinning green asterisk for live adjacent peers
+            if alive and adj_state == "confirmed":
+                spinner = _SPINNER_FRAMES[self._frame]
+                icon = f"[bold green]{spinner}[/]"
+                adj_label = "adjacent"
+            elif alive and adj_state in ("handshake_sent", "handshake_acked"):
+                spinner = _SPINNER_FRAMES[self._frame]
+                icon = f"[bold yellow]{spinner}[/]"
+                adj_label = _ADJACENCY_ICONS.get(adj_state, ("[dim]\u25cb[/]", "?"))[1]
+            elif not alive or adj_state == "stale":
                 icon = "[red]\u25cf[/]"
                 adj_label = "offline"
+            else:
+                icon, adj_label = _ADJACENCY_ICONS.get(
+                    adj_state, ("[dim]\u25cb[/]", "?")
+                )
 
             latency_str = f" {latency:.0f}ms" if latency > 0 else ""
             line = (
@@ -372,8 +457,8 @@ class ShardDiscoveryPanel(Widget):
             )
             lines.append(line)
 
-        if len(peers) > 6:
-            lines.append(f" ... and {len(peers) - 6} more")
+        if len(self._peers) > 6:
+            lines.append(f" [dim]... and {len(self._peers) - 6} more[/]")
 
         self.query_one("#discovery-peer-list", Static).update("\n".join(lines))
 
@@ -398,11 +483,11 @@ class ShardDiscoveryPanel(Widget):
 
 
 # ---------------------------------------------------------------------------
-# Status bar
+# Status bar (mainframe-style with single-key hints)
 # ---------------------------------------------------------------------------
 
 class StatusBar(Widget):
-    """Bottom status bar with pipeline stage and keybinding hints."""
+    """Bottom status bar with pipeline stage and single-key action hints."""
 
     DEFAULT_CSS = """
     StatusBar {
@@ -415,20 +500,22 @@ class StatusBar(Widget):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            " [b]F1[/]:Help  [b]F2[/]:Nodes  [b]F3[/]:Keys  [b]F4[/]:Deps  "
-            "[b]F5[/]:Improve  [b]F6[/]:Update  [b]Ctrl+L[/]:Clear  [b]F10[/]:Quit",
+            " [b]?[/]:Help  [b]K[/]:Keys  [b]N[/]:Nodes  [b]D[/]:Deps  "
+            "[b]H[/]:History  [b]U[/]:Update  [b]S[/]:Setup  "
+            "[b]Q[/]:Quit",
             id="status-bar-content",
         )
 
     def set_stage(self, stage: str) -> None:
         self.query_one("#status-bar-content", Static).update(
             f" [bold yellow]{stage}[/]  |  "
-            "[b]F1[/]:Help [b]F2[/]:Nodes [b]F3[/]:Keys [b]F4[/]:Deps "
-            "[b]F6[/]:Update [b]F10[/]:Quit"
+            "[b]?[/]:Help [b]K[/]:Keys [b]N[/]:Nodes [b]D[/]:Deps "
+            "[b]U[/]:Update [b]Q[/]:Quit"
         )
 
     def reset(self) -> None:
         self.query_one("#status-bar-content", Static).update(
-            " [b]F1[/]:Help  [b]F2[/]:Nodes  [b]F3[/]:Keys  [b]F4[/]:Deps  "
-            "[b]F5[/]:Improve  [b]F6[/]:Update  [b]Ctrl+L[/]:Clear  [b]F10[/]:Quit"
+            " [b]?[/]:Help  [b]K[/]:Keys  [b]N[/]:Nodes  [b]D[/]:Deps  "
+            "[b]H[/]:History  [b]U[/]:Update  [b]S[/]:Setup  "
+            "[b]Q[/]:Quit"
         )

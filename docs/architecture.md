@@ -107,13 +107,18 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 ### TUI Dashboard (`maestro/tui/`)
 - Textual-based terminal dashboard optimized for SoC devices (Raspberry Pi 5)
 - Targets 80x24 minimum terminal size with responsive scaling to larger terminals
-- Full orchestration pipeline with live streaming: agent status indicators, consensus/quorum/R2/dissent metrics, scrollable response viewer, shard network monitor
+- **Mainframe-style single-keypress navigation** — most actions are bound to a single key (e.g. `S` for setup, `K` for keys, `N` for nodes, `D` for deps, `H` for history, `U` for update, `Q` for quit)
+- **First-run API key setup wizard** — auto-detects missing keys and walks through each provider with paste support, real-time validation, and `.env` persistence
+- Full orchestration pipeline with live streaming: agent status indicators, consensus/quorum/R2/dissent metrics, scrollable response viewer
+- **BTOP-style shard network monitor** with animated spinning indicators for connected nodes (bright green) and static red indicators for offline/missing nodes
+- **LAN discovery panel** with peer adjacency status and Maestro Node formation tracking
 - Two backend connection modes:
   - **Direct import** (default): imports orchestrator modules in-process, lowest latency
   - **HTTP client**: connects to a running Maestro server via SSE, supports multi-device clusters
-- Keybindings: F1 (help), F2 (node details), F3 (API key status), F5 (improve), Ctrl+L (clear), F10 (quit)
-- Prompt commands: `/nodes`, `/keys`, `/history`, `/clear`, `/quit`
+- Single-key actions: `?` (help), `S` (setup wizard), `K` (keys), `N` (nodes), `D` (deps), `H` (history), `I` (improve), `U` (update), `L` (clear), `P` (focus prompt), `Q` (quit). Function keys also supported as alternatives
+- Slash commands still work in the prompt input: `/nodes`, `/keys`, `/setup`, `/shards`, `/history`, `/deps`, `/update`, `/clear`, `/quit`
 - Can be run standalone (`python -m maestro.tui`) or via the startup wrapper (`MAESTRO_MODE=tui`)
+- See [`ui-guide.md`](./ui-guide.md) for the full TUI reference
 
 ### Frontend UI (React + Vite)
 - Calls backend API at `/api/ask/stream` for progressive SSE rendering (falls back to `/api/ask` batch endpoint)
@@ -136,7 +141,7 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 - `.env` file is optional (`required: false`) — API keys can be configured via the Web-UI at runtime
 - Named volumes for persistent session, R2, and key data
 - `Makefile` with common operations (setup, up, down, logs, status, build, clean, dev)
-- `setup.sh` one-command setup script (dep check, build, health wait, browser open)
+- `setup.py` cross-platform setup script (dep check, build, health wait, browser open). Works on Windows, macOS, and Linux
 
 ---
 
