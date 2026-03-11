@@ -12,9 +12,9 @@ services:
       - MAESTRO_UPDATE_REMOTE=${MAESTRO_UPDATE_REMOTE:-}
     # .env is optional — API keys can be configured via the Web-UI at runtime
     # and are persisted in the maestro-env volume across restarts.
+    # Create an empty .env if you don't need host-level env vars.
     env_file:
-      - path: .env
-        required: false
+      - .env
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]

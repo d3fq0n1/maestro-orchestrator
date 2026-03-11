@@ -281,6 +281,10 @@ def check_deps() -> None:
 
 def build_and_start(compose: list[str], verbose: bool = False) -> None:
     """Build and start containers, with spinner or verbose output."""
+    # Ensure .env exists so docker-compose doesn't error on a missing env_file.
+    env_path = os.path.join(PROJECT_ROOT, ".env")
+    if not os.path.exists(env_path):
+        open(env_path, "a").close()
     if verbose:
         print("  Building and starting container ...\n")
         result = run(compose + ["up", "-d", "--build"])
