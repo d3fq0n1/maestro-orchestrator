@@ -17,6 +17,7 @@ Environment variable override:
 import os
 import subprocess
 import sys
+import webbrowser
 
 
 # ---------------------------------------------------------------------------
@@ -67,6 +68,20 @@ def launch_tui():
 # ---------------------------------------------------------------------------
 # Dialog GUI
 # ---------------------------------------------------------------------------
+
+def _has_graphical_browser() -> bool:
+    """Return True if a graphical web browser is available."""
+    try:
+        browser = webbrowser.get()
+        browser_name = getattr(browser, "name", "") or type(browser).__name__.lower()
+        text_only = ("lynx", "w3m", "links", "elinks", "www-browser")
+        for t in text_only:
+            if t in browser_name:
+                return False
+        return True
+    except webbrowser.Error:
+        return False
+
 
 def _dialog_available() -> bool:
     """Check whether the `dialog` utility is installed."""
@@ -120,6 +135,11 @@ def _dialog_gui() -> str:
 
 def _plain_prompt() -> str:
     """Fallback text prompt when dialog is not available."""
+    graphical = _has_graphical_browser()
+    # Default to TUI when no graphical browser is available
+    default_mode = "1" if graphical else "3"
+    default_label = WEB_LABEL if graphical else TUI_LABEL
+
     print()
     print("=" * 52)
     print("  Maestro-Orchestrator — Startup Mode Selection")
@@ -128,17 +148,23 @@ def _plain_prompt() -> str:
     print(f"  1) {WEB_LABEL}  —  {WEB_DESC}")
     print(f"  2) {CLI_LABEL}  —  {CLI_DESC}")
     print(f"  3) {TUI_LABEL}  —  {TUI_DESC}")
+    if not graphical:
+        print()
+        print("  (No graphical browser detected — TUI recommended)")
     print()
     try:
-        answer = input("  Enter choice [1]: ").strip()
+        answer = input(f"  Enter choice [{default_mode}]: ").strip()
     except (EOFError, KeyboardInterrupt):
         answer = ""
 
+    if answer == "1":
+        return "web"
     if answer == "2":
         return "cli"
     if answer == "3":
         return "tui"
-    return "web"
+    # Default
+    return "tui" if not graphical else "web"
 
 
 # ---------------------------------------------------------------------------

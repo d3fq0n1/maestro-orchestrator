@@ -419,8 +419,36 @@ def wait_for_healthy() -> bool:
     return False
 
 
+def _has_graphical_browser() -> bool:
+    """Return True if a graphical web browser is available.
+
+    When only text browsers (lynx, w3m, links, elinks) are available,
+    opening the React dashboard is not useful — the TUI is a better choice.
+    """
+    try:
+        browser = webbrowser.get()
+        browser_name = getattr(browser, "name", "") or type(browser).__name__.lower()
+        text_only = ("lynx", "w3m", "links", "elinks", "www-browser")
+        for t in text_only:
+            if t in browser_name:
+                return False
+        return True
+    except webbrowser.Error:
+        return False
+
+
 def open_browser(url: str) -> None:
-    """Open the user's default browser."""
+    """Open the user's default browser, or suggest TUI when only text browsers exist."""
+    if not _has_graphical_browser():
+        print(f"  No graphical browser detected (text browsers like lynx are not suitable).")
+        print(f"  The Maestro API is running at {url}")
+        print()
+        print("  To use Maestro from this terminal, launch the TUI dashboard:")
+        print("    python -m maestro.tui --mode http")
+        print()
+        print("  Or launch the interactive CLI:")
+        print("    python -m maestro.cli")
+        return
     try:
         webbrowser.open(url)
         print(f"  ✓ Browser opened to {url}")
