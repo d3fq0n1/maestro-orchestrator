@@ -437,9 +437,30 @@ def _has_graphical_browser() -> bool:
         return False
 
 
+def _install_tui_deps() -> None:
+    """Install the local Python packages required by the TUI (textual, rich)."""
+    try:
+        import textual  # noqa: F401
+        import rich  # noqa: F401
+    except ImportError:
+        print("  Installing TUI dependencies (textual, rich) ...")
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "textual>=0.85.0", "rich>=13.0.0"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        if result.returncode == 0:
+            print("  ✓ TUI dependencies installed")
+        else:
+            stderr = result.stderr.decode(errors="replace").strip()
+            print(f"  ⚠ Could not install TUI dependencies: {stderr}")
+            print("  You can install them manually: pip install textual rich")
+
+
 def open_browser(url: str) -> None:
     """Open the user's default browser, or suggest TUI when only text browsers exist."""
     if not _has_graphical_browser():
+        _install_tui_deps()
         print(f"  No graphical browser detected (text browsers like lynx are not suitable).")
         print(f"  The Maestro API is running at {url}")
         print()
