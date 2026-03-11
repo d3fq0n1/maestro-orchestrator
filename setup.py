@@ -173,6 +173,23 @@ def is_daemon_running() -> bool:
         return False
 
 
+def _docker_permission_denied() -> bool:
+    """Return True if docker info fails specifically due to a permission error."""
+    try:
+        result = subprocess.run(
+            ["docker", "info"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            stderr = result.stderr.decode(errors="replace").lower()
+            return "permission denied" in stderr or "connect: permission denied" in stderr
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return False
+
+
 def _daemon_start_hint() -> str:
     """Return a platform-specific hint for starting the Docker daemon."""
     system = platform.system()
@@ -227,10 +244,18 @@ def check_deps() -> None:
 
     # --- Docker daemon reachability check ---
     if not is_daemon_running():
-        print("  Error: Docker is installed but the daemon is not running.")
-        print()
-        print(_daemon_start_hint())
-        print()
+        if _docker_permission_denied():
+            print("  Error: Docker is running but this user cannot access it.")
+            print()
+            print("  Fix: add your user to the docker group, then log out and back in:")
+            print("    sudo usermod -aG docker $USER")
+            print("    newgrp docker   # apply without logging out (current shell only)")
+            print()
+        else:
+            print("  Error: Docker is installed but the daemon is not running.")
+            print()
+            print(_daemon_start_hint())
+            print()
 
         # Interactive terminal: offer to wait; non-interactive: just exit.
         if sys.stdin.isatty():
