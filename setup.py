@@ -206,8 +206,23 @@ def check_deps() -> None:
         missing.append("docker compose")
 
     if missing:
-        print(f"  Error: missing required tools: {', '.join(missing)}")
+        print(f"  Warning: missing tools: {', '.join(missing)}")
         print("  Install Docker: https://docs.docker.com/get-docker/")
+        print()
+        print("  Alternatively, run without Docker:")
+        print("    python setup.py --dev")
+        print()
+
+        # Interactive terminal: offer to switch to dev mode; non-interactive: exit.
+        if sys.stdin.isatty():
+            try:
+                answer = input("  Switch to local dev mode? [y/N] ").strip().lower()
+            except (KeyboardInterrupt, EOFError):
+                print()
+                sys.exit(1)
+            if answer == "y":
+                dev_setup()
+                return
         sys.exit(1)
 
     # --- Docker daemon reachability check ---

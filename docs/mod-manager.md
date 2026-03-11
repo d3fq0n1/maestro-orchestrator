@@ -1,7 +1,7 @@
 # Mod Manager — Modular Plugin Architecture
 
-**Version:** v0.6.3.1
-**Last Updated:** 2026-03-10
+**Version:** v0.7.0
+**Last Updated:** 2026-03-11
 **Maintainer:** defcon
 
 The Mod Manager is Maestro's plugin system. It discovers, validates, loads, and manages the lifecycle of modular extensions — agents, analyzers, storage providers, pipeline hooks, and more — without modifying the core orchestration code.
