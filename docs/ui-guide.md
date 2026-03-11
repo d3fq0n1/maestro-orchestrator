@@ -105,3 +105,78 @@ npm run dev
 Frontend runs on `http://localhost:5173` and sends requests to `http://localhost:8000/api/ask/stream`
 
 Ensure backend (`backend/main.py`) is running simultaneously via `uvicorn backend.main:app --reload --port 8000`.
+
+---
+
+## TUI Dashboard (Raspberry Pi 5 / SoC)
+
+### Overview
+
+The TUI is a Textual-based terminal dashboard designed for SoC devices like the Raspberry Pi 5. It provides the full orchestration experience in a terminal interface optimized for 80x24 minimum displays.
+
+### Stack
+
+* **Framework:** Textual + Rich
+* **Language:** Python
+* **Location:** `maestro/tui/`
+
+### Launch
+
+```bash
+python -m maestro.tui                          # Direct import mode
+python -m maestro.tui --mode http              # HTTP client to localhost:8000
+python -m maestro.tui --mode http --url URL    # HTTP client to remote server
+MAESTRO_MODE=tui python entrypoint.py          # Via startup wrapper
+```
+
+### Layout
+
+* **Header:** Application title and clock
+* **Agent Panel (top-left):** Live status indicators for each agent in the council (ready/running/done/error)
+* **Consensus Panel (top-right):** Real-time metrics -- agreement ratio, quorum status, confidence level, dissent level, R2 grade, NCG drift
+* **Response Viewer (center):** Scrollable log showing agent responses and consensus output as they stream in
+* **Shard Network Panel:** Compact view of storage nodes with status, layer assignments, reputation scores, and memory usage
+* **Prompt Input:** Text input for submitting prompts or commands
+* **Status Bar:** Current pipeline stage and keybinding hints
+
+### Keybindings
+
+| Key | Action |
+|-----|--------|
+| Enter | Submit prompt |
+| F1 | Help screen |
+| F2 | Refresh shard network / node details |
+| F3 | API key status |
+| F5 | Self-improvement (planned) |
+| Ctrl+L | Clear response log |
+| F10 / Ctrl+C | Quit |
+
+### Prompt Commands
+
+| Command | Action |
+|---------|--------|
+| `/nodes` | List storage nodes |
+| `/keys` | Show API key status |
+| `/history` | Recent session history |
+| `/clear` | Clear response log |
+| `/quit` | Exit the TUI |
+
+### Backend Modes
+
+The TUI supports two connection modes:
+
+1. **Direct import** (default): The TUI imports orchestrator modules directly and runs everything in a single process. Best for single-device setups where the TUI runs on the same machine as Maestro.
+
+2. **HTTP client**: The TUI connects to a running Maestro FastAPI server via HTTP and consumes the SSE streaming endpoint for progressive updates. Best for multi-device clusters or when the server runs on a different machine.
+
+### Behavior Flow
+
+```text
+User types prompt -> Enter -> Agent panel shows "running"
+-> SSE events stream in (direct import or HTTP)
+-> Agent indicators flip to "done" as each responds
+-> Response viewer shows agent text progressively
+-> Consensus panel updates with agreement/quorum/R2/dissent/NCG
+-> Consensus text appears in response viewer
+-> Status bar shows "Done"
+```

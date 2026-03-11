@@ -3,13 +3,15 @@
 Maestro-Orchestrator Unified Startup Wrapper.
 
 Presents a dialog-based GUI on container startup so users can choose
-between the Web-UI (FastAPI + React dashboard) or the interactive CLI.
+between the Web-UI (FastAPI + React dashboard), the interactive CLI,
+or the TUI dashboard (optimized for SoC devices like Raspberry Pi 5).
 When no TTY is attached (e.g., CI, headless deployment), defaults to
 the Web-UI automatically.
 
 Environment variable override:
     MAESTRO_MODE=web   -> skip dialog, launch Web-UI directly
     MAESTRO_MODE=cli   -> skip dialog, launch CLI directly
+    MAESTRO_MODE=tui   -> skip dialog, launch TUI directly
 """
 
 import os
@@ -29,6 +31,8 @@ WEB_LABEL = "Web-UI"
 WEB_DESC = "Launch the full dashboard (API + React UI on port 8000)"
 CLI_LABEL = "CLI"
 CLI_DESC = "Launch the interactive command-line interface"
+TUI_LABEL = "TUI"
+TUI_DESC = "Launch the terminal dashboard (optimized for SoC / Raspi5)"
 
 # ---------------------------------------------------------------------------
 # Mode launchers
@@ -49,6 +53,15 @@ def launch_cli():
 
     from maestro.cli import interactive_loop
     interactive_loop()
+
+
+def launch_tui():
+    """Start the TUI dashboard (Textual-based, optimized for SoC devices)."""
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
+    sys.path.insert(0, os.path.dirname(__file__))
+
+    from maestro.tui.__main__ import main as tui_main
+    tui_main()
 
 
 # ---------------------------------------------------------------------------
@@ -85,9 +98,10 @@ def _dialog_gui() -> str:
         "--clear",
         "--title", DIALOG_TITLE,
         "--menu", DIALOG_TEXT,
-        15, 65, 2,
+        18, 65, 3,
         "web", f"{WEB_LABEL}  —  {WEB_DESC}",
         "cli", f"{CLI_LABEL}  —  {CLI_DESC}",
+        "tui", f"{TUI_LABEL}  —  {TUI_DESC}",
     ]
     result = subprocess.run(cmd, stderr=subprocess.PIPE)
     # dialog writes the selection to stderr
@@ -96,7 +110,7 @@ def _dialog_gui() -> str:
     # Clear the screen after dialog closes
     subprocess.run(["clear"], check=False)
 
-    if choice in ("web", "cli"):
+    if choice in ("web", "cli", "tui"):
         return choice
 
     # User pressed Cancel or Escape — default to web
@@ -113,6 +127,7 @@ def _plain_prompt() -> str:
     print()
     print(f"  1) {WEB_LABEL}  —  {WEB_DESC}")
     print(f"  2) {CLI_LABEL}  —  {CLI_DESC}")
+    print(f"  3) {TUI_LABEL}  —  {TUI_DESC}")
     print()
     try:
         answer = input("  Enter choice [1]: ").strip()
@@ -121,6 +136,8 @@ def _plain_prompt() -> str:
 
     if answer == "2":
         return "cli"
+    if answer == "3":
+        return "tui"
     return "web"
 
 
@@ -131,7 +148,7 @@ def _plain_prompt() -> str:
 def main():
     # Allow environment variable to bypass the dialog entirely
     env_mode = os.environ.get("MAESTRO_MODE", "").lower()
-    if env_mode in ("web", "cli"):
+    if env_mode in ("web", "cli", "tui"):
         mode = env_mode
     elif sys.stdin.isatty():
         mode = show_dialog()
@@ -148,6 +165,8 @@ def main():
 
     if mode == "cli":
         launch_cli()
+    elif mode == "tui":
+        launch_tui()
     else:
         launch_web()
 
