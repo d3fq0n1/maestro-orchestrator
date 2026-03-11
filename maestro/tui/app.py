@@ -29,6 +29,7 @@ from maestro.tui.widgets import (
     ShardNetworkPanel,
     StatusBar,
 )
+from maestro.dependency_resolver import resolve_all, DependencyReport, Severity
 
 
 # ───────────────────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ class HelpScreen(ModalScreen[None]):
                 "  [b]F1[/]         This help screen\n"
                 "  [b]F2[/]         Refresh shard network nodes\n"
                 "  [b]F3[/]         Show API key status\n"
+                "  [b]F4[/]         Dependency health check\n"
                 "  [b]F5[/]         Run self-improvement cycle\n"
                 "  [b]Ctrl+L[/]     Clear response log\n"
                 "  [b]F10 / Ctrl+C[/]  Quit\n"
@@ -72,6 +74,7 @@ class HelpScreen(ModalScreen[None]):
                 "[bold]Prompt Commands[/]\n"
                 "  [b]/nodes[/]     List storage nodes\n"
                 "  [b]/keys[/]      Show API key status\n"
+                "  [b]/deps[/]      Dependency health check\n"
                 "  [b]/history[/]   Recent session history\n"
                 "  [b]/clear[/]     Clear response log\n"
                 "  [b]/quit[/]      Exit the TUI\n"
@@ -186,6 +189,84 @@ class KeyStatusScreen(ModalScreen[None]):
 
 
 # ───────────────────────────────────────────────────────────────────
+# Dependency check screen (F4)
+# ───────────────────────────────────────────────────────────────────
+
+class DependencyScreen(ModalScreen[None]):
+    """Modal overlay showing dependency and environment health checks."""
+
+    BINDINGS = [("escape", "dismiss", "Close")]
+
+    DEFAULT_CSS = """
+    DependencyScreen {
+        align: center middle;
+    }
+    #dep-dialog {
+        width: 76;
+        height: auto;
+        max-height: 24;
+        border: thick $primary;
+        background: $surface;
+        padding: 1 2;
+        overflow-y: auto;
+    }
+    """
+
+    def __init__(self, report: DependencyReport, **kwargs):
+        super().__init__(**kwargs)
+        self._report = report
+
+    def compose(self) -> ComposeResult:
+        with VerticalScroll(id="dep-dialog"):
+            yield Label("[bold]Dependency Health Check[/]")
+            yield Static("")
+
+            # Summary line
+            if self._report.healthy:
+                yield Static(
+                    f"  [green]\u2714[/] All clear — "
+                    f"{self._report.ok_count} passed, "
+                    f"{len(self._report.warnings)} warning(s)"
+                )
+            else:
+                yield Static(
+                    f"  [red]\u2718[/] Issues found — "
+                    f"{len(self._report.errors)} error(s), "
+                    f"{len(self._report.warnings)} warning(s), "
+                    f"{self._report.ok_count} ok"
+                )
+
+            yield Static("")
+
+            # Group by category
+            categories = ["runtime", "python", "system", "api_key"]
+            cat_labels = {
+                "runtime": "Runtime",
+                "python": "Python Packages",
+                "system": "System Tools",
+                "api_key": "API Keys",
+            }
+
+            for cat in categories:
+                items = [c for c in self._report.checks if c.category == cat]
+                if not items:
+                    continue
+                yield Static(f"  [bold]{cat_labels.get(cat, cat)}[/]")
+                for c in items:
+                    icon = {
+                        Severity.OK: "[green]\u25cf[/]",
+                        Severity.WARN: "[yellow]\u25cf[/]",
+                        Severity.ERROR: "[red]\u25cf[/]",
+                    }.get(c.severity, "[dim]\u25cb[/]")
+                    yield Static(f"    {icon} {c.message}")
+                    if c.hint:
+                        yield Static(f"      [dim]{c.hint}[/]")
+                yield Static("")
+
+            yield Static("[dim]Press Escape to close[/]")
+
+
+# ───────────────────────────────────────────────────────────────────
 # Main application
 # ───────────────────────────────────────────────────────────────────
 
@@ -201,6 +282,7 @@ class MaestroTUI(App):
         Binding("f1", "show_help", "Help", show=False),
         Binding("f2", "show_nodes", "Nodes", show=False),
         Binding("f3", "show_keys", "Keys", show=False),
+        Binding("f4", "show_deps", "Deps", show=False),
         Binding("f5", "run_improve", "Improve", show=False),
         Binding("ctrl+l", "clear_log", "Clear", show=False),
         Binding("f10", "quit", "Quit", show=False),
@@ -224,6 +306,7 @@ class MaestroTUI(App):
     def on_mount(self) -> None:
         self.query_one("#prompt-input", Input).focus()
         self._refresh_nodes()
+        self._startup_dep_check()
 
     # ── Input handling ──────────────────────────────────────────────
 
@@ -254,6 +337,9 @@ class MaestroTUI(App):
             return
         if lower in ("/history",):
             self._show_history()
+            return
+        if lower in ("/deps", "/dependencies", "/health"):
+            self.action_show_deps()
             return
 
         if self._busy:
@@ -362,7 +448,11 @@ class MaestroTUI(App):
             keys = []
         self.push_screen(KeyStatusScreen(keys))
 
-    def action_run_improve(self) -> None:
+    def action_show_deps(self) -> None:
+        report = resolve_all()
+        self.push_screen(DependencyScreen(report))
+
+
         viewer = self.query_one("#response-viewer", ResponseViewer)
         viewer.write_info(
             "Self-improvement via TUI is planned for a future release. "
@@ -383,6 +473,22 @@ class MaestroTUI(App):
             shard_panel.update_nodes(nodes)
         except Exception:
             pass
+
+    @work(thread=True)
+    def _startup_dep_check(self) -> None:
+        report = resolve_all()
+        if not report.healthy:
+            errors = report.errors
+            viewer = self.query_one("#response-viewer", ResponseViewer)
+            viewer.write_error(
+                f"Dependency check: {len(errors)} error(s), "
+                f"{len(report.warnings)} warning(s)"
+            )
+            for c in errors:
+                viewer.write_error(f"  {c.message}")
+                if c.hint:
+                    viewer.write_info(f"    {c.hint}")
+            viewer.write_info("  Press F4 or type /deps for full report.")
 
     @work(thread=False)
     async def _show_history(self) -> None:

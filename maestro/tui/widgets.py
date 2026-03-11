@@ -302,7 +302,7 @@ class StatusBar(Widget):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            " [b]F1[/]:Help  [b]F2[/]:Nodes  [b]F3[/]:Keys  "
+            " [b]F1[/]:Help  [b]F2[/]:Nodes  [b]F3[/]:Keys  [b]F4[/]:Deps  "
             "[b]F5[/]:Improve  [b]Ctrl+L[/]:Clear  [b]F10[/]:Quit",
             id="status-bar-content",
         )
@@ -310,11 +310,11 @@ class StatusBar(Widget):
     def set_stage(self, stage: str) -> None:
         self.query_one("#status-bar-content", Static).update(
             f" [bold yellow]{stage}[/]  |  "
-            "[b]F1[/]:Help [b]F2[/]:Nodes [b]F3[/]:Keys [b]F10[/]:Quit"
+            "[b]F1[/]:Help [b]F2[/]:Nodes [b]F3[/]:Keys [b]F4[/]:Deps [b]F10[/]:Quit"
         )
 
     def reset(self) -> None:
         self.query_one("#status-bar-content", Static).update(
-            " [b]F1[/]:Help  [b]F2[/]:Nodes  [b]F3[/]:Keys  "
+            " [b]F1[/]:Help  [b]F2[/]:Nodes  [b]F3[/]:Keys  [b]F4[/]:Deps  "
             "[b]F5[/]:Improve  [b]Ctrl+L[/]:Clear  [b]F10[/]:Quit"
         )
