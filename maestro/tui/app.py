@@ -452,7 +452,7 @@ class MaestroTUI(App):
         report = resolve_all()
         self.push_screen(DependencyScreen(report))
 
-
+    def action_run_improve(self) -> None:
         viewer = self.query_one("#response-viewer", ResponseViewer)
         viewer.write_info(
             "Self-improvement via TUI is planned for a future release. "
