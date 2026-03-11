@@ -93,7 +93,7 @@ python -m maestro.tui --mode http              # HTTP client to localhost:8000
 python -m maestro.tui --mode http --url URL    # HTTP client to remote server
 ```
 
-Full terminal dashboard built with Textual, optimized for 80x24 minimum terminals. Features live agent status, consensus metrics, shard network monitor, and streaming response viewer. Supports both in-process (single device) and HTTP client (multi-device cluster) modes.
+Full terminal dashboard built with Textual, optimized for 80x24 minimum terminals. Uses **mainframe-style single-keypress navigation** — press `S` for API key setup, `K` for key status, `N` for nodes, `H` for history, `U` for updates, `Q` for quit, etc. On first launch the setup wizard opens automatically to help you paste API keys. Features BTOP-style shard network monitor with animated indicators, LAN discovery panel, live agent status, consensus metrics, and streaming response viewer. Supports both in-process (single device) and HTTP client (multi-device cluster) modes. See [`ui-guide.md`](./ui-guide.md) for the full reference.
 
 ---
 
@@ -114,17 +114,29 @@ Agent implementations live in `maestro/agents/`. Each agent extends the shared b
 
 ## Environment Configuration
 
-API keys can be configured in two ways:
+API keys can be configured in three ways:
 
-1. **Web-UI** (recommended): Paste keys in the settings panel on first launch. Keys persist in a Docker volume across restarts.
+1. **TUI setup wizard**: Launch the TUI and press `S` (or let it auto-open on first run). Walks through each provider with paste support and real-time validation.
 
-2. **`.env` file**: Copy `.env.example` to `.env` and fill in your keys. This is optional -- the container starts without it.
+2. **Web-UI**: Paste keys in the settings panel on first launch. Keys persist in a Docker volume across restarts.
+
+3. **`.env` file**: Copy `.env.example` to `.env` and fill in your keys. This is optional -- the container starts without it.
 
 ```env
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=...
 GOOGLE_API_KEY=...
 OPENROUTER_API_KEY=...
+```
+
+### General Settings
+
+```env
+MAESTRO_MODE=web                        # Startup mode: web, cli, or tui (skip dialog)
+MAESTRO_AUTO_UPDATE=0                   # Set to 1 for startup update notification
+MAESTRO_AUTO_INJECT=false               # Set to true for auto-injection of validated proposals
+MAESTRO_ENV_FILE=/path/to/.env          # Override .env file location
+MAESTRO_UPDATE_REMOTE=https://...       # Override update remote URL
 ```
 
 ### Storage Network (v0.6+)

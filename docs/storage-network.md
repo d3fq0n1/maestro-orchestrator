@@ -419,6 +419,35 @@ All data is human-readable JSON. No databases.
 
 ---
 
+## LAN Shard Discovery
+
+Maestro includes a **UDP beacon-based LAN discovery** system (`maestro/lan_discovery.py`) that lets shards on the same local network find each other automatically.
+
+### How It Works
+
+1. Each shard broadcasts a UDP beacon on the local network at a regular interval
+2. Discovered peers go through a handshake protocol: `discovered` → `handshake_sent` → `handshake_acked` → `confirmed` (adjacent)
+3. When 3 or more adjacent shards are confirmed, a **Maestro Node** is automatically formed
+4. Stale peers (no heartbeat received within the timeout) are marked as `stale`/offline
+
+### Monitoring
+
+- **TUI**: The LAN Discovery panel shows local identity, Maestro Node formation status, and live peer adjacency indicators (spinning green asterisks for adjacent peers, red for offline)
+- **TUI command**: Press `N` for node details, or type `/shards` in the prompt for a detailed snapshot
+- **CLI**: Type `/nodes` to see registered storage nodes
+
+### States
+
+| State | Description |
+|-------|-------------|
+| `discovered` | Peer beacon received, no handshake yet |
+| `handshake_sent` | Handshake request sent to peer |
+| `handshake_acked` | Peer acknowledged the handshake |
+| `confirmed` | Peer is adjacent and communicating |
+| `stale` | No recent heartbeat — peer may be offline |
+
+---
+
 ## See Also
 
 - [`agents.md`](./agents.md) — Agent layer (ShardAgent is listed alongside other agents)
