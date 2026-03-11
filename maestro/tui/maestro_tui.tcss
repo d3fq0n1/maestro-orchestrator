@@ -1,0 +1,94 @@
+/*
+ * Maestro TUI — Textual CSS
+ *
+ * Optimized for 80x24 minimum terminal on Raspberry Pi 5.
+ * Scales responsively to larger terminals.
+ */
+
+/* ── Global ───────────────────────────────────────────────────── */
+
+Screen {
+    layout: vertical;
+    background: $background;
+}
+
+Header {
+    dock: top;
+    height: 1;
+}
+
+/* ── Top row: agent panel + consensus panel ───────────────────── */
+
+#top-row {
+    height: auto;
+    max-height: 10;
+    min-height: 8;
+}
+
+#agent-panel {
+    width: 1fr;
+    min-width: 28;
+    max-width: 32;
+}
+
+#agent-panel-title {
+    text-style: bold;
+    color: $text;
+}
+
+#consensus-panel {
+    width: 2fr;
+    min-width: 40;
+}
+
+#consensus-panel-title {
+    text-style: bold;
+    color: $text;
+}
+
+/* ── Response viewer (main content area) ──────────────────────── */
+
+#response-viewer {
+    height: 1fr;
+    min-height: 6;
+}
+
+#response-log {
+    scrollbar-size: 1 1;
+    padding: 0 1;
+}
+
+/* ── Shard network panel ──────────────────────────────────────── */
+
+#shard-panel {
+    height: auto;
+    max-height: 8;
+    min-height: 3;
+}
+
+#shard-panel-title {
+    text-style: bold;
+    color: $text;
+}
+
+/* ── Prompt input ─────────────────────────────────────────────── */
+
+#prompt-input {
+    dock: bottom;
+    margin: 0 0;
+    height: 3;
+    border: tall $accent;
+}
+
+#prompt-input:focus {
+    border: tall $primary;
+}
+
+/* ── Status bar ───────────────────────────────────────────────── */
+
+StatusBar {
+    dock: bottom;
+    height: 1;
+    background: $primary-background;
+    padding: 0 1;
+}

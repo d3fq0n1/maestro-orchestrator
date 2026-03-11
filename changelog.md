@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.7.0] - 2026-03-11
+
+### Added
+
+- **TUI Dashboard** (`maestro/tui/`) — Full Textual-based terminal dashboard optimized for SoC devices (Raspberry Pi 5). Provides the complete orchestration experience in a rich terminal interface.
+  - **Agent Panel** — Live status indicators (ready/running/done/error) for each agent in the council with Unicode icons
+  - **Consensus Panel** — Real-time metrics display: agreement ratio, quorum status, confidence level, dissent level, R2 grade, NCG drift with color-coded severity
+  - **Response Viewer** — Scrollable RichLog showing streaming agent responses and consensus output with syntax highlighting
+  - **Shard Network Panel** — Compact storage node overview with status, layer assignments, reputation scores, and memory usage bars
+  - **Modal Screens** — F1 help overlay, F2 node detail overlay, F3 API key status overlay
+  - **Dual Backend Modes** — Direct import (in-process, lowest latency) and HTTP client (connects to running server via SSE, supports multi-device clusters)
+  - **Backend Abstraction** (`maestro/tui/backend.py`) — `MaestroBackend` ABC with `DirectBackend` and `HTTPBackend` implementations; factory function `create_backend(mode, url)`
+  - **Textual CSS** (`maestro/tui/maestro_tui.tcss`) — Responsive layout targeting 80x24 minimum terminal size with scaling for larger displays
+  - **Entry Point** — `python -m maestro.tui` with `--mode` (direct/http) and `--url` arguments
+- **TUI mode in startup wrapper** — `entrypoint.py` now offers TUI as a third option alongside Web-UI and CLI. Selectable via dialog menu or `MAESTRO_MODE=tui` environment variable.
+- **New dependencies** — `textual>=0.85.0` and `rich>=13.0.0` added to `backend/requirements.txt`
+
+### Changed
+
+- **`entrypoint.py`** — Dialog menu expanded from 2 to 3 options (web/cli/tui). Plain text fallback updated to match. `MAESTRO_MODE` now accepts `tui` in addition to `web` and `cli`.
+- **Documentation updated** — `readme.md`, `docs/architecture.md`, `docs/deployment.md`, `docs/ui-guide.md`, `docs/roadmap.md`, and `changelog.md` updated with TUI documentation, launch instructions, keybindings, backend modes, and file structure.
+
+---
+
 ## [0.6.3.1] - 2026-03-10
 
 ### Fixed

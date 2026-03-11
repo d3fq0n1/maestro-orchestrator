@@ -92,9 +92,9 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 
 ### Unified Startup Wrapper (`entrypoint.py`)
 - Single Docker entrypoint that presents a dialog-based GUI on container launch
-- Users choose between **Web-UI** (React dashboard + API) or **CLI** (interactive terminal)
+- Users choose between **Web-UI** (React dashboard + API), **CLI** (interactive terminal), or **TUI** (Textual dashboard for SoC devices)
 - Uses the `dialog` ncurses utility for the selection menu; falls back to a plain text prompt when `dialog` is unavailable
-- Respects the `MAESTRO_MODE` environment variable (`web` or `cli`) to skip the dialog entirely
+- Respects the `MAESTRO_MODE` environment variable (`web`, `cli`, or `tui`) to skip the dialog entirely
 - When no TTY is attached, defaults to Web-UI automatically (safe for headless / CI deployments)
 
 ### Interactive CLI (`maestro/cli.py`)
@@ -103,6 +103,17 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 - Renders agent responses, consensus, dissent metrics, NCG benchmark, and R2 grade in a formatted terminal layout
 - Built-in commands: `/keys` (show API key status), `/improve` (run self-improvement cycle), `/introspect` (analyze code for optimization targets), `/cycles` (show improvement history), `/nodes` (storage nodes), `/plugins` (plugin management), `/snapshot` (weight snapshots), `/challenge` (proof challenges), `/help`, `/quit`
 - Can be run standalone (`python -m maestro.cli`) or via the startup wrapper
+
+### TUI Dashboard (`maestro/tui/`)
+- Textual-based terminal dashboard optimized for SoC devices (Raspberry Pi 5)
+- Targets 80x24 minimum terminal size with responsive scaling to larger terminals
+- Full orchestration pipeline with live streaming: agent status indicators, consensus/quorum/R2/dissent metrics, scrollable response viewer, shard network monitor
+- Two backend connection modes:
+  - **Direct import** (default): imports orchestrator modules in-process, lowest latency
+  - **HTTP client**: connects to a running Maestro server via SSE, supports multi-device clusters
+- Keybindings: F1 (help), F2 (node details), F3 (API key status), F5 (improve), Ctrl+L (clear), F10 (quit)
+- Prompt commands: `/nodes`, `/keys`, `/history`, `/clear`, `/quit`
+- Can be run standalone (`python -m maestro.tui`) or via the startup wrapper (`MAESTRO_MODE=tui`)
 
 ### Frontend UI (React + Vite)
 - Calls backend API at `/api/ask/stream` for progressive SSE rendering (falls back to `/api/ask` batch endpoint)
@@ -146,6 +157,13 @@ entrypoint.py                # Unified startup wrapper (dialog GUI for mode sele
   keyring.py                 # API key management and .env persistence
   cli.py                     # Interactive CLI (REPL for terminal orchestration)
   cli_keys.py                # CLI key configuration tool
+  tui/                       # TUI dashboard (Textual-based, Raspi5 optimized)
+    __init__.py              # Package init
+    __main__.py              # Entry point (python -m maestro.tui)
+    app.py                   # Main Textual application and modal screens
+    backend.py               # Backend abstraction (direct import / HTTP client)
+    widgets.py               # Custom widgets (agent panel, consensus, response viewer, shard network)
+    maestro_tui.tcss         # Textual CSS stylesheet
   introspect.py              # Code introspection engine (AST, signal mapping, token analysis)
   optimization.py            # Optimization proposal system (strategies, proposals)
   magi_vir.py                # MAGI Virtual Instance Runtime (sandboxed validation)
@@ -206,15 +224,15 @@ setup.sh                      # One-command setup (build, health wait, browser o
 ```text
                     entrypoint.py (startup dialog)
                          |
-              +----------+----------+
-              |                     |
-         [Web-UI]              [CLI]
-              |                     |
-   User -> UI -> /api/ask/stream   User -> maestro> prompt
-              |                     |
-   Orchestrator Foundry      maestro.cli (direct call)
-              |                     |
-              +----------+----------+
+              +----------+----------+----------+
+              |                     |          |
+         [Web-UI]              [CLI]       [TUI]
+              |                     |          |
+   User -> UI -> /api/ask/stream   |   maestro.tui (Textual)
+              |                     |     |         |
+   Orchestrator Foundry      direct call  direct  HTTP/SSE
+              |                     |     import   client
+              +----------+----------+-----+--------+
                          |
                          v
                maestro.orchestrator (core pipeline)

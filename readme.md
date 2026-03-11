@@ -50,7 +50,8 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - **Modular Plugin Architecture (Mod Manager)** -- Full plugin lifecycle (discover/validate/load/enable/disable/unload/reload) with 8 pipeline hook points, event bus, and controlled access to Maestro internals
 - **Weight State Snapshots** -- Save, restore, diff, and delete system configuration snapshots (plugins, agents, thresholds, runtime config)
 - **React/Vite Frontend** -- Full analysis dashboard (R2 grade, quorum bar, dissent, NCG drift, session browser)
-- **Unified Startup Wrapper** -- Single Docker entrypoint with a GUI that lets you choose Web-UI or CLI mode
+- **TUI Dashboard** -- Textual-based terminal dashboard optimized for SoC devices (Raspberry Pi 5). Full orchestration with live agent status, consensus metrics, shard network monitor. Supports direct import and HTTP client modes
+- **Unified Startup Wrapper** -- Single Docker entrypoint with a GUI that lets you choose Web-UI, CLI, or TUI mode
 - **Interactive CLI** -- Full orchestration pipeline in the terminal (REPL with agent responses, consensus, dissent, NCG, R2)
 - **Docker Support** -- Single-container deployment serving both UI and API
 
@@ -96,6 +97,8 @@ No `.env` file is required. Keys are saved through the Web-UI and persist across
 | Local dev (no Docker) | `make dev` | `python setup.py --dev` |
 
 > **CLI mode:** Set `MAESTRO_MODE=cli` in a `.env` file or pass it as an environment variable to use the interactive terminal REPL instead.
+>
+> **TUI mode:** Set `MAESTRO_MODE=tui` for the Textual-based terminal dashboard (optimized for Raspberry Pi 5 and other SoC devices).
 
 ### Local development (no Docker)
 ```bash
@@ -115,6 +118,8 @@ Or start services individually:
 uvicorn backend.main:app --reload --port 8000   # backend
 cd frontend && npm install && npm run dev        # frontend (separate terminal)
 python -m maestro.cli                            # CLI mode (no web)
+python -m maestro.tui                            # TUI dashboard (Raspi5 optimized)
+python -m maestro.tui --mode http --url URL      # TUI connecting to remote server
 ```
 
 Backend API: `http://localhost:8000/api/ask`
