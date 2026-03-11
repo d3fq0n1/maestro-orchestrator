@@ -31,6 +31,7 @@ from maestro.tui.widgets import (
     StatusBar,
 )
 from maestro.dependency_resolver import resolve_all, DependencyReport, Severity
+from maestro.updater import check_for_updates, apply_update
 
 
 # ───────────────────────────────────────────────────────────────────
@@ -68,6 +69,7 @@ class HelpScreen(ModalScreen[None]):
                 "  [b]F3[/]         Show API key status\n"
                 "  [b]F4[/]         Dependency health check\n"
                 "  [b]F5[/]         Run self-improvement cycle\n"
+                "  [b]F6[/]         Check for updates\n"
                 "  [b]Ctrl+L[/]     Clear response log\n"
                 "  [b]F10 / Ctrl+C[/]  Quit\n"
             )
@@ -77,6 +79,7 @@ class HelpScreen(ModalScreen[None]):
                 "  [b]/shards[/]    Show LAN shard discovery status\n"
                 "  [b]/keys[/]      Show API key status\n"
                 "  [b]/deps[/]      Dependency health check\n"
+                "  [b]/update[/]    Check for and apply updates\n"
                 "  [b]/history[/]   Recent session history\n"
                 "  [b]/clear[/]     Clear response log\n"
                 "  [b]/quit[/]      Exit the TUI\n"
@@ -269,6 +272,148 @@ class DependencyScreen(ModalScreen[None]):
 
 
 # ───────────────────────────────────────────────────────────────────
+# Update screen (F6)
+# ───────────────────────────────────────────────────────────────────
+
+class UpdateScreen(ModalScreen[str | None]):
+    """Modal overlay for checking and applying updates."""
+
+    BINDINGS = [
+        ("escape", "dismiss(None)", "Close"),
+        ("c", "check", "Check"),
+        ("u", "apply", "Update"),
+    ]
+
+    DEFAULT_CSS = """
+    UpdateScreen {
+        align: center middle;
+    }
+    #update-dialog {
+        width: 68;
+        height: auto;
+        max-height: 22;
+        border: thick $primary;
+        background: $surface;
+        padding: 1 2;
+    }
+    """
+
+    def __init__(self, update_info: dict | None = None, **kwargs):
+        super().__init__(**kwargs)
+        self._info = update_info
+
+    def compose(self) -> ComposeResult:
+        with VerticalScroll(id="update-dialog"):
+            yield Label("[bold]Auto-Updater[/]", id="update-title")
+            yield Static("", id="update-status")
+            yield Static("", id="update-commits")
+            yield Static("")
+            yield Static(
+                "[dim]  [b]c[/] Check for updates  "
+                "[b]u[/] Apply update  "
+                "[b]Esc[/] Close[/]",
+                id="update-actions",
+            )
+
+    def on_mount(self) -> None:
+        if self._info:
+            self._render_info(self._info)
+        else:
+            self._set_status("[dim]Press [b]c[/] to check for updates.[/]")
+
+    def _set_status(self, text: str) -> None:
+        self.query_one("#update-status", Static).update(text)
+
+    def _set_commits(self, text: str) -> None:
+        self.query_one("#update-commits", Static).update(text)
+
+    def _render_info(self, info: dict) -> None:
+        error = info.get("error")
+        if error:
+            self._set_status(f"  [red]\u2718 {error}[/]")
+            self._set_commits("")
+            return
+
+        local = info.get("local_commit", "?")
+        remote = info.get("remote_commit", "?")
+        branch = info.get("branch", "?")
+        available = info.get("available", False)
+
+        if available:
+            new_commits = info.get("new_commits", [])
+            count = len(new_commits)
+            self._set_status(
+                f"  [bold yellow]\u2191 Update available[/] on [bold]{branch}[/]\n"
+                f"  Local: [dim]{local or 'unknown'}[/]  "
+                f"Remote: [bold]{remote}[/]  "
+                f"({count} new commit{'s' if count != 1 else ''})\n\n"
+                f"  Press [b]u[/] to apply the update."
+            )
+            if new_commits:
+                lines = "\n".join(f"    [dim]{c}[/]" for c in new_commits[:10])
+                if count > 10:
+                    lines += f"\n    [dim]... and {count - 10} more[/]"
+                self._set_commits(f"  [bold]New commits:[/]\n{lines}")
+            else:
+                self._set_commits("")
+        else:
+            self._set_status(
+                f"  [green]\u2714 Up to date[/] on [bold]{branch}[/]\n"
+                f"  Commit: [dim]{local}[/]"
+            )
+            self._set_commits("")
+
+    @work(thread=True)
+    def action_check(self) -> None:
+        self._set_status("  [bold yellow]\u25d4[/] Checking for updates...")
+        self._set_commits("")
+        try:
+            info = check_for_updates()
+            self._info = info
+            self.app.call_from_thread(self._render_info, info)
+        except Exception as exc:
+            self.app.call_from_thread(
+                self._set_status,
+                f"  [red]\u2718 Check failed: {exc}[/]",
+            )
+
+    @work(thread=True)
+    def action_apply(self) -> None:
+        if not self._info or not self._info.get("available"):
+            self.app.call_from_thread(
+                self._set_status,
+                "  [dim]No update available. Press [b]c[/] to check first.[/]",
+            )
+            return
+
+        self.app.call_from_thread(
+            self._set_status,
+            "  [bold yellow]\u25d4[/] Applying update...",
+        )
+        self.app.call_from_thread(self._set_commits, "")
+        try:
+            result = apply_update()
+            success = result.get("success", False)
+            message = result.get("message", "")
+            if success:
+                self.app.call_from_thread(
+                    self._set_status,
+                    f"  [bold green]\u2714 {message}[/]\n\n"
+                    f"  Restart the TUI to load changes.",
+                )
+            else:
+                self.app.call_from_thread(
+                    self._set_status,
+                    f"  [red]\u2718 {message}[/]",
+                )
+        except Exception as exc:
+            self.app.call_from_thread(
+                self._set_status,
+                f"  [red]\u2718 Update failed: {exc}[/]",
+            )
+
+
+# ───────────────────────────────────────────────────────────────────
 # Main application
 # ───────────────────────────────────────────────────────────────────
 
@@ -286,6 +431,7 @@ class MaestroTUI(App):
         Binding("f3", "show_keys", "Keys", show=False),
         Binding("f4", "show_deps", "Deps", show=False),
         Binding("f5", "run_improve", "Improve", show=False),
+        Binding("f6", "show_update", "Update", show=False),
         Binding("ctrl+l", "clear_log", "Clear", show=False),
         Binding("f10", "quit", "Quit", show=False),
     ]
@@ -311,6 +457,7 @@ class MaestroTUI(App):
         self.query_one("#prompt-input", Input).focus()
         self._refresh_nodes()
         self._startup_dep_check()
+        self._startup_update_check()
         self._start_discovery()
 
     # ── Input handling ──────────────────────────────────────────────
@@ -348,6 +495,9 @@ class MaestroTUI(App):
             return
         if lower in ("/deps", "/dependencies", "/health"):
             self.action_show_deps()
+            return
+        if lower in ("/update", "/updates"):
+            self.action_show_update()
             return
 
         if self._busy:
@@ -460,6 +610,9 @@ class MaestroTUI(App):
         report = resolve_all()
         self.push_screen(DependencyScreen(report))
 
+    def action_show_update(self) -> None:
+        self.push_screen(UpdateScreen())
+
     def action_run_improve(self) -> None:
         viewer = self.query_one("#response-viewer", ResponseViewer)
         viewer.write_info(
@@ -497,6 +650,31 @@ class MaestroTUI(App):
                 if c.hint:
                     viewer.write_info(f"    {c.hint}")
             viewer.write_info("  Press F4 or type /deps for full report.")
+
+    @work(thread=True)
+    def _startup_update_check(self) -> None:
+        """Check for updates in the background at startup."""
+        import os
+
+        if os.environ.get("MAESTRO_AUTO_UPDATE", "").strip() not in (
+            "1", "true", "yes",
+        ):
+            return
+
+        try:
+            info = check_for_updates()
+        except Exception:
+            return
+
+        if info.get("available"):
+            count = len(info.get("new_commits", []))
+            branch = info.get("branch", "?")
+            viewer = self.query_one("#response-viewer", ResponseViewer)
+            viewer.write_info(
+                f"[bold yellow]\u2191 Update available[/] — "
+                f"{count} new commit{'s' if count != 1 else ''} on {branch}. "
+                f"Press [b]F6[/] or type [b]/update[/] to review."
+            )
 
     @work(thread=False)
     async def _show_history(self) -> None:
