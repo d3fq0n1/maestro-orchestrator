@@ -1,6 +1,6 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v0.7.0
+**Current Version:** v0.7.1
 **Last Updated:** 2026-03-11
 **Maintainer:** defcon
 
@@ -39,12 +39,14 @@
 - **Remote Compute Node Validation (v0.6)** -- Full MAGI_VIR validation on remote Maestro nodes via the compute node registry and storage network infrastructure
 - **Storage Network Dashboard (v0.6.3)** -- Network topology visualization with mirror completeness tracking, visual shard map grid (nodes x layer blocks), neighbor node display, pipeline hop visualization, redundancy indicators, gap detection, and coverage bars. Accessible via Storage button in the Web-UI header.
 - **Windows Setup Fix (v0.6.3.1)** -- `setup.py` now works correctly when Python is installed via winget or the Microsoft Store: UTF-8 output encoding forced at startup (fixes `UnicodeEncodeError` crash-on-launch), and working directory pinned to the project root (fixes "no configuration file provided" Docker Compose error when run from a non-root path).
+- **TUI Dashboard (v0.7.0)** -- Textual-based terminal dashboard optimized for SoC devices. Mainframe-style single-keypress navigation, first-run API key setup wizard, BTOP-style shard network monitor with animated indicators, LAN shard discovery panel. Full orchestration pipeline with live agent status, consensus/quorum/R2/dissent/NCG metrics, scrollable response viewer. Dual backend modes: direct import (in-process) and HTTP client (multi-device clusters).
+- **Model Deliberation (v0.7.1)** -- After initial response collection, each agent reads its peers' responses and produces a refined reply before any analysis runs. Configurable rounds (default 1), default on, non-fatal. All downstream analysis (dissent, NCG, quorum) operates on deliberated positions. Full API exposure (`deliberation_enabled`, `deliberation_rounds`) with SSE events for the streaming endpoint. See [`deliberation.md`](./deliberation.md).
 
 ---
 
-## Active Development (v0.7 Goals)
+## Active Development (v0.8 Goals)
 
-- **TUI Dashboard (Raspberry Pi 5 / SoC)** -- Textual-based terminal dashboard optimized for SoC devices. Mainframe-style single-keypress navigation, first-run API key setup wizard, BTOP-style shard network monitor with animated indicators, LAN shard discovery panel. Full orchestration pipeline with live agent status, consensus/quorum/R2/dissent/NCG metrics, scrollable response viewer. Dual backend modes: direct import (in-process) and HTTP client (multi-device clusters). 80x24 minimum with responsive scaling. Accessible via `python -m maestro.tui` or `MAESTRO_MODE=tui`.
+- **TUI Dashboard (Raspberry Pi 5 / SoC)** -- Ongoing refinements to the Textual dashboard: LAN shard discovery, in-TUI auto-updater, and commit preview.
 - **LAN Shard Discovery** -- UDP beacon-based peer discovery with handshake protocol, adjacency tracking, and automatic Maestro Node formation when 3+ adjacent shards are found
 - **TUI Auto-Updater** -- In-TUI update checking and application with commit preview
 - **Token-Level NCG Analysis** -- Bridge from conversational metadata to logprob-level drift measurement across all providers (OpenAI logprobs integration built, pending for Anthropic/Google)

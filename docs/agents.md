@@ -1,6 +1,6 @@
 # Agent Layer -- Maestro-Orchestrator
 
-**Version:** v0.7.0
+**Version:** v0.7.1
 **Last Updated:** 2026-03-11
 **Maintainer:** defcon
 

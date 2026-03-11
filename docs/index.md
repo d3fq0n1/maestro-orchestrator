@@ -11,6 +11,9 @@ This system is built for researchers, engineers, and visionaries working at the 
 ### [Agents](agents.md)
 Modular definitions of participating language model agents (GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B, ShardNet). Describes how each agent is invoked, structured, and rotated in a session.
 
+### [Deliberation Engine](deliberation.md)
+Cross-agent response sharing. After initial parallel collection, each agent reads its peers' answers and produces a refined reply before any analysis runs. Configurable rounds, default on, non-fatal. Full API and SSE event documentation.
+
 ### [System Architecture](architecture.md)
 Modular architecture overview covering the orchestration pipeline, agent layer, quorum logic, NCG, R2 Engine, MAGI governance, self-improvement pipeline, CLI, frontend UI, and Docker deployment.
 
@@ -55,6 +58,7 @@ Maestro-Orchestrator is built on three foundational principles:
 ```
 maestro/                  # Core orchestration package
   orchestrator.py         # Async orchestration engine (full pipeline)
+  deliberation.py         # Deliberation engine (cross-agent response sharing)
   aggregator.py           # Semantic quorum logic and response synthesis
   dissent.py              # Pairwise dissent analysis, outlier detection
   r2.py                   # R2 Engine (scoring, ledger, signals)
@@ -104,6 +108,7 @@ docker-compose.yml        # Docker Compose orchestration
 ## Additional Documentation
 
 - [Architecture](architecture.md)
+- [Deliberation Engine](deliberation.md)
 - [Storage Network](storage-network.md)
 - [Mod Manager](mod-manager.md)
 - [Self-Improvement Pipeline](self-improvement-pipeline.md)

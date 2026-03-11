@@ -49,11 +49,21 @@ def _select_headless_generator():
 
 
 # === Orchestration Runner ===
-async def run_orchestration(prompt: str) -> dict:
+async def run_orchestration(
+    prompt: str,
+    deliberation_enabled: bool = True,
+    deliberation_rounds: int = 1,
+) -> dict:
     """
     Thin wrapper that passes the live council and best available headless
-    generator into the core orchestration pipeline. All analysis (dissent,
-    NCG, R2, session logging) runs on every request.
+    generator into the core orchestration pipeline. All analysis (deliberation,
+    dissent, NCG, R2, session logging) runs on every request.
+
+    Args:
+        prompt: The user prompt to orchestrate.
+        deliberation_enabled: Whether to run cross-agent deliberation after the
+            initial response collection. Default True (on by default).
+        deliberation_rounds: Number of deliberation rounds. Default 1.
     """
     return await run_orchestration_async(
         prompt=prompt,
@@ -61,13 +71,24 @@ async def run_orchestration(prompt: str) -> dict:
         ncg_enabled=True,
         session_logging=True,
         headless_generator=_select_headless_generator(),
+        deliberation_enabled=deliberation_enabled,
+        deliberation_rounds=deliberation_rounds,
     )
 
 
-async def stream_orchestration(prompt: str):
+async def stream_orchestration(
+    prompt: str,
+    deliberation_enabled: bool = True,
+    deliberation_rounds: int = 1,
+):
     """
     Streaming wrapper that passes the live council and best available headless
     generator into the streaming orchestration pipeline. Yields SSE events.
+
+    Args:
+        prompt: The user prompt to orchestrate.
+        deliberation_enabled: Whether to run cross-agent deliberation. Default True.
+        deliberation_rounds: Number of deliberation rounds. Default 1.
     """
     async for event in run_orchestration_stream(
         prompt=prompt,
@@ -75,6 +96,8 @@ async def stream_orchestration(prompt: str):
         ncg_enabled=True,
         session_logging=True,
         headless_generator=_select_headless_generator(),
+        deliberation_enabled=deliberation_enabled,
+        deliberation_rounds=deliberation_rounds,
     ):
         yield event
 

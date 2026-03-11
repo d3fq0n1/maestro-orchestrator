@@ -1,10 +1,44 @@
-# Maestro-Orchestrator v0.7.0
+# Maestro-Orchestrator v0.7.1
 
-**Multi-Agent AI Orchestration with Synthetic Consensus and Dissent**
+**Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
 
 ---
 
-## What's New in v0.7.0
+## What's New in v0.7.1
+
+### Model Deliberation
+
+Agents no longer respond in isolation. After all agents return their initial answers, the **Deliberation Engine** feeds each agent's response back into the pool — every agent reads what its peers said and produces a refined reply before any analysis runs.
+
+- **Default on** — deliberation runs automatically with 1 round unless you opt out via `deliberation_enabled: false` in the API request.
+- **Configurable rounds** — set `deliberation_rounds` (1–5) to run multiple passes of cross-agent debate. Each round costs one additional API call per agent.
+- **Non-fatal** — if any agent errors during deliberation, it keeps its previous response and the pipeline continues.
+- **Full history** — the API response includes a `deliberation` summary (rounds completed, participating agents). The streaming endpoint emits per-round responses as they arrive.
+- **Downstream analysis operates on deliberated positions** — dissent analysis, NCG drift detection, and quorum aggregation all run on the agents' considered, post-deliberation outputs.
+
+**API changes (both `/api/ask` and `/api/ask/stream`):**
+
+```json
+{
+  "prompt": "Your question here",
+  "deliberation_enabled": true,
+  "deliberation_rounds": 1
+}
+```
+
+Both new fields are optional. The default behaviour (`deliberation_enabled: true, deliberation_rounds: 1`) requires no changes to existing integrations.
+
+**New SSE events (streaming endpoint):**
+
+| Event | Description |
+|-------|-------------|
+| `deliberation_start` | Deliberation beginning — round count and agent list |
+| `deliberation_round` | One round complete — round number and all per-agent deliberated responses |
+| `deliberation_done` | All rounds finished — summary with participation and any skip reason |
+
+---
+
+## Highlights from v0.7.0
 
 ### TUI Dashboard
 

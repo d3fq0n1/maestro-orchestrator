@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.7.1] - 2026-03-11
+
+### Added
+
+- **Deliberation Engine** (`maestro/deliberation.py`) — After collecting initial responses from all agents, each agent now reads what its peers said and produces a refined reply before any analysis runs. This transforms the parallel-collect pattern into an actual multi-round debate.
+  - **`DeliberationEngine`** — Configurable rounds (default 1). Non-fatal: if any agent errors during deliberation, it keeps its previous response and the pipeline continues.
+  - **`DeliberationReport`** — Full history of every round (round 0 = initial responses, rounds 1..N = deliberation turns), final deliberated responses, participating agents, and skip reason if fewer than 2 healthy agents are available.
+  - **`_build_deliberation_prompt()`** — Constructs a per-agent prompt containing the original question, the agent's own previous reply, and all peer agents' previous replies (by model/vendor name). Asks the agent to affirm, refine, or challenge its position.
+- **`deliberation_enabled` parameter** — Available on `run_orchestration_async()`, `run_orchestration_stream()`, `run_orchestration()` (sync wrapper), `run_orchestration()` in `orchestrator_foundry.py`, and `stream_orchestration()`. Default `True` (deliberation is on by default).
+- **`deliberation_rounds` parameter** — Number of deliberation rounds, default 1, accepted on all orchestration entry points.
+- **API request fields** — `POST /api/ask` and `POST /api/ask/stream` now accept `deliberation_enabled: bool` (default `true`) and `deliberation_rounds: int` (default `1`, max `5`) in the JSON request body. Both fields are optional; omitting them keeps the default-on behaviour.
+- **SSE deliberation events** (streaming endpoint):
+  - `deliberation_start` — Emitted when deliberation begins (includes round count and agent list).
+  - `deliberation_round` — Emitted after each round completes (includes round number and all per-agent deliberated responses).
+  - `deliberation_done` — Emitted when all rounds finish (summary: rounds completed, agents participated, skip reason if applicable).
+  - `stage` event with `name: "deliberation"` emitted at the start of the phase.
+- **`deliberation` field in API responses** — Both batch (`/api/ask`) and streaming (`done` event) responses now include a `deliberation` object: `enabled`, `rounds_requested`, `rounds_completed`, `agents_participated`, `skipped`, `skip_reason`.
+
+### Changed
+
+- `maestro/orchestrator.py` — Deliberation phase inserted between initial agent collection and dissent analysis. The deliberated responses replace initial responses for all downstream analysis (dissent, NCG, aggregation). The `done` SSE event includes the `deliberation` summary. Sync wrapper `run_orchestration()` updated with new params.
+- `backend/orchestrator_foundry.py` — `run_orchestration()` and `stream_orchestration()` wrappers updated to accept and forward `deliberation_enabled` and `deliberation_rounds`.
+- `backend/main.py` — `Prompt` request model extended with `deliberation_enabled` and `deliberation_rounds` fields. Both endpoints log deliberation settings on receipt.
+- **Version bumped to v0.7.1** across readme, frontend, docs, roadmap, node server, plugin manager, release notes, and changelog.
+
+---
+
 ## [0.7.0] - 2026-03-11
 
 ### Added

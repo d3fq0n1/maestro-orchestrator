@@ -5,6 +5,7 @@ from typing import AsyncGenerator, TYPE_CHECKING
 
 from maestro.agents.mock import MockAgent
 from maestro.aggregator import aggregate_responses
+from maestro.deliberation import DeliberationEngine
 from maestro.dissent import DissentAnalyzer
 from maestro.ncg import MockHeadlessGenerator, DriftDetector
 from maestro.r2 import R2Engine
@@ -62,16 +63,24 @@ async def run_orchestration_async(
     session_logging: bool = True,
     headless_generator=None,
     mod_manager: 'ModManager' = None,
+    deliberation_enabled: bool = True,
+    deliberation_rounds: int = 1,
 ) -> dict:
     """
     Orchestrates multiple agents, aggregates responses, and runs the
     full analysis pipeline.
 
-    Pipeline after the conversational track:
-      1. Dissent analysis -- measures internal agreement between agents
-      2. NCG track -- headless baseline for drift/collapse detection
-      3. Aggregation -- synthesizes responses with dissent and NCG data
-      4. R2 Engine -- scores the session, detects improvement signals,
+    Pipeline:
+      0. Conversational track -- all agents queried in parallel
+      1. Deliberation (optional, default ON) -- each agent receives all peer
+         responses and produces a refined reply over one or more rounds.
+         Deliberated responses replace the initial ones for all downstream
+         analysis so the consensus, dissent, and NCG tracks operate on
+         the agents' considered, post-deliberation positions.
+      2. Dissent analysis -- measures internal agreement between agents
+      3. NCG track -- headless baseline for drift/collapse detection
+      4. Aggregation -- synthesizes responses with dissent and NCG data
+      5. R2 Engine -- scores the session, detects improvement signals,
          and indexes the consensus node into the ledger
 
     The dissent analyzer produces an internal_agreement score that feeds
@@ -86,6 +95,12 @@ async def run_orchestration_async(
         session_logging: Whether to persist the session record.
         headless_generator: HeadlessGenerator instance for NCG. When None,
             falls back to MockHeadlessGenerator.
+        deliberation_enabled: Whether to run the deliberation phase after
+            collecting initial responses. Default True. When enabled, each
+            agent reads its peers' initial responses and produces a refined
+            reply before analysis proceeds.
+        deliberation_rounds: Number of deliberation rounds. Default 1.
+            Each additional round costs one more API call per agent.
 
     Error handling:
         - return_exceptions=True on asyncio.gather ensures a single agent
@@ -93,6 +108,8 @@ async def run_orchestration_async(
           The exception is caught here and converted to an error-string
           response so the analysis pipeline continues with the remaining
           agents' outputs.
+        - Deliberation failures are non-fatal: if an agent errors during
+          deliberation, it keeps its previous-round response.
         - NCG failures fall back to MockHeadlessGenerator output so the
           drift/collapse track always produces a result.
         - Session persistence failures are logged but do not raise — a
@@ -144,6 +161,31 @@ async def run_orchestration_async(
             await mod_manager.run_hooks("post_agent_response", {
                 "agent_name": agent.name, "response": resp_str, "prompt": prompt,
             })
+
+    # --- Deliberation (cross-agent response sharing, default ON) ---
+    # Each agent receives all peer responses and produces a refined reply.
+    # The deliberated responses replace the initial ones for all downstream
+    # analysis so consensus, dissent, and NCG operate on considered positions.
+    deliberation_report = None
+    if deliberation_enabled:
+        print(f"\n[Deliberation] Starting {deliberation_rounds} round(s) of "
+              f"cross-agent deliberation...")
+        try:
+            engine = DeliberationEngine(rounds=deliberation_rounds)
+            deliberation_report = await engine.run(
+                prompt=prompt,
+                agents=agents,
+                initial_responses=named_responses,
+            )
+            if not deliberation_report.skipped:
+                # Replace named_responses with deliberated outputs
+                named_responses = deliberation_report.final_responses
+                print(f"[Deliberation] Responses updated after "
+                      f"{deliberation_report.rounds_completed} deliberation round(s).")
+        except Exception as e:
+            print(f"[Deliberation Error] {type(e).__name__}: {e} -- "
+                  "skipping deliberation, using initial responses.")
+            deliberation_report = None
 
     # Separate clean (non-error) responses for metrics so errored agents
     # don't pollute dissent analysis, NCG drift, or aggregation scores.
@@ -285,19 +327,43 @@ async def run_orchestration_async(
         print(f"[R2 Engine Error] {type(e).__name__}: {e} -- R2 data unavailable for this session")
         final_output["r2"] = None
 
+    # Attach deliberation summary to final_output for API consumers
+    if deliberation_report is not None:
+        final_output["deliberation"] = {
+            "enabled": True,
+            "rounds_requested": deliberation_report.rounds_requested,
+            "rounds_completed": deliberation_report.rounds_completed,
+            "agents_participated": deliberation_report.agents_participated,
+            "skipped": deliberation_report.skipped,
+            "skip_reason": deliberation_report.skip_reason if deliberation_report.skipped else None,
+        }
+    else:
+        final_output["deliberation"] = {"enabled": deliberation_enabled, "rounds_completed": 0}
+
     return {
         "responses": responses,
         "named_responses": named_responses,
         "agent_errors": agent_errors,
         "final_output": final_output,
         "session_id": session_id,
+        "deliberation": final_output["deliberation"],
     }
 
 
-def run_orchestration(prompt: str, ncg_enabled: bool = True, session_logging: bool = True) -> dict:
+def run_orchestration(
+    prompt: str,
+    ncg_enabled: bool = True,
+    session_logging: bool = True,
+    deliberation_enabled: bool = True,
+    deliberation_rounds: int = 1,
+) -> dict:
     """Synchronous wrapper for backward compatibility with tests and CLI."""
     return asyncio.run(run_orchestration_async(
-        prompt, ncg_enabled=ncg_enabled, session_logging=session_logging,
+        prompt,
+        ncg_enabled=ncg_enabled,
+        session_logging=session_logging,
+        deliberation_enabled=deliberation_enabled,
+        deliberation_rounds=deliberation_rounds,
     ))
 
 
@@ -314,20 +380,25 @@ async def run_orchestration_stream(
     session_logging: bool = True,
     headless_generator=None,
     mod_manager: 'ModManager' = None,
+    deliberation_enabled: bool = True,
+    deliberation_rounds: int = 1,
 ) -> AsyncGenerator[str, None]:
     """
     Streaming version of run_orchestration_async. Yields SSE events as each
     pipeline stage completes so the frontend can render progressively.
 
     Events emitted:
-        stage       - Pipeline stage update (name + status)
-        agents_done - All agent responses collected
-        dissent     - Dissent analysis complete
-        ncg         - NCG benchmark complete
-        consensus   - Aggregation complete (quorum, confidence, consensus text)
-        r2          - R2 scoring complete
-        done        - Final complete response (same shape as the POST endpoint)
-        error       - An error occurred
+        stage             - Pipeline stage update (name + status)
+        agents_done       - All agent responses collected
+        deliberation_start - Deliberation phase beginning (round count)
+        deliberation_round - One deliberation round completed (per-agent responses)
+        deliberation_done  - All deliberation rounds finished
+        dissent           - Dissent analysis complete
+        ncg               - NCG benchmark complete
+        consensus         - Aggregation complete (quorum, confidence, consensus text)
+        r2                - R2 scoring complete
+        done              - Final complete response (same shape as the POST endpoint)
+        error             - An error occurred
     """
     if agents is None:
         agents = [
@@ -385,13 +456,6 @@ async def run_orchestration_stream(
                     "agents_total": len(agents),
                 })
 
-        # Separate clean responses
-        clean_responses = {
-            name: resp for name, resp in named_responses.items()
-            if not _is_agent_error(resp)
-        }
-        responses = list(clean_responses.values()) if clean_responses else list(named_responses.values())
-
         yield _sse_event("agents_done", {
             "responses": named_responses,
             "agent_errors": agent_errors,
@@ -403,6 +467,59 @@ async def run_orchestration_stream(
                 await mod_manager.run_hooks("post_agent_response", {
                     "agent_name": aname, "response": aresp, "prompt": prompt,
                 })
+
+        # --- Stage: Deliberation (cross-agent response sharing, default ON) ---
+        deliberation_summary = {"enabled": deliberation_enabled, "rounds_completed": 0}
+        if deliberation_enabled:
+            yield _sse_event("stage", {
+                "name": "deliberation",
+                "status": "running",
+                "message": f"Deliberation — {deliberation_rounds} round(s) of cross-agent debate...",
+            })
+            yield _sse_event("deliberation_start", {
+                "rounds_requested": deliberation_rounds,
+                "agents": [a.name for a in agents],
+            })
+            try:
+                engine = DeliberationEngine(rounds=deliberation_rounds)
+                delib_report = await engine.run(
+                    prompt=prompt,
+                    agents=agents,
+                    initial_responses=named_responses,
+                )
+                if not delib_report.skipped:
+                    named_responses = delib_report.final_responses
+                # Emit each completed deliberation round
+                for rnd in delib_report.history[1:]:  # skip round 0 (initial)
+                    yield _sse_event("deliberation_round", {
+                        "round_number": rnd.round_number,
+                        "responses": rnd.responses,
+                    })
+                deliberation_summary = {
+                    "enabled": True,
+                    "rounds_requested": delib_report.rounds_requested,
+                    "rounds_completed": delib_report.rounds_completed,
+                    "agents_participated": delib_report.agents_participated,
+                    "skipped": delib_report.skipped,
+                    "skip_reason": delib_report.skip_reason if delib_report.skipped else None,
+                }
+                yield _sse_event("deliberation_done", deliberation_summary)
+            except Exception as e:
+                print(f"[Deliberation Error] {type(e).__name__}: {e} -- "
+                      "skipping deliberation, using initial responses.")
+                yield _sse_event("deliberation_done", {
+                    "enabled": True,
+                    "rounds_completed": 0,
+                    "skipped": True,
+                    "skip_reason": f"{type(e).__name__}: {e}",
+                })
+
+        # Recompute clean_responses after deliberation may have updated named_responses
+        clean_responses = {
+            name: resp for name, resp in named_responses.items()
+            if not _is_agent_error(resp)
+        }
+        responses = list(clean_responses.values()) if clean_responses else list(named_responses.values())
 
         # --- Stage: Dissent analysis ---
         yield _sse_event("stage", {"name": "dissent", "status": "running",
@@ -570,6 +687,7 @@ async def run_orchestration_stream(
             "agreement_ratio": final_output.get("agreement_ratio"),
             "quorum_met": final_output.get("quorum_met"),
             "quorum_threshold": final_output.get("quorum_threshold"),
+            "deliberation": deliberation_summary,
             "dissent": dissent_data,
             "ncg_benchmark": ncg_data,
             "r2": final_output.get("r2"),
