@@ -159,8 +159,44 @@ def find_compose_cmd() -> list[str]:
     return []
 
 
+def is_daemon_running() -> bool:
+    """Return True if the Docker daemon is reachable."""
+    try:
+        result = subprocess.run(
+            ["docker", "info"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
+def _daemon_start_hint() -> str:
+    """Return a platform-specific hint for starting the Docker daemon."""
+    system = platform.system()
+    if system == "Darwin":
+        return "  Hint: open -a Docker          (or launch Docker Desktop from Applications)"
+    elif system == "Windows":
+        return '  Hint: Start Docker Desktop from the Start menu or taskbar'
+    else:
+        return "  Hint: sudo systemctl start docker   (or launch Docker Desktop)"
+
+
+def wait_for_daemon(timeout: int = 60) -> bool:
+    """Wait up to *timeout* seconds for the Docker daemon to become reachable."""
+    deadline = time.monotonic() + timeout
+    interval = 2
+    while time.monotonic() < deadline:
+        if is_daemon_running():
+            return True
+        time.sleep(interval)
+    return False
+
+
 def check_deps() -> None:
-    """Verify Docker and Docker Compose are installed."""
+    """Verify Docker and Docker Compose are installed, and the daemon is running."""
     missing = []
 
     if not shutil.which("docker"):
@@ -173,6 +209,34 @@ def check_deps() -> None:
         print(f"  Error: missing required tools: {', '.join(missing)}")
         print("  Install Docker: https://docs.docker.com/get-docker/")
         sys.exit(1)
+
+    # --- Docker daemon reachability check ---
+    if not is_daemon_running():
+        print("  Error: Docker is installed but the daemon is not running.")
+        print()
+        print(_daemon_start_hint())
+        print()
+
+        # Interactive terminal: offer to wait; non-interactive: just exit.
+        if sys.stdin.isatty():
+            try:
+                answer = input("  Start Docker and press Enter to continue (or Ctrl+C to quit) ... ")
+            except (KeyboardInterrupt, EOFError):
+                print()
+                sys.exit(1)
+
+            print()
+            spinner = Spinner(["Waiting for Docker daemon to be ready"]).start()
+            ok = wait_for_daemon(timeout=120)
+            spinner.stop()
+
+            if not ok:
+                print("  Error: Docker daemon did not become available within 120 seconds.")
+                print("  Please make sure Docker Desktop (or the docker service) is fully started, then try again.")
+                sys.exit(1)
+            print("  ✓ Docker daemon is now running")
+        else:
+            sys.exit(1)
 
 
 def build_and_start(compose: list[str], verbose: bool = False) -> None:
