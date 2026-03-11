@@ -57,6 +57,10 @@ class MaestroBackend(ABC):
         """Return recent session summaries."""
         ...
 
+    async def get_discovery_status(self) -> dict:
+        """Return LAN shard discovery status. Override in subclasses."""
+        return {}
+
 
 class DirectBackend(MaestroBackend):
     """In-process backend — imports orchestrator modules directly."""
@@ -162,6 +166,13 @@ class HTTPBackend(MaestroBackend):
             )
             resp.raise_for_status()
             return resp.json().get("sessions", [])
+
+    async def get_discovery_status(self) -> dict:
+        import httpx
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
+            resp = await client.get(f"{self._base_url}/api/storage/discovery")
+            resp.raise_for_status()
+            return resp.json()
 
 
 def create_backend(mode: str = "direct", base_url: str = "http://localhost:8000") -> MaestroBackend:
