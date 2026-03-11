@@ -21,6 +21,8 @@
 
 - **`entrypoint.py`** — Dialog menu expanded from 2 to 3 options (web/cli/tui). Plain text fallback updated to match. `MAESTRO_MODE` now accepts `tui` in addition to `web` and `cli`.
 - **Documentation updated** — `readme.md`, `docs/architecture.md`, `docs/deployment.md`, `docs/ui-guide.md`, `docs/roadmap.md`, and `changelog.md` updated with TUI documentation, launch instructions, keybindings, backend modes, and file structure.
+- **`setup.py` graceful Docker fallback** — When Docker is not installed, setup now suggests `--dev` mode with an interactive prompt to switch, instead of exiting with an error.
+- **Version bumped to v0.7.0** across readme, frontend, docs, roadmap, node server, plugin manager, release notes, and changelog.
 
 ---
 

@@ -1,15 +1,20 @@
-# Maestro-Orchestrator v0.6.3.1
+# Maestro-Orchestrator v0.7.0
 
 **Multi-Agent AI Orchestration with Synthetic Consensus and Dissent**
 
 ---
 
-## What's New in v0.6.3.1
+## What's New in v0.7.0
 
-### Bug Fixes: Windows Setup
+### TUI Dashboard
 
-- **UnicodeEncodeError on Windows** — `setup.py` crashed silently on launch when Python was installed via winget or the Microsoft Store (which default to the system code page, not UTF-8). The banner, spinner, and status glyphs raised `UnicodeEncodeError` before any output appeared. Fixed with `sys.stdout/stderr.reconfigure(encoding="utf-8", errors="replace")` at startup.
-- **"no configuration file provided"** — `setup.py` called `docker compose up` without setting a working directory. Running the script from any path other than the project root caused Docker Compose to fail finding `docker-compose.yml`, with the error only visible in `.setup-build.log`. Fixed by pinning the working directory to the script's own location at module load time.
+- **Full Textual-based terminal dashboard** optimized for SoC devices (Raspberry Pi 5). Agent panel with live status indicators, consensus metrics, response viewer with syntax highlighting, shard network monitor, modal screens (F1 help, F2 node detail, F3 API key status).
+- **Dual backend modes** — Direct import (in-process, lowest latency) and HTTP client (connects to running server via SSE, supports multi-device clusters).
+- **TUI mode in startup wrapper** — `entrypoint.py` now offers TUI as a third option alongside Web-UI and CLI. Selectable via dialog menu or `MAESTRO_MODE=tui`.
+
+### Setup Improvements
+
+- **Graceful Docker fallback** — `setup.py` now suggests `--dev` mode when Docker is not installed, with an interactive prompt to switch automatically. No more hard failure on systems without Docker.
 
 ---
 

@@ -173,6 +173,23 @@ def is_daemon_running() -> bool:
         return False
 
 
+def _docker_permission_denied() -> bool:
+    """Return True if docker info fails specifically due to a permission error."""
+    try:
+        result = subprocess.run(
+            ["docker", "info"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            timeout=10,
+        )
+        if result.returncode != 0:
+            stderr = result.stderr.decode(errors="replace").lower()
+            return "permission denied" in stderr or "connect: permission denied" in stderr
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return False
+
+
 def _daemon_start_hint() -> str:
     """Return a platform-specific hint for starting the Docker daemon."""
     system = platform.system()
@@ -206,16 +223,39 @@ def check_deps() -> None:
         missing.append("docker compose")
 
     if missing:
-        print(f"  Error: missing required tools: {', '.join(missing)}")
+        print(f"  Warning: missing tools: {', '.join(missing)}")
         print("  Install Docker: https://docs.docker.com/get-docker/")
+        print()
+        print("  Alternatively, run without Docker:")
+        print("    python setup.py --dev")
+        print()
+
+        # Interactive terminal: offer to switch to dev mode; non-interactive: exit.
+        if sys.stdin.isatty():
+            try:
+                answer = input("  Switch to local dev mode? [y/N] ").strip().lower()
+            except (KeyboardInterrupt, EOFError):
+                print()
+                sys.exit(1)
+            if answer == "y":
+                dev_setup()
+                return
         sys.exit(1)
 
     # --- Docker daemon reachability check ---
     if not is_daemon_running():
-        print("  Error: Docker is installed but the daemon is not running.")
-        print()
-        print(_daemon_start_hint())
-        print()
+        if _docker_permission_denied():
+            print("  Error: Docker is running but this user cannot access it.")
+            print()
+            print("  Fix: add your user to the docker group, then log out and back in:")
+            print("    sudo usermod -aG docker $USER")
+            print("    newgrp docker   # apply without logging out (current shell only)")
+            print()
+        else:
+            print("  Error: Docker is installed but the daemon is not running.")
+            print()
+            print(_daemon_start_hint())
+            print()
 
         # Interactive terminal: offer to wait; non-interactive: just exit.
         if sys.stdin.isatty():

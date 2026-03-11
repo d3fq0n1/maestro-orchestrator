@@ -1,7 +1,7 @@
 # Agent Layer -- Maestro-Orchestrator
 
-**Version:** v0.6.3.1
-**Last Updated:** 2026-03-10
+**Version:** v0.7.0
+**Last Updated:** 2026-03-11
 **Maintainer:** defcon
 
 Maestro-Orchestrator integrates multiple LLM agents via a containerized backend. This document describes the agent architecture and the current council.
