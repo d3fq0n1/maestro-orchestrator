@@ -1,6 +1,6 @@
 # Storage Network — Proof-of-Storage Distributed Inference
 
-**Version:** v0.7.2
+**Version:** v7.1.4
 **Last Updated:** 2026-03-12
 **Maintainer:** defcon
 
@@ -165,7 +165,7 @@ Storage: `data/storage_proofs/reputations.json` for persistent reputation data, 
 
 ### Shard Agent (`maestro/agents/shard.py`)
 
-The ShardAgent implements the same `Agent` base class as Sol, Aria, Prism, and TempAgent. It's a drop-in addition to the agent council.
+The ShardAgent implements the same `Agent` base class as GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, and Llama 3.3 70B. It's a drop-in addition to the agent council.
 
 ```python
 from maestro.agents.shard import ShardAgent

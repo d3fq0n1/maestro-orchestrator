@@ -52,6 +52,7 @@ This guide outlines the structure and behavior of the Maestro-Orchestrator front
   * **Shard Map tab** — Visual grid of nodes vs layer blocks showing shard distribution across the network, per-node color-coded coverage, aggregate network coverage row with redundancy indicators (green = 2x+, yellow = 1x, red = gap)
   * **Nodes tab** — List of registered storage nodes with status tags (available/busy/probation/offline/evicted), reputation percentages, latency, shard pills, heartbeat timestamps, challenge and remove actions. Empty states show a copyable CLI command with the current orchestrator URL
   * **Shards tab** — Download form for HuggingFace model shards with layer range selection, live download status polling, per-model cards showing layer coverage, completeness, precision, file count, disk usage, verify/generate-config/remove actions
+  * **LAN Discovery tab** — Shows the local shard identity, Maestro Node formation status (formed/not formed with member count), and discovered LAN peers with adjacency state (confirmed/handshake/discovered/offline), latency, and alive indicators. Surfaces the same data as the TUI's LAN Discovery panel
 
 * **System Update Panel:**
   * Check for updates from the configured remote repository

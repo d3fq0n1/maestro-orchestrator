@@ -123,7 +123,7 @@ See [`self-improvement-pipeline.md`](./self-improvement-pipeline.md) for the com
       "signal_type": "persistent_outlier",
       "severity": "warning",
       "description": "One or more agents consistently diverge...",
-      "affected_agents": ["Prism"],
+      "affected_agents": ["Gemini 2.5 Flash"],
       "data": {"agreement": 0.65}
     }
   ],
@@ -131,7 +131,7 @@ See [`self-improvement-pipeline.md`](./self-improvement-pipeline.md) for the com
   "dissent_summary": {
     "internal_agreement": 0.65,
     "dissent_level": "moderate",
-    "outlier_agents": ["Prism"],
+    "outlier_agents": ["Gemini 2.5 Flash"],
     "agent_count": 3
   }
 }

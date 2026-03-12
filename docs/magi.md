@@ -42,7 +42,7 @@ Where R2 catches problems in a single session and NCG catches conformity in the 
 
 | Category | Severity | Example |
 |----------|----------|---------|
-| `agent` | warning | "Prism is a persistent outlier (80% outlier rate across 10 sessions)" |
+| `agent` | warning | "Gemini 2.5 Flash is a persistent outlier (80% outlier rate across 10 sessions)" |
 | `system` | warning | "Confidence is declining across sessions (mean: 45%)" |
 | `system` | critical | "Frequent silent collapse detected (60% of recent sessions)" |
 | `system` | warning | "Recurring signal: suspicious_consensus (5 occurrences)" |
