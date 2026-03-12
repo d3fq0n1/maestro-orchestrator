@@ -1,5 +1,5 @@
 """
-Deliberation Engine — Maestro-Orchestrator v7.1
+Deliberation Engine — Maestro-Orchestrator v0.7.1
 
 After collecting initial responses from all agents, the deliberation engine
 feeds each agent's response back into the pool so every agent can read what
@@ -38,9 +38,23 @@ keeps its previous-round response and the pipeline continues.
 """
 
 import asyncio
+import re
 from dataclasses import dataclass, field
 
-from maestro.orchestrator import _is_agent_error  # reuse existing sentinel check
+
+# ---------------------------------------------------------------------------
+# Error-sentinel detection (mirrors the pattern in maestro/orchestrator.py
+# but defined locally to avoid a circular import)
+# ---------------------------------------------------------------------------
+_ERROR_PATTERN = re.compile(
+    r"^\[.+?\] (?:HTTP \d{3}|Timeout|Connection failed|Failed|API Key Missing"
+    r"|Malformed response|Content filtered.*)"
+)
+
+
+def _is_agent_error(response: str) -> bool:
+    """Return True if the response string is an agent error sentinel."""
+    return bool(_ERROR_PATTERN.match(response))
 
 
 @dataclass
