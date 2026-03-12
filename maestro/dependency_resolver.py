@@ -37,8 +37,8 @@ class CheckResult:
 # ---------------------------------------------------------------------------
 
 _REQUIRED_PACKAGES: list[tuple[str, str, str]] = [
-    ("openai", "openai", "Sol / Aria agents (OpenAI provider)"),
-    ("anthropic", "anthropic", "Prism agent (Anthropic provider)"),
+    ("openai", "openai", "GPT-4o agent (OpenAI provider)"),
+    ("anthropic", "anthropic", "Claude Sonnet 4.6 agent (Anthropic provider)"),
     ("httpx", "httpx", "HTTP client for TUI / agent calls"),
     ("pydantic", "pydantic", "Request validation (FastAPI)"),
     ("dotenv", "python-dotenv", "Environment file loading"),
@@ -68,8 +68,9 @@ _SYSTEM_TOOLS: list[tuple[str, str]] = [
 # ---------------------------------------------------------------------------
 
 _API_KEYS: list[tuple[str, str, str]] = [
-    ("OPENAI_API_KEY", "OpenAI", "Required for Sol, Aria, and headless NCG generation"),
-    ("ANTHROPIC_API_KEY", "Anthropic", "Required for Prism agent"),
+    ("OPENAI_API_KEY", "OpenAI", "Required for GPT-4o agent and headless NCG generation"),
+    ("ANTHROPIC_API_KEY", "Anthropic", "Required for Claude Sonnet 4.6 agent"),
+    ("GOOGLE_API_KEY", "Google", "Required for Gemini 2.5 Flash agent"),
 ]
 
 _OPTIONAL_API_KEYS: list[tuple[str, str, str]] = [
