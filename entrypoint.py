@@ -12,16 +12,16 @@ Environment variable override:
     MAESTRO_MODE=web   -> skip dialog, launch Web-UI directly
     MAESTRO_MODE=cli   -> skip dialog, launch CLI directly
     MAESTRO_MODE=tui   -> skip dialog, launch TUI directly
+
+Cluster roles (NODE_ROLE env var):
+    NODE_ROLE=orchestrator -> start as cluster coordinator
+    NODE_ROLE=shard        -> start as shard worker (skips dialog)
 """
 
 import os
 import subprocess
 import sys
 import webbrowser
-
-# Cluster support — detect node role before anything else
-sys.path.insert(0, os.path.dirname(__file__))
-from maestro.cluster import get_cluster_config, ClusterConfig
 
 
 # ---------------------------------------------------------------------------
@@ -67,6 +67,36 @@ def launch_tui():
 
     from maestro.tui.__main__ import main as tui_main
     tui_main()
+
+
+def launch_shard_worker():
+    """Start as a shard worker node — runs the node_server FastAPI app.
+
+    Reads NODE_ID, ORCHESTRATOR_URL, SHARD_INDEX, SHARD_COUNT directly
+    from environment variables to avoid importing the maestro package at
+    the module level (which would trigger plugin/selector init and
+    corrupt the terminal).
+    """
+    node_id = os.environ.get("NODE_ID", "shard-unknown")
+    shard_index = os.environ.get("SHARD_INDEX", "?")
+    shard_count = os.environ.get("SHARD_COUNT", "?")
+    orchestrator_url = os.environ.get("ORCHESTRATOR_URL", "")
+
+    print(f"[Maestro] Starting shard worker node: {node_id} "
+          f"(shard {shard_index}/{shard_count})")
+
+    # Propagate to the env keys the node_server expects
+    os.environ.setdefault("MAESTRO_NODE_ID", node_id)
+    if orchestrator_url:
+        os.environ.setdefault("MAESTRO_ORCHESTRATOR_URL", orchestrator_url)
+
+    # chdir to project root so "maestro.node_server" is importable
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(project_root)
+    os.execvp("uvicorn", [
+        "uvicorn", "maestro.node_server:app",
+        "--host", "0.0.0.0", "--port", "8000",
+    ])
 
 
 # ---------------------------------------------------------------------------
@@ -151,35 +181,25 @@ def _plain_prompt() -> str:
 # Main
 # ---------------------------------------------------------------------------
 
-def launch_shard_worker(cfg: ClusterConfig):
-    """Start as a shard worker node — runs the node_server FastAPI app."""
-    print(f"[Maestro] Starting shard worker node: {cfg.node_id} "
-          f"(shard {cfg.shard_index}/{cfg.shard_count})")
-
-    # Propagate cluster env vars so the node_server picks them up
-    os.environ.setdefault("MAESTRO_NODE_ID", cfg.node_id)
-    if cfg.orchestrator_url:
-        os.environ.setdefault("MAESTRO_ORCHESTRATOR_URL", cfg.orchestrator_url)
-
-    os.chdir(os.path.dirname(__file__))
-    os.execvp("uvicorn", [
-        "uvicorn", "maestro.node_server:app",
-        "--host", "0.0.0.0", "--port", "8000",
-    ])
-
-
 def main():
-    # ── Cluster role detection (earliest possible point) ──
-    cfg = get_cluster_config()
+    # ── Cluster role detection (earliest possible point) ──────────────
+    # Read NODE_ROLE directly from env to decide the startup path
+    # BEFORE importing any maestro modules. Importing maestro triggers
+    # the plugin manager / selector init chain which can write ANSI
+    # escape codes and corrupt the terminal if it happens too early.
+    node_role = os.environ.get("NODE_ROLE", "").lower().strip()
 
-    if cfg.role == "shard":
-        # Shard workers skip the mode dialog entirely
-        launch_shard_worker(cfg)
+    if node_role == "shard":
+        # Shard workers skip the mode dialog entirely and launch the
+        # node_server via uvicorn.  No maestro imports needed here.
+        launch_shard_worker()
         return
 
-    if cfg.role == "orchestrator":
-        print(f"[Maestro] Starting as cluster orchestrator: {cfg.node_id} "
-              f"(coordinating {cfg.shard_count} shards)")
+    if node_role == "orchestrator":
+        node_id = os.environ.get("NODE_ID", "primary")
+        shard_count = os.environ.get("SHARD_COUNT", "1")
+        print(f"[Maestro] Starting as cluster orchestrator: {node_id} "
+              f"(coordinating {shard_count} shards)")
 
     # Allow environment variable to bypass the dialog entirely
     env_mode = os.environ.get("MAESTRO_MODE", "").lower()
