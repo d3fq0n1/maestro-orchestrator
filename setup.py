@@ -336,6 +336,82 @@ def check_deps() -> None:
             sys.exit(1)
 
 
+def cleanup_stale_containers(compose: list[str], port: str = "8000") -> None:
+    """Stop prior Maestro containers and kill processes holding the port."""
+    # 1. docker compose down (handles the normal case)
+    subprocess.run(
+        compose + ["down", "--remove-orphans"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    # 2. Force-remove any maestro-orchestrator containers that survived
+    #    compose down (e.g. containers with mangled names from interrupted runs).
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "-aq", "--filter", "name=maestro-orchestrator"],
+            capture_output=True, text=True,
+        )
+        stale = result.stdout.strip()
+        if stale:
+            subprocess.run(
+                ["docker", "rm", "-f"] + stale.split(),
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+    except Exception:
+        pass
+
+    # 3. Stop any Docker container (from any project) holding the port.
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "-q", "--filter", f"publish={port}"],
+            capture_output=True, text=True,
+        )
+        stale = result.stdout.strip()
+        if stale:
+            subprocess.run(
+                ["docker", "rm", "-f"] + stale.split(),
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+    except Exception:
+        pass
+
+    # 4. Kill leftover host processes holding the port (stale uvicorn, etc.).
+    if shutil.which("lsof"):
+        try:
+            result = subprocess.run(
+                ["lsof", "-ti", f":{port}"],
+                capture_output=True, text=True,
+            )
+            pids = result.stdout.strip()
+            if pids:
+                for pid in pids.split():
+                    subprocess.run(
+                        ["kill", "-9", pid],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    )
+                time.sleep(1)
+        except Exception:
+            pass
+    elif shutil.which("ss"):
+        try:
+            result = subprocess.run(
+                ["ss", "-tlnp", f"sport = :{port}"],
+                capture_output=True, text=True,
+            )
+            import re
+            pids = re.findall(r'pid=(\d+)', result.stdout)
+            if pids:
+                for pid in pids:
+                    subprocess.run(
+                        ["kill", "-9", pid],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    )
+                time.sleep(1)
+        except Exception:
+            pass
+
+
 def build_and_start(compose: list[str], verbose: bool = False) -> None:
     """Build and start containers, with spinner or verbose output."""
     # Ensure .env exists so docker-compose doesn't error on a missing env_file.
@@ -549,7 +625,14 @@ def docker_setup(skip_browser: bool = False, verbose: bool = False) -> None:
     check_deps()
     print("  ✓ Dependencies verified\n")
 
-    build_and_start(find_compose_cmd(), verbose=verbose)
+    compose = find_compose_cmd()
+    port = os.environ.get("MAESTRO_PORT", "8000")
+
+    print("  Stopping prior sessions ...")
+    cleanup_stale_containers(compose, port)
+    print("  ✓ Clean slate\n")
+
+    build_and_start(compose, verbose=verbose)
     print()
 
     healthy = wait_for_healthy()
