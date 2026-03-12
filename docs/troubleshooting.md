@@ -75,6 +75,10 @@ Each API provider has its own rate limits. If an agent returns errors:
 - Press `P` to focus the prompt input when you want to type a query
 - If the TUI auto-opens the setup wizard, it means no API keys are configured — paste at least one key to continue
 
+### TUI crashes with `BadIdentifier` error
+
+If you see an error like `'agent-Claude Sonnet 4.6' is an invalid id`, this was a bug where agent display names containing spaces or dots were used directly as Textual widget IDs. Fixed in v7.1.5 — agent names are now sanitized (spaces and special characters replaced with hyphens) before being used as widget identifiers.
+
 ---
 
 For architecture details, see [`architecture.md`](./architecture.md).
