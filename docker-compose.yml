@@ -3,13 +3,21 @@ version: '3.9'
 # ──────────────────────────────────────────────────────────────────────
 # Maestro-Orchestrator — Multi-container cluster configuration.
 #
+# Quick start (recommended):
+#   bash setup.sh
+#
 # Single-node mode:
 #   docker compose up orchestrator
 #
 # Full cluster mode (orchestrator + 3 shards + Redis + Postgres):
 #   docker compose up --build
 #
-# API keys and DB password are read from .env or shell environment.
+# Environment variables (set in .env or shell):
+#   MAESTRO_PORT       Host port for the orchestrator UI (default: 8000)
+#   DB_PASSWORD        Postgres password (default: changeme)
+#   ANTHROPIC_API_KEY  Anthropic API key
+#   OPENAI_API_KEY     OpenAI API key
+#   GOOGLE_API_KEY     Google API key
 # ──────────────────────────────────────────────────────────────────────
 
 networks:
@@ -64,7 +72,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "${MAESTRO_PORT:-8000}:8000"
     volumes:
       - ./logs:/app/logs
       - maestro-sessions:/app/data/sessions
