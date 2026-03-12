@@ -11,3 +11,4 @@ safetensors>=0.4.0
 huggingface_hub>=0.20.0
 textual>=0.85.0
 rich>=13.0.0
+redis>=5.0.0

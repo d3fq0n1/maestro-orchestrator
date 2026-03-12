@@ -19,6 +19,10 @@ import subprocess
 import sys
 import webbrowser
 
+# Cluster support — detect node role before anything else
+sys.path.insert(0, os.path.dirname(__file__))
+from maestro.cluster import get_cluster_config, ClusterConfig
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -147,7 +151,36 @@ def _plain_prompt() -> str:
 # Main
 # ---------------------------------------------------------------------------
 
+def launch_shard_worker(cfg: ClusterConfig):
+    """Start as a shard worker node — runs the node_server FastAPI app."""
+    print(f"[Maestro] Starting shard worker node: {cfg.node_id} "
+          f"(shard {cfg.shard_index}/{cfg.shard_count})")
+
+    # Propagate cluster env vars so the node_server picks them up
+    os.environ.setdefault("MAESTRO_NODE_ID", cfg.node_id)
+    if cfg.orchestrator_url:
+        os.environ.setdefault("MAESTRO_ORCHESTRATOR_URL", cfg.orchestrator_url)
+
+    os.chdir(os.path.dirname(__file__))
+    os.execvp("uvicorn", [
+        "uvicorn", "maestro.node_server:app",
+        "--host", "0.0.0.0", "--port", "8000",
+    ])
+
+
 def main():
+    # ── Cluster role detection (earliest possible point) ──
+    cfg = get_cluster_config()
+
+    if cfg.role == "shard":
+        # Shard workers skip the mode dialog entirely
+        launch_shard_worker(cfg)
+        return
+
+    if cfg.role == "orchestrator":
+        print(f"[Maestro] Starting as cluster orchestrator: {cfg.node_id} "
+              f"(coordinating {cfg.shard_count} shards)")
+
     # Allow environment variable to bypass the dialog entirely
     env_mode = os.environ.get("MAESTRO_MODE", "").lower()
     if env_mode in ("web", "cli", "tui"):
