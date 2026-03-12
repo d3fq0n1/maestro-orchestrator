@@ -18,11 +18,18 @@ Environment variables:
     MAESTRO_UPDATE_REMOTE=URL   Git remote URL (overrides origin; required in Docker)
 """
 
+import asyncio
+import logging
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
+from dataclasses import dataclass, field
+from typing import Callable
+
+logger = logging.getLogger("maestro.updater")
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _VERSION_FILE = os.path.join(_PROJECT_ROOT, "VERSION")
@@ -485,3 +492,258 @@ def startup_check() -> None:
         print(f"           Local: {info['local_commit']}  Remote: {info['remote_commit']}")
         print("           Run '/update' in the CLI or 'make update' to apply.")
         print()
+
+
+# ── AutoUpdater (background poller) ──────────────────────────────
+
+@dataclass
+class UpdateEvent:
+    """An event emitted by the AutoUpdater to notify listeners."""
+    kind: str           # "check", "available", "applying", "applied", "error", "up_to_date"
+    data: dict = field(default_factory=dict)
+    timestamp: float = field(default_factory=time.time)
+
+
+class AutoUpdater:
+    """Background auto-updater that periodically polls for git updates.
+
+    Designed for iterative development workflows where the developer
+    is actively pushing fixes while using the tool.  Runs as an asyncio
+    task and emits ``UpdateEvent`` objects to registered listeners.
+
+    Usage::
+
+        updater = AutoUpdater(poll_interval=60, auto_apply=True)
+        updater.on_event(my_callback)
+        await updater.start()
+        # ... later ...
+        await updater.stop()
+    """
+
+    def __init__(
+        self,
+        poll_interval: int = 60,
+        auto_apply: bool = False,
+        enabled: bool = True,
+    ):
+        self.poll_interval = max(10, poll_interval)
+        self.auto_apply = auto_apply
+        self.enabled = enabled
+
+        # State
+        self._task: asyncio.Task | None = None
+        self._running = False
+        self._listeners: list[Callable[[UpdateEvent], None]] = []
+        self._last_check: float = 0.0
+        self._last_check_info: dict | None = None
+        self._last_apply: dict | None = None
+        self._consecutive_errors: int = 0
+        self._updates_applied: int = 0
+
+    # ── Listener registration ────────────────────────────────────
+
+    def on_event(self, callback: Callable[[UpdateEvent], None]) -> None:
+        """Register a callback to receive update events."""
+        if callback not in self._listeners:
+            self._listeners.append(callback)
+
+    def remove_listener(self, callback: Callable[[UpdateEvent], None]) -> None:
+        """Remove a previously registered callback."""
+        self._listeners = [cb for cb in self._listeners if cb is not callback]
+
+    def _emit(self, kind: str, data: dict | None = None) -> None:
+        event = UpdateEvent(kind=kind, data=data or {})
+        for cb in self._listeners:
+            try:
+                cb(event)
+            except Exception:
+                pass
+
+    # ── Lifecycle ─────────────────────────────────────────────────
+
+    async def start(self) -> None:
+        """Start the background polling loop."""
+        if self._running:
+            return
+        self._running = True
+        self._task = asyncio.create_task(self._poll_loop())
+        logger.info(
+            "AutoUpdater started (interval=%ds, auto_apply=%s)",
+            self.poll_interval, self.auto_apply,
+        )
+
+    async def stop(self) -> None:
+        """Stop the background polling loop."""
+        self._running = False
+        if self._task:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+            self._task = None
+        logger.info("AutoUpdater stopped")
+
+    # ── Status ────────────────────────────────────────────────────
+
+    def status(self) -> dict:
+        """Return the current auto-updater status as a dict."""
+        return {
+            "enabled": self.enabled,
+            "running": self._running,
+            "poll_interval": self.poll_interval,
+            "auto_apply": self.auto_apply,
+            "last_check": self._last_check,
+            "last_check_info": self._last_check_info,
+            "last_apply": self._last_apply,
+            "consecutive_errors": self._consecutive_errors,
+            "updates_applied": self._updates_applied,
+        }
+
+    # ── Core loop ─────────────────────────────────────────────────
+
+    async def _poll_loop(self) -> None:
+        """Periodically check for updates and optionally apply them."""
+        # Brief initial delay so the app has time to finish starting up.
+        await asyncio.sleep(5)
+
+        while self._running:
+            if self.enabled:
+                await self._do_cycle()
+
+            # Adaptive back-off: if we keep hitting errors, slow down
+            interval = self.poll_interval
+            if self._consecutive_errors >= 3:
+                interval = min(interval * 2, 600)
+
+            try:
+                await asyncio.sleep(interval)
+            except asyncio.CancelledError:
+                break
+
+    async def _do_cycle(self) -> None:
+        """Run one check-and-maybe-apply cycle."""
+        self._emit("check")
+        try:
+            info = await asyncio.get_event_loop().run_in_executor(
+                None, check_for_updates,
+            )
+        except Exception as exc:
+            self._consecutive_errors += 1
+            self._emit("error", {"error": str(exc), "phase": "check"})
+            logger.warning("AutoUpdater check failed: %s", exc)
+            return
+
+        self._last_check = time.time()
+        self._last_check_info = info
+        self._consecutive_errors = 0
+
+        if info.get("error"):
+            self._emit("error", {"error": info["error"], "phase": "check"})
+            return
+
+        if not info.get("available"):
+            self._emit("up_to_date", info)
+            return
+
+        # Updates available
+        self._emit("available", info)
+
+        if not self.auto_apply:
+            return
+
+        # Auto-apply
+        self._emit("applying", info)
+        try:
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, apply_update,
+            )
+        except Exception as exc:
+            self._emit("error", {"error": str(exc), "phase": "apply"})
+            logger.warning("AutoUpdater apply failed: %s", exc)
+            return
+
+        self._last_apply = result
+        if result.get("success"):
+            self._updates_applied += 1
+            self._emit("applied", result)
+            logger.info(
+                "AutoUpdater applied update: %s", result.get("message"),
+            )
+        else:
+            self._emit("error", {
+                "error": result.get("message", "Unknown apply error"),
+                "phase": "apply",
+            })
+
+    # ── Configuration hot-update ─────────────────────────────────
+
+    def configure(
+        self,
+        enabled: bool | None = None,
+        poll_interval: int | None = None,
+        auto_apply: bool | None = None,
+    ) -> dict:
+        """Update settings on the fly without restarting."""
+        if enabled is not None:
+            self.enabled = enabled
+        if poll_interval is not None:
+            self.poll_interval = max(10, poll_interval)
+        if auto_apply is not None:
+            self.auto_apply = auto_apply
+        return self.status()
+
+    async def trigger_check(self) -> dict:
+        """Manually trigger an immediate check (non-blocking)."""
+        try:
+            info = await asyncio.get_event_loop().run_in_executor(
+                None, check_for_updates,
+            )
+            self._last_check = time.time()
+            self._last_check_info = info
+            return info
+        except Exception as exc:
+            return {"available": False, "error": str(exc)}
+
+    async def trigger_apply(self) -> dict:
+        """Manually trigger an immediate apply (non-blocking)."""
+        try:
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, apply_update,
+            )
+            self._last_apply = result
+            if result.get("success"):
+                self._updates_applied += 1
+                self._emit("applied", result)
+            return result
+        except Exception as exc:
+            return {"success": False, "message": str(exc)}
+
+
+# ── Singleton accessor ───────────────────────────────────────────
+
+_auto_updater: AutoUpdater | None = None
+
+
+def get_auto_updater() -> AutoUpdater:
+    """Get or create the global AutoUpdater singleton."""
+    global _auto_updater
+    if _auto_updater is None:
+        env_enabled = os.environ.get("MAESTRO_AUTO_UPDATE", "").strip() in (
+            "1", "true", "yes",
+        )
+        env_interval = 60
+        try:
+            env_interval = int(os.environ.get("MAESTRO_UPDATE_INTERVAL", "60"))
+        except (ValueError, TypeError):
+            pass
+        env_auto_apply = os.environ.get(
+            "MAESTRO_AUTO_APPLY_UPDATES", "",
+        ).strip() in ("1", "true", "yes")
+
+        _auto_updater = AutoUpdater(
+            poll_interval=env_interval,
+            auto_apply=env_auto_apply,
+            enabled=env_enabled,
+        )
+    return _auto_updater

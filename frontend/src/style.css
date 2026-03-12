@@ -720,6 +720,120 @@ code {
   white-space: nowrap;
 }
 
+/* ── Update banner (live notification) ────────────────────────── */
+
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.update-banner:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.update-banner-text {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.update-banner-action {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 0.25rem 0.7rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.update-banner-action:hover {
+  opacity: 0.85;
+}
+
+.update-banner-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0 0.3rem;
+  line-height: 1;
+}
+
+.update-banner-dismiss:hover {
+  color: var(--text);
+}
+
+/* ── Auto-update config ─────────────────────────────────────── */
+
+.update-auto-config {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.75rem;
+}
+
+.update-auto-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.update-auto-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.update-auto-toggle input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.update-auto-interval {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.update-auto-interval select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.update-auto-interval select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.update-auto-stat {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+}
+
 /* ── Streaming / Stage indicator ─────────────────────────────── */
 
 .result-card-streaming {
