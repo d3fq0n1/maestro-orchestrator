@@ -1,14 +1,14 @@
 
 # Maestro-Orchestrator
 
-![Version](https://img.shields.io/badge/version-v0.7.0-blue)
+![Version](https://img.shields.io/badge/version-v0.7.1-blue)
 ![License](https://img.shields.io/badge/license-Custom%20Open%20Use-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-green)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)
 
 **Status:** Stable, containerized, live orchestration system
 
-Maestro-Orchestrator is a lightweight, container-ready orchestration engine that unifies multiple AI agents under a structured system of synthetic consensus and dissent. It enables real-time prompt routing through a rotating council of large language models, each with distinct capabilities, and synthesizes their output with quorum logic.
+Maestro-Orchestrator is a lightweight, container-ready orchestration engine that unifies multiple AI agents under a structured system of model deliberation, synthetic consensus, and dissent. It enables real-time prompt routing through a rotating council of large language models — each agent reads its peers' responses and produces a refined reply before consensus analysis runs — then synthesizes their output with quorum logic.
 
 ---
 
@@ -32,9 +32,10 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 
 - **FastAPI Backend** -- Live orchestration logic via `/api/ask`
 - **Multi-Agent Council** -- Models: GPT-4o (OpenAI), Claude Sonnet 4.6 (Anthropic), Gemini 2.5 Flash (Google), Llama 3.3 70B (OpenRouter)
-- **SSE Response Streaming** -- Progressive rendering via Server-Sent Events: agent responses appear as they arrive, analysis sections render as each pipeline stage completes
-- **Semantic Quorum Consensus** -- 66% similarity-cluster agreement with dissent preservation
-- **NCG (Novel Content Generation)** -- Headless baseline track that detects silent model collapse and RLHF conformity drift
+- **Model Deliberation** -- After initial response collection, each agent reads its peers' answers and produces a refined reply before any analysis runs. Default on, configurable rounds (1–5), non-fatal, full API exposure (`deliberation_enabled`, `deliberation_rounds`)
+- **SSE Response Streaming** -- Progressive rendering via Server-Sent Events: agent responses appear as they arrive, deliberation rounds stream as they complete, analysis sections render as each pipeline stage finishes
+- **Semantic Quorum Consensus** -- 66% similarity-cluster agreement with dissent preservation; operates on post-deliberation responses
+- **NCG (Novel Content Generation)** -- Headless baseline track that detects silent model collapse and RLHF conformity drift; operates on post-deliberation responses
 - **Dissent Analysis** -- Pairwise semantic distance between agents, outlier detection, and cross-session trend tracking
 - **R2 Engine (Rapid Recursion)** -- Session scoring, consensus ledger indexing, and structured improvement signals for MAGI
 - **MAGI (Meta-Agent Governance)** -- Cross-session pattern analysis with human-reviewable recommendations
@@ -169,15 +170,24 @@ See [`docs/ncg.md`](./docs/ncg.md) for the full technical specification.
 Returns `{"status": "ok"}` when the API is ready. Used by Docker HEALTHCHECK and external monitors.
 
 ### `POST /api/ask`
+
+**Request body:**
 ```json
-{ "prompt": "What are the ethical concerns of deploying autonomous drones?" }
+{
+  "prompt": "What are the ethical concerns of deploying autonomous drones?",
+  "deliberation_enabled": true,
+  "deliberation_rounds": 1
+}
 ```
 
-Returns:
+`deliberation_enabled` (default `true`) and `deliberation_rounds` (default `1`, max `5`) are optional. Omitting them keeps the default deliberation-on behaviour.
+
+**Returns:**
 ```json
 {
   "responses": { "GPT-4o": "...", "Claude Sonnet 4.6": "...", "Gemini 2.5 Flash": "...", "Llama 3.3 70B": "..." },
   "session_id": "b04e41f8-...",
+  "deliberation": { "enabled": true, "rounds_requested": 1, "rounds_completed": 1, "agents_participated": [...], "skipped": false },
   "consensus": "Merged consensus view...",
   "confidence": "High",
   "agreement_ratio": 0.75,
@@ -190,13 +200,16 @@ Returns:
 ```
 
 ### `POST /api/ask/stream`
-Same request body as `/api/ask`. Returns a **Server-Sent Events** stream with progressive results:
+Same request body as `/api/ask` (including `deliberation_enabled` and `deliberation_rounds`). Returns a **Server-Sent Events** stream with progressive results:
 
 | Event | Description |
 |-------|-------------|
 | `stage` | Pipeline stage update (name + status message) |
 | `agent_response` | Individual agent response as it arrives |
 | `agents_done` | All agents complete |
+| `deliberation_start` | Deliberation phase beginning |
+| `deliberation_round` | One deliberation round complete (all per-agent deliberated responses) |
+| `deliberation_done` | All deliberation rounds finished |
 | `dissent` | Dissent analysis results |
 | `ncg` | NCG benchmark results |
 | `consensus` | Quorum/consensus results |

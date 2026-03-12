@@ -52,6 +52,23 @@ async def health_dependencies():
 # === Request model ===
 class Prompt(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=10000)
+    deliberation_enabled: bool = Field(
+        default=True,
+        description=(
+            "Whether to run cross-agent deliberation after the initial response "
+            "collection. When enabled (the default), each agent reads its peers' "
+            "responses and produces a refined reply before analysis proceeds."
+        ),
+    )
+    deliberation_rounds: int = Field(
+        default=1,
+        ge=1,
+        le=5,
+        description=(
+            "Number of deliberation rounds. Each round costs one additional API "
+            "call per agent. Default 1. Maximum 5."
+        ),
+    )
 
 # === POST endpoint for orchestration ===
 @app.post("/api/ask")
@@ -60,16 +77,25 @@ async def ask(prompt: Prompt):
     if not user_prompt:
         return {"error": "Prompt cannot be empty or whitespace-only."}
 
-    print(f"[Maestro-Orchestrator] Prompt received: {user_prompt}")
+    print(
+        f"[Maestro-Orchestrator] Prompt received: {user_prompt} "
+        f"(deliberation={'on' if prompt.deliberation_enabled else 'off'}, "
+        f"rounds={prompt.deliberation_rounds})"
+    )
 
     try:
-        result = await run_orchestration(user_prompt)
+        result = await run_orchestration(
+            user_prompt,
+            deliberation_enabled=prompt.deliberation_enabled,
+            deliberation_rounds=prompt.deliberation_rounds,
+        )
 
         final = result.get("final_output", {})
         return {
             "responses": result.get("named_responses", {}),
             "agent_errors": result.get("agent_errors", []),
             "session_id": result.get("session_id"),
+            "deliberation": result.get("deliberation"),
             "consensus": final.get("consensus"),
             "confidence": final.get("confidence"),
             "agreement_ratio": final.get("agreement_ratio"),
@@ -95,10 +121,18 @@ async def ask_stream(prompt: Prompt):
     if not user_prompt:
         return {"error": "Prompt cannot be empty or whitespace-only."}
 
-    print(f"[Maestro-Orchestrator] Stream prompt received: {user_prompt}")
+    print(
+        f"[Maestro-Orchestrator] Stream prompt received: {user_prompt} "
+        f"(deliberation={'on' if prompt.deliberation_enabled else 'off'}, "
+        f"rounds={prompt.deliberation_rounds})"
+    )
 
     return StreamingResponse(
-        stream_orchestration(user_prompt),
+        stream_orchestration(
+            user_prompt,
+            deliberation_enabled=prompt.deliberation_enabled,
+            deliberation_rounds=prompt.deliberation_rounds,
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
