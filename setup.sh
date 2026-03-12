@@ -77,7 +77,24 @@ main() {
     echo "  Stopping any existing containers ..."
     $COMPOSE down --remove-orphans 2>/dev/null || true
 
-    # Kill leftover processes from prior Maestro sessions holding the port.
+    # Force-remove any maestro-orchestrator containers that survived compose down
+    # (e.g. containers with mangled names from interrupted prior runs).
+    local stale_maestro
+    stale_maestro=$(docker ps -aq --filter "name=maestro-orchestrator" 2>/dev/null || true)
+    if [ -n "$stale_maestro" ]; then
+        echo "  Removing stale maestro-orchestrator containers ..."
+        echo "$stale_maestro" | xargs docker rm -f 2>/dev/null || true
+    fi
+
+    # Stop any Docker container (from any project) holding the port.
+    local stale_port
+    stale_port=$(docker ps -q --filter "publish=$PORT" 2>/dev/null || true)
+    if [ -n "$stale_port" ]; then
+        echo "  Stopping containers bound to port $PORT ..."
+        echo "$stale_port" | xargs docker rm -f 2>/dev/null || true
+    fi
+
+    # Kill leftover host processes from prior Maestro sessions holding the port.
     if command -v lsof &>/dev/null; then
         local pids
         pids=$(lsof -ti :"$PORT" 2>/dev/null || true)
@@ -94,14 +111,6 @@ main() {
             echo "$pids" | xargs kill -9 2>/dev/null || true
             sleep 1
         fi
-    fi
-
-    # Stop stale Docker containers (from manual runs) holding the port.
-    local stale
-    stale=$(docker ps -q --filter "publish=$PORT" 2>/dev/null || true)
-    if [ -n "$stale" ]; then
-        echo "  Stopping stale Docker containers on port $PORT ..."
-        echo "$stale" | xargs docker rm -f 2>/dev/null || true
     fi
 
     echo "  Building and starting containers ..."
