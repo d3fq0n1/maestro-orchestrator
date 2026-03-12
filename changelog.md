@@ -1,5 +1,17 @@
 # Changelog
 
+## [7.1.6] - 2026-03-12
+
+### Fixed
+
+- **TUI crash when pressing N (Nodes)** (`maestro/tui/app.py`) — `NodeDetailScreen.__init__` was setting `self._nodes` to a plain `list[dict]`, which overwrote Textual's internal `_nodes` attribute (a `NodeList` used for the widget tree). This caused `AttributeError: 'list' object has no attribute '_append'` when Textual tried to mount child widgets in the modal. Renamed to `self._node_data` to avoid the collision. This is the same class of bug that was previously fixed in `ShardNetworkPanel` (v0.7.2) but was re-introduced in the `NodeDetailScreen` modal.
+
+### Changed
+
+- **Version bumped to v7.1.6** across readme, frontend, docs, roadmap, node server, plugin manager, release notes, and changelog.
+
+---
+
 ## [7.1.5] - 2026-03-12
 
 ### Added

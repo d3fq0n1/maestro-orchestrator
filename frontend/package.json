@@ -1,6 +1,6 @@
 {
   "name": "maestro-frontend",
-  "version": "7.1.5",
+  "version": "7.1.6",
   "private": true,
   "scripts": {
     "dev": "vite",

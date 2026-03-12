@@ -318,16 +318,16 @@ class NodeDetailScreen(ModalScreen[None]):
 
     def __init__(self, nodes: list[dict], **kwargs):
         super().__init__(**kwargs)
-        self._nodes = nodes
+        self._node_data = nodes
 
     def compose(self) -> ComposeResult:
         with Vertical(id="node-dialog"):
             yield Label("[bold]Shard Network — Node Details[/]")
             yield Static("")
-            if not self._nodes:
+            if not self._node_data:
                 yield Static("  No storage nodes registered.")
             else:
-                for n in self._nodes[:10]:
+                for n in self._node_data[:10]:
                     nid = n.get("node_id", "?")
                     host = n.get("host", "?")
                     port = n.get("port", "?")
