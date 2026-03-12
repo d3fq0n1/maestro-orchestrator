@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -12,9 +14,21 @@ from maestro.api_self_improve import router as self_improve_router
 from maestro.api_update import router as update_router
 from maestro.api_storage import router as storage_router
 from maestro.api_plugins import router as plugins_router
+from maestro.updater import get_auto_updater
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: launch the auto-updater background task
+    updater = get_auto_updater()
+    await updater.start()
+    yield
+    # Shutdown: cleanly stop the auto-updater
+    await updater.stop()
+
 
 # === Initialize FastAPI app ===
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # === CORS setup for local development/testing ===
 # NOTE: allow_origins=["*"] is acceptable for local/Docker use.

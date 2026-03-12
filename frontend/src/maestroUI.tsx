@@ -604,6 +604,93 @@ interface UpdateInfo {
   git_missing?: boolean;
 }
 
+interface AutoUpdateStatus {
+  enabled: boolean;
+  running: boolean;
+  poll_interval: number;
+  auto_apply: boolean;
+  last_check: number;
+  last_check_info: UpdateInfo | null;
+  last_apply: { success: boolean; message: string } | null;
+  consecutive_errors: number;
+  updates_applied: number;
+}
+
+function UpdateBanner({ onOpen }: { onOpen: () => void }) {
+  const [info, setInfo] = useState<UpdateInfo | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+  const [autoStatus, setAutoStatus] = useState<AutoUpdateStatus | null>(null);
+  const eventSourceRef = React.useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    // Connect to the SSE stream for live update notifications
+    const es = new EventSource("/api/update/stream");
+    eventSourceRef.current = es;
+
+    es.addEventListener("status", (e) => {
+      try {
+        const status: AutoUpdateStatus = JSON.parse(e.data);
+        setAutoStatus(status);
+        if (status.last_check_info?.available) {
+          setInfo(status.last_check_info);
+          setDismissed(false);
+        }
+      } catch { /* ignore */ }
+    });
+
+    es.addEventListener("available", (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        setInfo(payload.data);
+        setDismissed(false);
+      } catch { /* ignore */ }
+    });
+
+    es.addEventListener("applied", (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        setInfo(null);
+        setAutoStatus((prev) => prev ? {
+          ...prev,
+          updates_applied: (prev.updates_applied || 0) + 1,
+          last_apply: payload.data,
+        } : null);
+      } catch { /* ignore */ }
+    });
+
+    es.addEventListener("up_to_date", () => {
+      setInfo(null);
+    });
+
+    return () => {
+      es.close();
+      eventSourceRef.current = null;
+    };
+  }, []);
+
+  if (dismissed || !info?.available) return null;
+
+  const count = info.new_commits?.length || 0;
+
+  return (
+    <div className="update-banner" onClick={onOpen}>
+      <span className="update-banner-text">
+        Update available &mdash; {count} new commit{count !== 1 ? "s" : ""} on <code>{info.branch}</code>
+      </span>
+      <button className="update-banner-action" onClick={(e) => { e.stopPropagation(); onOpen(); }}>
+        Review
+      </button>
+      <button
+        className="update-banner-dismiss"
+        onClick={(e) => { e.stopPropagation(); setDismissed(true); }}
+        aria-label="Dismiss"
+      >
+        x
+      </button>
+    </div>
+  );
+}
+
 function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const [info, setInfo] = useState<UpdateInfo | null>(null);
   const [checking, setChecking] = useState(false);
@@ -612,11 +699,48 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
   const [error, setError] = useState<string | null>(null);
   const [restarting, setRestarting] = useState(false);
 
+  // Auto-updater config
+  const [autoEnabled, setAutoEnabled] = useState(false);
+  const [autoApply, setAutoApply] = useState(false);
+  const [pollInterval, setPollInterval] = useState(60);
+  const [updatesApplied, setUpdatesApplied] = useState(0);
+  const [autoLoaded, setAutoLoaded] = useState(false);
+
   // Remote URL config
   const [remoteUrl, setRemoteUrl] = useState("");
   const [remoteLoaded, setRemoteLoaded] = useState(false);
   const [remoteSaving, setRemoteSaving] = useState(false);
   const [remoteSaved, setRemoteSaved] = useState(false);
+
+  const loadAutoStatus = async () => {
+    try {
+      const res = await fetch("/api/update/auto");
+      if (res.ok) {
+        const data: AutoUpdateStatus = await res.json();
+        setAutoEnabled(data.enabled);
+        setAutoApply(data.auto_apply);
+        setPollInterval(data.poll_interval);
+        setUpdatesApplied(data.updates_applied);
+        setAutoLoaded(true);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const saveAutoConfig = async (config: { enabled?: boolean; auto_apply?: boolean; poll_interval?: number }) => {
+    try {
+      const res = await fetch("/api/update/auto", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(config),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAutoEnabled(data.enabled);
+        setAutoApply(data.auto_apply);
+        setPollInterval(data.poll_interval);
+      }
+    } catch { /* ignore */ }
+  };
 
   const loadRemote = async () => {
     try {
@@ -668,6 +792,7 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
   useEffect(() => {
     if (visible) {
       loadRemote();
+      loadAutoStatus();
       checkForUpdates();
     }
   }, [visible]);
@@ -712,13 +837,66 @@ function UpdatePanel({ visible, onClose }: { visible: boolean; onClose: () => vo
               onClick={checkForUpdates}
               disabled={checking}
             >
-              {checking ? "Checking..." : "Check again"}
+              {checking ? "Checking..." : "Check now"}
             </button>
             <button className="settings-close" onClick={onClose} aria-label="Close">
               x
             </button>
           </div>
         </div>
+
+        {/* Auto-updater controls */}
+        {autoLoaded && !info?.git_missing && (
+          <div className="update-auto-config">
+            <div className="update-auto-row">
+              <label className="update-auto-toggle">
+                <input
+                  type="checkbox"
+                  checked={autoEnabled}
+                  onChange={(e) => {
+                    setAutoEnabled(e.target.checked);
+                    saveAutoConfig({ enabled: e.target.checked });
+                  }}
+                />
+                <span>Auto-check for updates</span>
+              </label>
+              <label className="update-auto-toggle">
+                <input
+                  type="checkbox"
+                  checked={autoApply}
+                  onChange={(e) => {
+                    setAutoApply(e.target.checked);
+                    saveAutoConfig({ auto_apply: e.target.checked });
+                  }}
+                />
+                <span>Auto-apply updates</span>
+              </label>
+              <label className="update-auto-interval">
+                <span>every</span>
+                <select
+                  value={pollInterval}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setPollInterval(val);
+                    saveAutoConfig({ poll_interval: val });
+                  }}
+                >
+                  <option value={15}>15s</option>
+                  <option value={30}>30s</option>
+                  <option value={60}>1m</option>
+                  <option value={120}>2m</option>
+                  <option value={300}>5m</option>
+                  <option value={600}>10m</option>
+                </select>
+              </label>
+            </div>
+            {updatesApplied > 0 && (
+              <p className="update-auto-stat muted">
+                {updatesApplied} update{updatesApplied !== 1 ? "s" : ""} applied this session
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="settings-body">
           {info?.git_missing && (
@@ -2227,9 +2405,10 @@ export default function MaestroUI() {
 
   return (
     <div className="maestro-root">
+      <UpdateBanner onOpen={() => setUpdateOpen(true)} />
       <header className="maestro-header">
         <h1>Maestro-Orchestrator</h1>
-        <span className="version">v7.1.4</span>
+        <span className="version">v7.1.5</span>
         <div className="header-actions">
           <button
             className="toggle-btn settings-btn"

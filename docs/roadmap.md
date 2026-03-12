@@ -1,6 +1,6 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v7.1.4
+**Current Version:** v7.1.5
 **Last Updated:** 2026-03-12
 **Maintainer:** defcon
 
@@ -43,14 +43,13 @@
 - **Model Deliberation (v0.7.1)** -- After initial response collection, each agent reads its peers' responses and produces a refined reply before any analysis runs. Configurable rounds (default 1), default on, non-fatal. All downstream analysis (dissent, NCG, quorum) operates on deliberated positions. Full API exposure (`deliberation_enabled`, `deliberation_rounds`) with SSE events for the streaming endpoint. See [`deliberation.md`](./deliberation.md).
 - **Interactive Mode Selector (v0.7.2)** -- Arrow-key terminal selector replaces static command suggestions after Docker setup and in the startup wrapper. TUI crash fix (`ShardNetworkPanel._nodes` collision with Textual internals).
 - **Web UI LAN Discovery & Agent Name Fix (v7.1.4)** -- Storage Network panel gains a LAN Discovery tab showing discovered peers, adjacency state, and Maestro Node formation status. TUI Pipeline panel now displays correct model names (GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B) instead of deprecated codenames. Documentation updated for consistency.
+- **Automatic Background Updater (v7.1.5)** -- Background auto-updater that polls git for new commits at a configurable interval (10s–3600s) and optionally auto-applies updates. SSE stream endpoint for real-time notifications. WebUI live banner and auto-update controls. TUI background loop with event-driven notifications and toggle. FastAPI lifespan integration. New env vars: `MAESTRO_UPDATE_INTERVAL`, `MAESTRO_AUTO_APPLY_UPDATES`.
 
 ---
 
 ## Active Development (v0.8 Goals)
 
-- **TUI Dashboard (Raspberry Pi 5 / SoC)** -- Ongoing refinements to the Textual dashboard: LAN shard discovery, in-TUI auto-updater, and commit preview.
-- **LAN Shard Discovery** -- UDP beacon-based peer discovery with handshake protocol, adjacency tracking, and automatic Maestro Node formation when 3+ adjacent shards are found
-- **TUI Auto-Updater** -- In-TUI update checking and application with commit preview
+- **Interactive Sessions** -- Similar to Deliberation mode, the human agent can actively participate in deliberations alongside AI agents, injecting their own responses and steering the multi-round debate in real time
 - **Token-Level NCG Analysis** -- Bridge from conversational metadata to logprob-level drift measurement across all providers (OpenAI logprobs integration built, pending for Anthropic/Google)
 - **NCG Feedback Loops** -- Reshape prompts based on drift signals before they reach conversational agents
 - **Reinforcement Loop** -- Feed consensus outcomes into fine-tuning or snapshot logs

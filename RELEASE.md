@@ -1,18 +1,44 @@
-# Maestro-Orchestrator v7.1.4
+# Maestro-Orchestrator v7.1.5
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
 
 ---
 
-## What's New in v7.1.4
+## What's New in v7.1.5
 
-### Fix Web UI Shard Visibility and Deprecated Agent Names
+### Automatic Background Updater
 
-The Storage Network panel in the Web UI now includes a **LAN Discovery** tab that shows discovered LAN peers, adjacency state, and Maestro Node formation status — matching the data the TUI already displays.
+The auto-updater now runs as a **background task** in both the TUI and WebUI, seamlessly pulling git updates while you work. Designed for iterative development where you're actively pushing fixes and testing.
 
-The TUI Pipeline panel no longer shows deprecated codenames (Sol, Aria, Prism, TempAgent). It now displays the correct model names: GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B.
+**How it works:**
 
-Documentation updated throughout to replace deprecated agent codenames with display names in examples and references.
+1. Set `MAESTRO_AUTO_UPDATE=1` in your `.env` (or toggle it in the UI)
+2. The updater polls git every 60 seconds (configurable from 15s to 10m)
+3. When updates are detected, you get a live notification — in the WebUI as a banner, in the TUI as a response viewer message
+4. Optionally enable `MAESTRO_AUTO_APPLY_UPDATES=1` to auto-pull without confirmation
+
+**WebUI features:**
+- Live notification banner powered by Server-Sent Events (no polling)
+- Auto-update controls in the Update panel: toggle auto-check, toggle auto-apply, interval selector
+- All settings persisted to `.env`
+
+**TUI features:**
+- Background update loop with event-driven notifications
+- Press `U` to open the update screen, `T` to toggle auto-update on/off
+- Status bar shows enabled state, interval, and applied count
+
+**New API endpoints:**
+- `GET /api/update/stream` — SSE stream of real-time update events
+- `GET /api/update/auto` — auto-updater status
+- `PUT /api/update/auto` — configure auto-updater on the fly
+
+**New environment variables:**
+- `MAESTRO_UPDATE_INTERVAL` — poll interval in seconds (default 60, min 10)
+- `MAESTRO_AUTO_APPLY_UPDATES` — set to `1` to auto-apply
+
+### What was new in v7.1.4
+
+The Storage Network panel gained a **LAN Discovery** tab, the TUI Pipeline panel now shows correct model names, and documentation was updated for consistency.
 
 ### What was new in v0.7.2
 

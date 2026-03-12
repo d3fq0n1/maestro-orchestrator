@@ -1,7 +1,7 @@
 
 # Maestro-Orchestrator
 
-![Version](https://img.shields.io/badge/version-v7.1.4-blue)
+![Version](https://img.shields.io/badge/version-v7.1.5-blue)
 ![License](https://img.shields.io/badge/license-Custom%20Open%20Use-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-green)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)
@@ -55,6 +55,7 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - **Interactive Mode Selector** -- Arrow-key selector on startup and after Docker setup when no graphical browser is detected; choose TUI, CLI, or Web-UI without memorizing commands
 - **Unified Startup Wrapper** -- Single Docker entrypoint with a GUI that lets you choose Web-UI, CLI, or TUI mode
 - **Interactive CLI** -- Full orchestration pipeline in the terminal (REPL with agent responses, consensus, dissent, NCG, R2)
+- **Automatic Background Updater** -- Background git polling with configurable interval (10s–3600s), optional auto-apply for iterative development workflows, SSE stream for real-time notifications, WebUI live banner and controls, TUI event-driven notifications
 - **Docker Support** -- Single-container deployment serving both UI and API
 
 ---
@@ -395,6 +396,18 @@ Get the configured update remote URL.
 
 ### `PUT /api/update/remote`
 Set the update remote URL.
+
+### `GET /api/update/auto`
+Get auto-updater status (enabled, running, poll_interval, auto_apply, updates_applied, last_check_info).
+
+### `PUT /api/update/auto`
+Configure auto-updater settings on the fly (enabled, poll_interval, auto_apply). Persisted to `.env`.
+
+### `GET /api/update/stream`
+Server-Sent Events stream of real-time update notifications. Events: `status`, `check`, `available`, `applying`, `applied`, `up_to_date`, `error`. 15s keepalive.
+
+### `POST /api/update/restart`
+Restart the server process (sends SIGTERM to trigger Docker restart policy).
 
 ---
 

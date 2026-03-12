@@ -36,7 +36,7 @@ from maestro.tui.widgets import (
     StatusBar,
 )
 from maestro.dependency_resolver import resolve_all, DependencyReport, Severity
-from maestro.updater import check_for_updates, apply_update
+from maestro.updater import check_for_updates, apply_update, get_auto_updater, UpdateEvent
 
 
 # ───────────────────────────────────────────────────────────────────
@@ -489,12 +489,13 @@ class DependencyScreen(ModalScreen[None]):
 # ───────────────────────────────────────────────────────────────────
 
 class UpdateScreen(ModalScreen[str | None]):
-    """Modal overlay for checking and applying updates."""
+    """Modal overlay for checking, applying, and configuring auto-updates."""
 
     BINDINGS = [
         ("escape", "dismiss(None)", "Close"),
         ("c", "check", "Check"),
         ("a", "apply", "Apply"),
+        ("t", "toggle_auto", "Toggle auto"),
     ]
 
     DEFAULT_CSS = """
@@ -502,9 +503,9 @@ class UpdateScreen(ModalScreen[str | None]):
         align: center middle;
     }
     #update-dialog {
-        width: 68;
+        width: 72;
         height: auto;
-        max-height: 22;
+        max-height: 26;
         border: thick $primary;
         background: $surface;
         padding: 1 2;
@@ -518,21 +519,41 @@ class UpdateScreen(ModalScreen[str | None]):
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="update-dialog"):
             yield Label("[bold]Auto-Updater[/]", id="update-title")
+            yield Static("", id="update-auto-status")
             yield Static("", id="update-status")
             yield Static("", id="update-commits")
             yield Static("")
             yield Static(
-                "[dim]  [b]C[/] Check for updates  "
+                "[dim]  [b]C[/] Check now  "
                 "[b]A[/] Apply update  "
+                "[b]T[/] Toggle auto-update  "
                 "[b]Esc[/] Close[/]",
                 id="update-actions",
             )
 
     def on_mount(self) -> None:
+        self._render_auto_status()
         if self._info:
             self._render_info(self._info)
         else:
-            self._set_status("[dim]Press [b]C[/] to check for updates.[/]")
+            self.action_check()
+
+    def _render_auto_status(self) -> None:
+        updater = get_auto_updater()
+        status = updater.status()
+        enabled = status.get("enabled", False)
+        auto_apply = status.get("auto_apply", False)
+        interval = status.get("poll_interval", 60)
+        applied_count = status.get("updates_applied", 0)
+
+        enabled_str = "[bold green]ON[/]" if enabled else "[dim]OFF[/]"
+        apply_str = "[green]auto-apply[/]" if auto_apply else "[dim]notify only[/]"
+        applied_str = f"  [dim]({applied_count} applied this session)[/]" if applied_count else ""
+
+        self.query_one("#update-auto-status", Static).update(
+            f"  Auto-update: {enabled_str}  |  {apply_str}  |  "
+            f"every {interval}s{applied_str}"
+        )
 
     def _set_status(self, text: str) -> None:
         self.query_one("#update-status", Static).update(text)
@@ -624,6 +645,23 @@ class UpdateScreen(ModalScreen[str | None]):
                 self._set_status,
                 f"  [red]\u2718 Update failed: {exc}[/]",
             )
+
+    def action_toggle_auto(self) -> None:
+        """Toggle the auto-updater between enabled/disabled."""
+        updater = get_auto_updater()
+        new_enabled = not updater.enabled
+        updater.configure(enabled=new_enabled)
+        # Persist
+        os.environ["MAESTRO_AUTO_UPDATE"] = "1" if new_enabled else "0"
+        self._render_auto_status()
+        viewer = self.app.query_one("#response-viewer", ResponseViewer)
+        if new_enabled:
+            viewer.write_info(
+                f"[bold green]Auto-updater enabled[/] — "
+                f"checking every {updater.poll_interval}s"
+            )
+        else:
+            viewer.write_info("[dim]Auto-updater disabled.[/]")
 
 
 # ───────────────────────────────────────────────────────────────────
@@ -927,18 +965,13 @@ class MaestroTUI(App):
 
     @work(thread=True)
     def _startup_update_check(self) -> None:
-        """Check for updates in the background at startup."""
-        if os.environ.get("MAESTRO_AUTO_UPDATE", "").strip() not in (
-            "1", "true", "yes",
-        ):
-            return
-
+        """Check for updates in the background at startup and start auto-update loop."""
         try:
             info = check_for_updates()
         except Exception:
-            return
+            info = None
 
-        if info.get("available"):
+        if info and info.get("available"):
             count = len(info.get("new_commits", []))
             branch = info.get("branch", "?")
             viewer = self.query_one("#response-viewer", ResponseViewer)
@@ -947,6 +980,54 @@ class MaestroTUI(App):
                 f"{count} new commit{'s' if count != 1 else ''} on {branch}. "
                 f"Press [b]U[/] to review."
             )
+
+        # Start the auto-update background loop
+        self.app.call_from_thread(self._start_auto_update_loop)
+
+    @work(thread=False)
+    async def _start_auto_update_loop(self) -> None:
+        """Run the auto-updater background loop in the TUI."""
+        updater = get_auto_updater()
+
+        def _on_event(event: UpdateEvent) -> None:
+            """Handle auto-updater events in the TUI."""
+            try:
+                viewer = self.query_one("#response-viewer", ResponseViewer)
+            except Exception:
+                return
+
+            if event.kind == "available":
+                count = len(event.data.get("new_commits", []))
+                branch = event.data.get("branch", "?")
+                self.call_from_thread(
+                    viewer.write_info,
+                    f"[bold yellow]\u2191 Update available[/] — "
+                    f"{count} new commit{'s' if count != 1 else ''} on {branch}. "
+                    f"Press [b]U[/] to review."
+                )
+            elif event.kind == "applying":
+                self.call_from_thread(
+                    viewer.write_info,
+                    "[bold yellow]\u25d4 Auto-updating...[/]"
+                )
+            elif event.kind == "applied":
+                msg = event.data.get("message", "Updated successfully")
+                self.call_from_thread(
+                    viewer.write_info,
+                    f"[bold green]\u2714 {msg}[/] — Restart the TUI to load changes."
+                )
+            elif event.kind == "error":
+                error = event.data.get("error", "Unknown error")
+                phase = event.data.get("phase", "")
+                self.call_from_thread(
+                    viewer.write_info,
+                    f"[dim]Auto-updater {phase} error: {error}[/]"
+                )
+
+        updater.on_event(_on_event)
+
+        # Start the background polling loop
+        await updater.start()
 
     @work(thread=False)
     async def _show_history(self) -> None:
