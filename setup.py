@@ -444,17 +444,34 @@ def _install_tui_deps() -> None:
         import rich  # noqa: F401
     except ImportError:
         print("  Installing TUI dependencies (textual, rich) ...")
+        pkgs = ["textual>=0.85.0", "rich>=13.0.0"]
+        # First attempt — standard install
         result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "textual>=0.85.0", "rich>=13.0.0"],
+            [sys.executable, "-m", "pip", "install", *pkgs],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
         )
         if result.returncode == 0:
             print("  ✓ TUI dependencies installed")
+            return
+        # Second attempt — PEP 668 externally-managed environments (Debian/Ubuntu/Raspbian)
+        # require --break-system-packages to install into the system Python.
+        stderr = result.stderr.decode(errors="replace")
+        if "externally-managed-environment" in stderr or "externally managed" in stderr.lower():
+            result2 = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "--break-system-packages", *pkgs],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+            )
+            if result2.returncode == 0:
+                print("  ✓ TUI dependencies installed")
+                return
+            stderr = result2.stderr.decode(errors="replace").strip()
         else:
-            stderr = result.stderr.decode(errors="replace").strip()
-            print(f"  ⚠ Could not install TUI dependencies: {stderr}")
-            print("  You can install them manually: pip install textual rich")
+            stderr = stderr.strip()
+        print(f"  ⚠ Could not install TUI dependencies: {stderr}")
+        print("  You can install them manually: pip install textual rich")
+        print("  Or: pip install --break-system-packages textual rich")
 
 
 def open_browser(url: str) -> None:
