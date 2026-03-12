@@ -1,33 +1,146 @@
-version: "3.9"
+version: '3.9'
+
+# ──────────────────────────────────────────────────────────────────────
+# Maestro-Orchestrator — Multi-container cluster configuration.
+#
+# Single-node mode:
+#   docker compose up orchestrator
+#
+# Full cluster mode (orchestrator + 3 shards + Redis + Postgres):
+#   docker compose up --build
+#
+# API keys and DB password are read from .env or shell environment.
+# ──────────────────────────────────────────────────────────────────────
+
+networks:
+  maestro-net:
+    driver: bridge
+
 services:
-  maestro:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  # ── Infrastructure ──────────────────────────────────────────────────
+
+  redis:
+    image: redis:alpine
+    networks:
+      - maestro-net
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:15-alpine
+    networks:
+      - maestro-net
+    environment:
+      POSTGRES_DB: maestro_ledger
+      POSTGRES_USER: maestro
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  # ── Orchestrator (primary coordinator) ──────────────────────────────
+
+  orchestrator:
+    build: .
+    networks:
+      - maestro-net
+    environment:
+      NODE_ROLE: orchestrator
+      NODE_ID: primary
+      SHARD_COUNT: "3"
+      REDIS_URL: redis://redis:6379
+      DB_URL: postgresql://maestro:${DB_PASSWORD:-changeme}@postgres/maestro_ledger
+      MAESTRO_MODE: web
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
     ports:
       - "8000:8000"
-    environment:
-      - MAESTRO_MODE=${MAESTRO_MODE:-web}
-      # Set to your repo URL to enable in-app updates (e.g. https://github.com/user/maestro-orchestrator.git)
-      - MAESTRO_UPDATE_REMOTE=${MAESTRO_UPDATE_REMOTE:-}
-    # .env is optional — API keys can be configured via the Web-UI at runtime
-    # and are persisted in the maestro-env volume across restarts.
-    # Create an empty .env if you don't need host-level env vars.
-    env_file:
-      - .env
-    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+      - maestro-sessions:/app/data/sessions
+      - maestro-r2:/app/data/r2
+      - maestro-env:/app/backend/env
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 30s
-    volumes:
-      - maestro-sessions:/app/data/sessions
-      - maestro-r2:/app/data/r2
-      - maestro-env:/app/backend/env
+
+  # ── Shard workers ───────────────────────────────────────────────────
+
+  shard-1:
+    build: .
+    networks:
+      - maestro-net
+    environment:
+      NODE_ROLE: shard
+      NODE_ID: shard-1
+      SHARD_INDEX: "0"
+      SHARD_COUNT: "3"
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      REDIS_URL: redis://redis:6379
+      DB_URL: postgresql://maestro:${DB_PASSWORD:-changeme}@postgres/maestro_ledger
+      MAESTRO_NODE_ID: shard-1
+      MAESTRO_ORCHESTRATOR_URL: http://orchestrator:8000
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      - orchestrator
+    ports:
+      - "8001:8000"
+
+  shard-2:
+    build: .
+    networks:
+      - maestro-net
+    environment:
+      NODE_ROLE: shard
+      NODE_ID: shard-2
+      SHARD_INDEX: "1"
+      SHARD_COUNT: "3"
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      REDIS_URL: redis://redis:6379
+      DB_URL: postgresql://maestro:${DB_PASSWORD:-changeme}@postgres/maestro_ledger
+      MAESTRO_NODE_ID: shard-2
+      MAESTRO_ORCHESTRATOR_URL: http://orchestrator:8000
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      - orchestrator
+    ports:
+      - "8002:8000"
+
+  shard-3:
+    build: .
+    networks:
+      - maestro-net
+    environment:
+      NODE_ROLE: shard
+      NODE_ID: shard-3
+      SHARD_INDEX: "2"
+      SHARD_COUNT: "3"
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      REDIS_URL: redis://redis:6379
+      DB_URL: postgresql://maestro:${DB_PASSWORD:-changeme}@postgres/maestro_ledger
+      MAESTRO_NODE_ID: shard-3
+      MAESTRO_ORCHESTRATOR_URL: http://orchestrator:8000
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      - orchestrator
+    ports:
+      - "8003:8000"
 
 volumes:
+  pgdata:
   maestro-sessions:
   maestro-r2:
   maestro-env:

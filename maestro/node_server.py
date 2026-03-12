@@ -36,12 +36,19 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from maestro.cluster import (
+    get_cluster_config,
+    assign_shard,
+    is_task_owned,
+)
+from maestro.state_bus import get_state_bus
+
 
 # ---------------------------------------------------------------------------
 # Configuration — all via environment variables
 # ---------------------------------------------------------------------------
 
-NODE_ID = os.environ.get("MAESTRO_NODE_ID", "node-default")
+NODE_ID = os.environ.get("MAESTRO_NODE_ID") or os.environ.get("NODE_ID", "node-default")
 NODE_PORT = int(os.environ.get("MAESTRO_NODE_PORT", "8001"))
 NODE_HOST = os.environ.get("MAESTRO_NODE_HOST", "0.0.0.0")
 NODE_STATUS = "available"
@@ -188,10 +195,23 @@ async def lifespan(app: FastAPI):
 
     shard_count = len(_loaded_shards)
     file_count = len(_shard_file_map)
-    print(f"[node] {NODE_ID} starting — {shard_count} shard(s) declared, "
-          f"{file_count} file(s) on disk")
 
-    # Auto-register
+    cfg = get_cluster_config()
+    print(f"[node] {NODE_ID} starting — role={cfg.role}, "
+          f"{shard_count} shard(s) declared, {file_count} file(s) on disk")
+
+    # Register with the Redis state bus if available
+    bus = get_state_bus()
+    if bus.connected:
+        bus.register_shard(NODE_ID, {
+            "role": cfg.role,
+            "shard_index": cfg.shard_index,
+            "shard_count": cfg.shard_count,
+            "shards": _loaded_shards,
+        })
+        print(f"[node] Registered with Redis state bus")
+
+    # Auto-register with orchestrator
     await _register_with_orchestrator()
 
     # Start heartbeat
@@ -200,7 +220,10 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown
+    # Shutdown — unregister from bus
+    if bus.connected:
+        bus.unregister_shard(NODE_ID)
+
     if _heartbeat_task:
         _heartbeat_task.cancel()
         try:
@@ -395,3 +418,127 @@ async def list_shards():
             "file_verified": filepath is not None and os.path.exists(filepath),
         })
     return {"node_id": NODE_ID, "shards": enriched}
+
+
+# ---------------------------------------------------------------------------
+# Cluster endpoints — task dispatch / result return / proof attestation
+# ---------------------------------------------------------------------------
+
+class TaskDispatch(BaseModel):
+    """A task dispatched by the orchestrator to this shard node."""
+    task_id: str
+    prompt: str
+    metadata: dict = Field(default_factory=dict)
+
+
+class TaskResult(BaseModel):
+    """Result returned from shard to orchestrator."""
+    task_id: str
+    node_id: str = ""
+    result: dict = Field(default_factory=dict)
+
+
+class StorageProofRequest(BaseModel):
+    """Challenge from orchestrator to verify shard integrity."""
+    challenge_id: str
+    nonce: str = ""
+
+
+@app.post("/task/dispatch")
+async def task_dispatch(task: TaskDispatch):
+    """Receive a task dispatched by the orchestrator.
+
+    The shard node verifies that the task belongs to its keyspace before
+    accepting.  If the task doesn't belong here, returns 409 so the
+    orchestrator can re-route.
+    """
+    cfg = get_cluster_config()
+
+    # Validate ownership if running as a shard
+    if cfg.role == "shard" and cfg.shard_index is not None:
+        if not is_task_owned(task.task_id, cfg.shard_index, cfg.shard_count):
+            expected = assign_shard(task.task_id, cfg.shard_count)
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Task {task.task_id} belongs to shard {expected}, "
+                    f"not this node (shard {cfg.shard_index})"
+                ),
+            )
+
+    # Process the task (mock inference for now)
+    result_text = (
+        f"[{NODE_ID}] Processed task {task.task_id}: {task.prompt[:200]}"
+    )
+
+    result = {
+        "task_id": task.task_id,
+        "node_id": NODE_ID,
+        "shard_index": cfg.shard_index,
+        "response": result_text,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # Publish result to the state bus
+    bus = get_state_bus()
+    bus.complete_task(task.task_id, result)
+
+    return result
+
+
+@app.post("/task/result")
+async def task_result(result: TaskResult):
+    """Accept a result pushed by a shard node (orchestrator-side endpoint).
+
+    When the orchestrator runs this server, shards can push results here.
+    """
+    bus = get_state_bus()
+    bus.complete_task(result.task_id, result.result)
+    return {"status": "accepted", "task_id": result.task_id}
+
+
+@app.post("/proof/attest")
+async def proof_attest(req: StorageProofRequest):
+    """Respond to a storage proof challenge from the orchestrator.
+
+    Produces a SHA-256 attestation over the node's shard state combined
+    with the challenge nonce, proving the node holds valid state.
+    """
+    cfg = get_cluster_config()
+
+    # Build attestation: hash of (node_id + shard_index + nonce + shard_checksums)
+    shard_checksums = "|".join(
+        s.get("checksum", s.get("shard_id", ""))
+        for s in _loaded_shards
+    )
+    preimage = f"{NODE_ID}:{cfg.shard_index}:{req.nonce}:{shard_checksums}"
+    attestation = hashlib.sha256(preimage.encode()).hexdigest()
+
+    result = {
+        "challenge_id": req.challenge_id,
+        "node_id": NODE_ID,
+        "shard_index": cfg.shard_index,
+        "shard_count": len(_loaded_shards),
+        "attestation": attestation,
+        "responded_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # Publish proof to the state bus
+    bus = get_state_bus()
+    bus.publish_proof(NODE_ID, result)
+
+    return result
+
+
+@app.get("/cluster/info")
+async def cluster_info():
+    """Return this node's cluster identity."""
+    cfg = get_cluster_config()
+    return {
+        "node_id": NODE_ID,
+        "role": cfg.role,
+        "shard_index": cfg.shard_index,
+        "shard_count": cfg.shard_count,
+        "orchestrator_url": cfg.orchestrator_url,
+        "redis_connected": get_state_bus().connected,
+    }
