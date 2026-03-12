@@ -1,5 +1,13 @@
 # Changelog
 
+## [7.1.5] - 2026-03-12
+
+### Fixed
+
+- **TUI crash on launch (`BadIdentifier`)** (`maestro/tui/widgets.py`) — Agent display names containing spaces and dots (e.g. "Claude Sonnet 4.6") were used directly as Textual widget IDs, which only allow letters, numbers, underscores, and hyphens. Added `_sanitize_id()` helper that replaces invalid characters with hyphens before constructing widget identifiers.
+
+---
+
 ## [7.1.4] - 2026-03-12
 
 ### Added

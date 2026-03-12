@@ -8,6 +8,7 @@ All widgets are lightweight and avoid expensive reflows.
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 
 from textual.app import ComposeResult
@@ -20,6 +21,11 @@ from textual.widgets import Static, Label, ProgressBar, DataTable, RichLog
 # ---------------------------------------------------------------------------
 # Agent status indicators
 # ---------------------------------------------------------------------------
+
+def _sanitize_id(name: str) -> str:
+    """Convert a display name to a valid Textual widget identifier."""
+    return re.sub(r"[^a-zA-Z0-9_-]", "-", name).strip("-")
+
 
 _STATUS_STYLES = {
     "ready":    ("dim", "idle"),
@@ -69,7 +75,7 @@ class AgentPanel(Widget):
     def compose(self) -> ComposeResult:
         yield Label(" Pipeline", id="agent-panel-title")
         for name in self._agent_names:
-            indicator = AgentIndicator(name, id=f"agent-{name}")
+            indicator = AgentIndicator(name, id=f"agent-{_sanitize_id(name)}")
             self._indicators[name] = indicator
             yield indicator
 
