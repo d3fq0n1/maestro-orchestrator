@@ -8,6 +8,7 @@ Falls back to a simple numbered prompt when the terminal doesn't
 support raw input (e.g. piped stdin, Windows without msvcrt).
 """
 
+import os
 import sys
 
 
@@ -19,7 +20,6 @@ _BOLD = "\033[1m"
 _DIM = "\033[2m"
 _RESET = "\033[0m"
 _CYAN = "\033[36m"
-_YELLOW = "\033[33m"
 _GREEN = "\033[32m"
 _WHITE = "\033[97m"
 _BG_CYAN = "\033[46m"
@@ -27,10 +27,11 @@ _BG_DEFAULT = "\033[49m"
 _HIDE_CURSOR = "\033[?25l"
 _SHOW_CURSOR = "\033[?25h"
 _CLEAR_LINE = "\033[2K"
+_MOVE_UP = "\033[A"
 
 
 # ---------------------------------------------------------------------------
-# Option dataclass-like container
+# Option container
 # ---------------------------------------------------------------------------
 
 class Option:
@@ -55,6 +56,18 @@ MODE_OPTIONS = [
 
 
 # ---------------------------------------------------------------------------
+# Terminal helpers
+# ---------------------------------------------------------------------------
+
+def _get_term_width() -> int:
+    """Get terminal width, defaulting to 80."""
+    try:
+        return os.get_terminal_size().columns
+    except (OSError, ValueError):
+        return 80
+
+
+# ---------------------------------------------------------------------------
 # Raw terminal input (Unix)
 # ---------------------------------------------------------------------------
 
@@ -76,9 +89,9 @@ def _read_key_unix():
             return "escape"
         if ch in ("\r", "\n"):
             return "enter"
-        if ch in ("\x03",):  # Ctrl+C
+        if ch == "\x03":  # Ctrl+C
             return "quit"
-        if ch in ("\x04",):  # Ctrl+D
+        if ch == "\x04":  # Ctrl+D
             return "quit"
         return ch
     finally:
@@ -98,40 +111,73 @@ def _supports_raw_input() -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Rendering
+# Rendering — fixed line count, every line cleared before write
 # ---------------------------------------------------------------------------
 
-def _render_selector(options: list[Option], selected: int, title: str) -> str:
-    """Build the selector display string."""
-    lines = []
-    lines.append("")
-    lines.append(f"  {_BOLD}{_CYAN}{'─' * 50}{_RESET}")
-    lines.append(f"  {_BOLD}{_WHITE}  {title}{_RESET}")
-    lines.append(f"  {_BOLD}{_CYAN}{'─' * 50}{_RESET}")
-    lines.append("")
+# Layout (fixed 10 lines regardless of option count up to 5):
+#   line 0: blank
+#   line 1: top border
+#   line 2: title
+#   line 3: bottom border
+#   line 4: blank
+#   line 5..5+N-1: options (one per line)
+#   line 5+N: blank
+#   line 5+N+1: hint
+#   line 5+N+2: blank
+
+_FIXED_CHROME = 8  # non-option lines (3 header + 1 blank + 1 blank + 1 blank + 1 hint + 1 blank)
+
+
+def _total_lines(n_options: int) -> int:
+    return _FIXED_CHROME + n_options
+
+
+def _render_lines(options: list[Option], selected: int, title: str, width: int) -> list[str]:
+    """Build a list of plain-content lines (each will be written after CLEAR_LINE)."""
+    # Usable width for visible text (subtract leading 4 chars for indent)
+    max_text = width - 2  # leave a little margin
+
+    lines: list[str] = []
+
+    bar = "─" * min(48, width - 6)
+    lines.append("")                                                          # 0: blank
+    lines.append(f"  {_BOLD}{_CYAN}{bar}{_RESET}")                           # 1: top border
+    lines.append(f"  {_BOLD}{_WHITE}  {title}{_RESET}")                      # 2: title
+    lines.append(f"  {_BOLD}{_CYAN}{bar}{_RESET}")                           # 3: bottom border
+    lines.append("")                                                          # 4: blank
 
     for i, opt in enumerate(options):
         if i == selected:
-            pointer = f"{_BOLD}{_GREEN}  ▸ {_RESET}"
-            label = f"{_BOLD}{_WHITE}{_BG_CYAN} {opt.label} {_BG_DEFAULT}{_RESET}"
-            desc = f"  {_DIM}{opt.description}{_RESET}"
+            line = (
+                f"  {_BOLD}{_GREEN}\u25b8{_RESET} "
+                f"{_BOLD}{_WHITE}{_BG_CYAN} {opt.label} {_BG_DEFAULT}{_RESET}"
+            )
         else:
-            pointer = f"  {_DIM}  {_RESET}"
-            label = f"  {_DIM}{opt.label}{_RESET}"
-            desc = f"  {_DIM}{opt.description}{_RESET}"
-        lines.append(f"{pointer}{label}{desc}")
+            line = f"    {_DIM}{opt.label}{_RESET}"
+        lines.append(line)
 
-    lines.append("")
-    lines.append(f"  {_DIM}  ↑/↓ Navigate  •  Enter Select  •  Ctrl+C Quit{_RESET}")
-    lines.append(f"  {_BOLD}{_CYAN}{'─' * 50}{_RESET}")
-    lines.append("")
-    return "\n".join(lines)
+    lines.append("")                                                          # blank
+    lines.append(
+        f"  {_DIM}\u2191/\u2193 Navigate  \u2022  Enter Select  "
+        f"\u2022  Ctrl+C Quit{_RESET}"
+    )
+    lines.append("")                                                          # trailing blank
+
+    return lines
 
 
-def _count_render_lines(options: list[Option]) -> int:
-    """Count how many lines _render_selector produces."""
-    # header(1 blank + 3 box lines + 1 blank) + options + footer(1 blank + 1 hint + 1 line + 1 blank)
-    return 5 + len(options) + 4
+def _write_frame(lines: list[str]) -> None:
+    """Write all lines, clearing each line first to avoid artifacts."""
+    out = sys.stdout
+    for line in lines:
+        out.write(f"{_CLEAR_LINE}{line}\n")
+    out.flush()
+
+
+def _move_to_top(n: int) -> None:
+    """Move cursor up n lines."""
+    if n > 0:
+        sys.stdout.write(f"\033[{n}A")
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +186,7 @@ def _count_render_lines(options: list[Option]) -> int:
 
 def interactive_select(
     options: list[Option] | None = None,
-    title: str = "Maestro-Orchestrator  —  Select Mode",
+    title: str = "Maestro-Orchestrator  \u2014  Select Mode",
 ) -> str:
     """
     Show a fancy interactive selector and return the chosen option key.
@@ -157,12 +203,12 @@ def interactive_select(
         return _plain_select(options, title)
 
     selected = 0
-    total_lines = _count_render_lines(options)
+    width = _get_term_width()
+    n_lines = _total_lines(len(options))
 
     # Initial render
     sys.stdout.write(_HIDE_CURSOR)
-    sys.stdout.write(_render_selector(options, selected, title))
-    sys.stdout.flush()
+    _write_frame(_render_lines(options, selected, title, width))
 
     try:
         while True:
@@ -174,7 +220,7 @@ def interactive_select(
                 selected = (selected + 1) % len(options)
             elif key == "enter":
                 break
-            elif key == "quit" or key == "escape":
+            elif key in ("quit", "escape"):
                 sys.stdout.write(_SHOW_CURSOR)
                 sys.stdout.flush()
                 print(f"\n  {_DIM}[Maestro] Cancelled.{_RESET}")
@@ -190,21 +236,22 @@ def interactive_select(
                     pass
                 continue
 
-            # Move cursor up and redraw
-            sys.stdout.write(f"\033[{total_lines}A")
-            sys.stdout.write(_render_selector(options, selected, title))
-            sys.stdout.flush()
+            # Move cursor back to top of our block and redraw
+            _move_to_top(n_lines)
+            _write_frame(_render_lines(options, selected, title, width))
     finally:
         sys.stdout.write(_SHOW_CURSOR)
         sys.stdout.flush()
 
     chosen = options[selected]
-    # Replace the selector with a confirmation line
-    sys.stdout.write(f"\033[{total_lines}A")
-    for _ in range(total_lines):
+
+    # Clear the selector block and replace with a single confirmation line
+    _move_to_top(n_lines)
+    for _ in range(n_lines):
         sys.stdout.write(f"{_CLEAR_LINE}\n")
-    sys.stdout.write(f"\033[{total_lines}A")
-    print(f"  {_BOLD}{_GREEN}▸{_RESET} Selected: {_BOLD}{chosen.label}{_RESET}")
+    _move_to_top(n_lines)
+    sys.stdout.flush()
+    print(f"  {_BOLD}{_GREEN}\u25b8{_RESET} Selected: {_BOLD}{chosen.label}{_RESET}")
     print()
 
     return chosen.key
@@ -222,7 +269,7 @@ def _plain_select(options: list[Option], title: str) -> str:
     print(f"  {'=' * 50}")
     print()
     for i, opt in enumerate(options):
-        print(f"    {i + 1}) {opt.label}  —  {opt.description}")
+        print(f"    {i + 1}) {opt.label}  \u2014  {opt.description}")
     print()
     try:
         answer = input("  Enter choice [1]: ").strip()
