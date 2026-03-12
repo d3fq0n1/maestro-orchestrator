@@ -34,32 +34,41 @@ class TestEntrypointDialogDetection(unittest.TestCase):
 
 
 class TestEntrypointPlainPrompt(unittest.TestCase):
-    """Verify the plain-text fallback prompt."""
+    """Verify the plain-text fallback prompt (via interactive selector)."""
 
     @patch("builtins.input", return_value="1")
-    def test_plain_prompt_web(self, _mock_input):
+    def test_plain_prompt_tui(self, _mock_input):
         from entrypoint import _plain_prompt
-        self.assertEqual(_plain_prompt(), "web")
+        # Option 1 is TUI in the selector
+        self.assertEqual(_plain_prompt(), "tui")
 
     @patch("builtins.input", return_value="2")
     def test_plain_prompt_cli(self, _mock_input):
         from entrypoint import _plain_prompt
         self.assertEqual(_plain_prompt(), "cli")
 
+    @patch("builtins.input", return_value="3")
+    def test_plain_prompt_web(self, _mock_input):
+        from entrypoint import _plain_prompt
+        self.assertEqual(_plain_prompt(), "web")
+
     @patch("builtins.input", return_value="")
     def test_plain_prompt_default(self, _mock_input):
         from entrypoint import _plain_prompt
-        self.assertEqual(_plain_prompt(), "web")
+        # Default is first option (TUI)
+        self.assertEqual(_plain_prompt(), "tui")
 
     @patch("builtins.input", side_effect=EOFError)
     def test_plain_prompt_eof(self, _mock_input):
         from entrypoint import _plain_prompt
-        self.assertEqual(_plain_prompt(), "web")
+        # Default to first option on EOF
+        self.assertEqual(_plain_prompt(), "tui")
 
     @patch("builtins.input", side_effect=KeyboardInterrupt)
     def test_plain_prompt_ctrl_c(self, _mock_input):
         from entrypoint import _plain_prompt
-        self.assertEqual(_plain_prompt(), "web")
+        # Default to first option on Ctrl+C
+        self.assertEqual(_plain_prompt(), "tui")
 
 
 class TestEntrypointEnvOverride(unittest.TestCase):

@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.7.2] - 2026-03-12
+
+### Added
+
+- **Interactive Mode Selector** (`maestro/selector.py`) — Arrow-key terminal selector with colored highlights, replacing the plain numbered prompt and static command suggestions. Users can now pick TUI, CLI, or Web-UI mode without memorizing commands. Falls back to a numbered prompt when raw terminal input is unavailable.
+- **Post-setup launcher** — When `setup.py` detects no graphical browser after Docker setup, it now shows the interactive selector and launches the chosen mode directly instead of printing commands to copy-paste.
+
+### Fixed
+
+- **TUI crash on launch** (`maestro/tui/widgets.py`) — `ShardNetworkPanel.__init__` was setting `self._nodes` to a plain `list`, which overwrote Textual's internal `_nodes` attribute (a `NodeList` used for the widget tree). This caused `AttributeError: 'list' object has no attribute '_append'` when Textual tried to mount child widgets. Renamed to `self._storage_nodes` to avoid the collision.
+
+### Changed
+
+- `entrypoint.py` — `_plain_prompt()` now uses the interactive selector from `maestro/selector.py` instead of a static numbered menu.
+- `setup.py` — `open_browser()` shows the interactive selector and launches the chosen mode when no graphical browser is available, instead of printing raw commands.
+- **Version bumped to v0.7.2** across readme, frontend, docs, roadmap, node server, plugin manager, release notes, and changelog.
+
+---
+
 ## [0.7.1] - 2026-03-11
 
 ### Added

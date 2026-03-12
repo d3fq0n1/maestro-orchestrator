@@ -475,23 +475,55 @@ def _install_tui_deps() -> None:
 
 
 def open_browser(url: str) -> None:
-    """Open the user's default browser, or suggest TUI when only text browsers exist."""
+    """Open the user's default browser, or offer an interactive mode selector."""
     if not _has_graphical_browser():
         _install_tui_deps()
-        print(f"  No graphical browser detected (text browsers like lynx are not suitable).")
+        print(f"  No graphical browser detected.")
         print(f"  The Maestro API is running at {url}")
         print()
-        print("  To use Maestro from this terminal, launch the TUI dashboard:")
-        print("    python -m maestro.tui --mode http")
-        print()
-        print("  Or launch the interactive CLI:")
-        print("    python -m maestro.cli")
+
+        if sys.stdin.isatty():
+            _launch_interactive_selector()
+        else:
+            print("  To use Maestro from this terminal, launch the TUI dashboard:")
+            print("    python -m maestro.tui --mode http")
+            print()
+            print("  Or launch the interactive CLI:")
+            print("    python -m maestro.cli")
         return
     try:
         webbrowser.open(url)
         print(f"  ✓ Browser opened to {url}")
     except Exception:
         print(f"  Open your browser to: {url}")
+
+
+def _launch_interactive_selector() -> None:
+    """Show the interactive mode selector and launch the chosen mode."""
+    from maestro.selector import interactive_select, Option
+
+    options = [
+        Option("tui", "TUI Dashboard", "Terminal dashboard (optimized for SoC / Raspi)"),
+        Option("cli", "Interactive CLI", "Command-line REPL with full pipeline access"),
+    ]
+
+    choice = interactive_select(options, title="Maestro-Orchestrator  —  Launch Mode")
+
+    if choice == "tui":
+        print("  Launching TUI Dashboard ...")
+        print()
+        # Import and run inline to avoid subprocess overhead
+        sys.path.insert(0, os.path.join(PROJECT_ROOT, "backend"))
+        sys.path.insert(0, PROJECT_ROOT)
+        from maestro.tui.__main__ import main as tui_main
+        tui_main()
+    elif choice == "cli":
+        print("  Launching Interactive CLI ...")
+        print()
+        sys.path.insert(0, os.path.join(PROJECT_ROOT, "backend"))
+        sys.path.insert(0, PROJECT_ROOT)
+        from maestro.cli import interactive_loop
+        interactive_loop()
 
 
 # ---------------------------------------------------------------------------

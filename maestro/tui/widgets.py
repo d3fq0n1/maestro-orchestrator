@@ -243,7 +243,7 @@ class ShardNetworkPanel(Widget):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._nodes: list[dict] = []
+        self._storage_nodes: list[dict] = []
         self._frame = 0
         self._timer = None
 
@@ -256,24 +256,24 @@ class ShardNetworkPanel(Widget):
 
     def _tick(self) -> None:
         """Advance spinner frame and re-render if nodes exist."""
-        if not self._nodes:
+        if not self._storage_nodes:
             return
         self._frame = (self._frame + 1) % _SPINNER_LEN
         self._render_nodes()
 
     def update_nodes(self, nodes: list[dict]) -> None:
-        self._nodes = nodes
+        self._storage_nodes = nodes
         self._render_nodes()
 
     def _render_nodes(self) -> None:
-        if not self._nodes:
+        if not self._storage_nodes:
             self.query_one("#shard-node-list", Static).update(
                 " [dim]No nodes registered[/]"
             )
             return
 
         lines = []
-        for n in self._nodes[:6]:
+        for n in self._storage_nodes[:6]:
             node_id = n.get("node_id", "?")[:16]
             status = n.get("status", "?")
             rep = n.get("reputation_score", 0.0)
@@ -326,8 +326,8 @@ class ShardNetworkPanel(Widget):
             )
             lines.append(line)
 
-        if len(self._nodes) > 6:
-            lines.append(f" [dim]... and {len(self._nodes) - 6} more nodes[/]")
+        if len(self._storage_nodes) > 6:
+            lines.append(f" [dim]... and {len(self._storage_nodes) - 6} more nodes[/]")
 
         self.query_one("#shard-node-list", Static).update("\n".join(lines))
 

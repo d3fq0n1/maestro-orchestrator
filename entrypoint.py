@@ -134,37 +134,13 @@ def _dialog_gui() -> str:
 
 
 def _plain_prompt() -> str:
-    """Fallback text prompt when dialog is not available."""
-    graphical = _has_graphical_browser()
-    # Default to TUI when no graphical browser is available
-    default_mode = "1" if graphical else "3"
-    default_label = WEB_LABEL if graphical else TUI_LABEL
+    """Interactive mode selector with arrow-key navigation.
 
-    print()
-    print("=" * 52)
-    print("  Maestro-Orchestrator — Startup Mode Selection")
-    print("=" * 52)
-    print()
-    print(f"  1) {WEB_LABEL}  —  {WEB_DESC}")
-    print(f"  2) {CLI_LABEL}  —  {CLI_DESC}")
-    print(f"  3) {TUI_LABEL}  —  {TUI_DESC}")
-    if not graphical:
-        print()
-        print("  (No graphical browser detected — TUI recommended)")
-    print()
-    try:
-        answer = input(f"  Enter choice [{default_mode}]: ").strip()
-    except (EOFError, KeyboardInterrupt):
-        answer = ""
-
-    if answer == "1":
-        return "web"
-    if answer == "2":
-        return "cli"
-    if answer == "3":
-        return "tui"
-    # Default
-    return "tui" if not graphical else "web"
+    Falls back to a numbered prompt when raw terminal input is
+    unavailable.
+    """
+    from maestro.selector import interactive_select
+    return interactive_select(title="Maestro-Orchestrator  —  Startup Mode")
 
 
 # ---------------------------------------------------------------------------
