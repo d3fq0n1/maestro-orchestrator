@@ -1,6 +1,6 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v7.1.5
+**Current Version:** v7.1.6
 **Last Updated:** 2026-03-12
 **Maintainer:** defcon
 
@@ -44,6 +44,7 @@
 - **Interactive Mode Selector (v0.7.2)** -- Arrow-key terminal selector replaces static command suggestions after Docker setup and in the startup wrapper. TUI crash fix (`ShardNetworkPanel._nodes` collision with Textual internals).
 - **Web UI LAN Discovery & Agent Name Fix (v7.1.4)** -- Storage Network panel gains a LAN Discovery tab showing discovered peers, adjacency state, and Maestro Node formation status. TUI Pipeline panel now displays correct model names (GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B) instead of deprecated codenames. Documentation updated for consistency.
 - **Automatic Background Updater (v7.1.5)** -- Background auto-updater that polls git for new commits at a configurable interval (10s–3600s) and optionally auto-applies updates. SSE stream endpoint for real-time notifications. WebUI live banner and auto-update controls. TUI background loop with event-driven notifications and toggle. FastAPI lifespan integration. New env vars: `MAESTRO_UPDATE_INTERVAL`, `MAESTRO_AUTO_APPLY_UPDATES`.
+- **TUI Node Detail Crash Fix (v7.1.6)** -- Fixed `NodeDetailScreen._nodes` collision with Textual internals (same class of bug as the v0.7.2 `ShardNetworkPanel` fix). Pressing `N` for node details no longer crashes the TUI.
 
 ---
 

@@ -1,10 +1,18 @@
-# Maestro-Orchestrator v7.1.5
+# Maestro-Orchestrator v7.1.6
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
 
 ---
 
-## What's New in v7.1.5
+## What's New in v7.1.6
+
+### TUI Node Detail Crash Fix
+
+Fixed `AttributeError: 'list' object has no attribute '_append'` that crashed the TUI when pressing `N` (Nodes). The `NodeDetailScreen` modal was storing its node data as `self._nodes`, which overwrote Textual's internal `_nodes` attribute (a `NodeList` used for the widget tree). Renamed to `self._node_data` to avoid the collision — the same class of bug that was previously fixed in `ShardNetworkPanel` (v0.7.2).
+
+---
+
+## What was new in v7.1.5
 
 ### Automatic Background Updater
 
