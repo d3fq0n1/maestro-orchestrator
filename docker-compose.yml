@@ -32,7 +32,7 @@ services:
     networks:
       - maestro-net
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -50,7 +50,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
 
   # ── Orchestrator (primary coordinator) ──────────────────────────────
 
@@ -105,7 +105,7 @@ services:
     depends_on:
       - orchestrator
     ports:
-      - "8001:8000"
+      - "${SHARD1_PORT:-8001}:8000"
 
   shard-2:
     build: .
@@ -125,7 +125,7 @@ services:
     depends_on:
       - orchestrator
     ports:
-      - "8002:8000"
+      - "${SHARD2_PORT:-8002}:8000"
 
   shard-3:
     build: .
@@ -145,7 +145,7 @@ services:
     depends_on:
       - orchestrator
     ports:
-      - "8003:8000"
+      - "${SHARD3_PORT:-8003}:8000"
 
 volumes:
   pgdata:

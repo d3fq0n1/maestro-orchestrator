@@ -6,10 +6,15 @@ Works on Windows, macOS, and Linux. Requires only Python 3.10+ and Docker.
 Replaces the bash-only setup.sh for universal compatibility.
 
 Usage:
-    python setup.py          # Build, start, wait for healthy, open browser
-    python setup.py --no-browser   # Skip opening the browser
-    python setup.py --dev    # Local dev mode (no Docker)
-    python setup.py --verbose      # Show full Docker build output
+    python setup.py                  # Build, start, wait for healthy, open browser
+    python setup.py --no-browser     # Skip opening the browser
+    python setup.py --dev            # Local dev mode (no Docker)
+    python setup.py --verbose        # Show full Docker build output
+    python setup.py --instances N    # Deploy N independent Maestro instances
+    python setup.py --spawn          # Spawn one additional Maestro instance
+    python setup.py --spawn N        # Spawn N additional Maestro instances
+    python setup.py --status         # Show all running Maestro instances
+    python setup.py --down           # Stop all Maestro instances
 """
 
 import itertools
@@ -38,7 +43,11 @@ if hasattr(sys.stderr, "reconfigure"):
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 os.chdir(PROJECT_ROOT)
 
-URL = "http://localhost:8000"
+BASE_PORT = 8000
+PORT_STRIDE = 10  # each instance offsets by 10 (8000, 8010, 8020, ...)
+PROJECT_PREFIX = "maestro"
+
+URL = f"http://localhost:{BASE_PORT}"
 HEALTH_ENDPOINT = f"{URL}/api/health"
 HEALTH_RETRIES = 30
 HEALTH_DELAY = 2
@@ -412,6 +421,207 @@ def cleanup_stale_containers(compose: list[str], port: str = "8000") -> None:
             pass
 
 
+# ---------------------------------------------------------------------------
+# Multi-instance support
+# ---------------------------------------------------------------------------
+
+def _instance_project_name(n: int) -> str:
+    """Return the Docker Compose project name for instance *n* (1-based)."""
+    return f"{PROJECT_PREFIX}-{n}"
+
+
+def _instance_port(n: int) -> int:
+    """Return the host port for instance *n* (1-based)."""
+    return BASE_PORT + (n - 1) * PORT_STRIDE
+
+
+def detect_running_instances() -> list[int]:
+    """Return sorted list of currently running instance numbers."""
+    running: list[int] = []
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--format", "{{.Names}}"],
+            capture_output=True, text=True, timeout=10,
+        )
+        names = result.stdout.strip().splitlines()
+        seen: set[int] = set()
+        for name in names:
+            # Project containers are named like "maestro-N-orchestrator-1"
+            for i in range(1, 100):
+                prefix = f"{PROJECT_PREFIX}-{i}-"
+                if name.startswith(prefix):
+                    seen.add(i)
+                    break
+        running = sorted(seen)
+    except Exception:
+        pass
+    return running
+
+
+def _next_instance_number(running: list[int]) -> int:
+    """Return the next available instance number."""
+    if not running:
+        return 1
+    return max(running) + 1
+
+
+def prompt_instance_count(running: list[int]) -> tuple[str, int]:
+    """Prompt the user for what to do when instances may already exist.
+
+    Returns (action, count) where action is 'fresh', 'spawn', or 'cancel'.
+    """
+    if not sys.stdin.isatty():
+        return ("fresh", 1)
+
+    if running:
+        ports = ", ".join(f":{_instance_port(n)}" for n in running)
+        print(f"  Found {len(running)} running Maestro instance(s) on {ports}\n")
+        print("  What would you like to do?\n")
+        print("    1) Spawn additional instance(s)")
+        print("    2) Tear down all and start fresh")
+        print("    3) Cancel")
+        print()
+        try:
+            choice = input("  Choice [1/2/3]: ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            return ("cancel", 0)
+
+        if choice == "1":
+            count = _ask_count("  How many additional instances? [1]: ", default=1)
+            return ("spawn", count)
+        elif choice == "2":
+            count = _ask_count("  How many instances total? [1]: ", default=1)
+            return ("fresh", count)
+        else:
+            return ("cancel", 0)
+    else:
+        count = _ask_count("  How many Maestro instances to deploy? [1]: ", default=1)
+        return ("fresh", count)
+
+
+def _ask_count(prompt: str, default: int = 1) -> int:
+    """Prompt for a positive integer with a default."""
+    try:
+        raw = input(prompt).strip()
+    except (KeyboardInterrupt, EOFError):
+        print()
+        sys.exit(0)
+    if not raw:
+        return default
+    try:
+        n = int(raw)
+        if n < 1:
+            return default
+        return n
+    except ValueError:
+        return default
+
+
+def compose_for_instance(compose_base: list[str], instance: int) -> list[str]:
+    """Return a compose command with the project name for a given instance."""
+    return compose_base + ["-p", _instance_project_name(instance)]
+
+
+def stop_all_instances(compose_base: list[str], running: list[int]) -> None:
+    """Stop all known Maestro instances."""
+    for n in running:
+        cmd = compose_for_instance(compose_base, n)
+        subprocess.run(
+            cmd + ["down", "--remove-orphans"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    # Also try the default project name (from before multi-instance support)
+    subprocess.run(
+        compose_base + ["down", "--remove-orphans"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def build_and_start_instance(
+    compose_base: list[str], instance: int, verbose: bool = False
+) -> bool:
+    """Build and start a single instance. Returns True on success."""
+    port = _instance_port(instance)
+    project = _instance_project_name(instance)
+    compose = compose_for_instance(compose_base, instance)
+
+    env = os.environ.copy()
+    env["MAESTRO_PORT"] = str(port)
+    # Offset infrastructure and shard ports to avoid collisions
+    offset = instance - 1
+    env["REDIS_PORT"] = str(6379 + offset)
+    env["POSTGRES_PORT"] = str(5432 + offset)
+    env["SHARD1_PORT"] = str(port + 1)
+    env["SHARD2_PORT"] = str(port + 2)
+    env["SHARD3_PORT"] = str(port + 3)
+
+    print(f"  [{project}] Building on port {port} ...")
+
+    if verbose:
+        result = subprocess.run(compose + ["up", "-d", "--build"], env=env)
+        return result.returncode == 0
+
+    logfile = os.path.join(PROJECT_ROOT, f".setup-build-{instance}.log")
+    try:
+        with open(logfile, "w") as log:
+            result = subprocess.run(
+                compose + ["up", "-d", "--build"],
+                stdout=log, stderr=subprocess.STDOUT, env=env,
+            )
+    except Exception:
+        return False
+
+    if result.returncode != 0:
+        print(f"  Error: build failed for {project}. See {logfile}")
+        return False
+
+    try:
+        os.remove(logfile)
+    except OSError:
+        pass
+    return True
+
+
+def wait_for_instance_healthy(instance: int) -> bool:
+    """Poll a specific instance's health endpoint."""
+    port = _instance_port(instance)
+    endpoint = f"http://localhost:{port}/api/health"
+    for _ in range(HEALTH_RETRIES):
+        try:
+            import urllib.request
+            with urllib.request.urlopen(endpoint, timeout=3) as resp:
+                if resp.status == 200:
+                    return True
+        except Exception:
+            pass
+        time.sleep(HEALTH_DELAY)
+    return False
+
+
+def show_instance_status() -> None:
+    """Print the status of all running Maestro instances."""
+    running = detect_running_instances()
+    if not running:
+        print("  No running Maestro instances found.")
+        return
+    print(f"\n  {'Instance':<14} {'Port':<8} {'URL':<30} {'Health'}")
+    print(f"  {'─' * 14} {'─' * 8} {'─' * 30} {'─' * 8}")
+    for n in running:
+        port = _instance_port(n)
+        url = f"http://localhost:{port}"
+        try:
+            import urllib.request
+            with urllib.request.urlopen(f"{url}/api/health", timeout=3) as resp:
+                health = "healthy" if resp.status == 200 else "unhealthy"
+        except Exception:
+            health = "unreachable"
+        print(f"  {_instance_project_name(n):<14} {port:<8} {url:<30} {health}")
+    print()
+
+
 def build_and_start(compose: list[str], verbose: bool = False) -> None:
     """Build and start containers, with spinner or verbose output."""
     # Ensure .env exists so docker-compose doesn't error on a missing env_file.
@@ -618,42 +828,127 @@ BANNER = r"""
 """
 
 
-def docker_setup(skip_browser: bool = False, verbose: bool = False) -> None:
-    """Build and start the container, wait for healthy, open browser."""
+def docker_setup(
+    skip_browser: bool = False,
+    verbose: bool = False,
+    instances: int | None = None,
+    spawn: int | None = None,
+) -> None:
+    """Build and start containers, with optional multi-instance support.
+
+    *instances* — total number of fresh instances to deploy.
+    *spawn*     — number of additional instances to add to existing ones.
+    If both are None, prompt the user interactively.
+    """
     print(BANNER)
 
     check_deps()
     print("  ✓ Dependencies verified\n")
 
-    compose = find_compose_cmd()
-    port = os.environ.get("MAESTRO_PORT", "8000")
+    compose_base = find_compose_cmd()
 
-    print("  Stopping prior sessions ...")
-    cleanup_stale_containers(compose, port)
-    print("  ✓ Clean slate\n")
+    # Ensure .env exists so docker-compose doesn't error on a missing env_file.
+    env_path = os.path.join(PROJECT_ROOT, ".env")
+    if not os.path.exists(env_path):
+        open(env_path, "a").close()
 
-    build_and_start(compose, verbose=verbose)
+    running = detect_running_instances()
+
+    # Determine what to do --------------------------------------------------
+    if spawn is not None:
+        # --spawn: add N more instances without tearing down existing ones
+        action, count = "spawn", spawn
+    elif instances is not None:
+        # --instances N: fresh deploy of N instances
+        action, count = "fresh", instances
+    else:
+        # Interactive prompt
+        action, count = prompt_instance_count(running)
+
+    if action == "cancel":
+        print("  Cancelled.")
+        return
+
+    # Fresh deploy: tear down everything first
+    if action == "fresh":
+        if running:
+            print("  Stopping existing instances ...")
+            stop_all_instances(compose_base, running)
+            print("  ✓ Clean slate\n")
+        instance_numbers = list(range(1, count + 1))
+    else:
+        # Spawn: keep existing, add new ones
+        start = _next_instance_number(running)
+        instance_numbers = list(range(start, start + count))
+
+    # Build and start each instance -----------------------------------------
+    total = len(instance_numbers)
+    if total == 1:
+        spinner = Spinner(SETUP_MESSAGES, estimated_seconds=300).start()
+    else:
+        spinner = Spinner(SETUP_MESSAGES, estimated_seconds=300 * total).start()
+        print(f"\n  Deploying {total} instance(s) ...\n")
+
+    succeeded: list[int] = []
+    for i, n in enumerate(instance_numbers):
+        if total > 1:
+            spinner.set_progress(i / total)
+        ok = build_and_start_instance(compose_base, n, verbose=verbose)
+        if ok:
+            succeeded.append(n)
+
+    spinner.stop()
+
+    if not succeeded:
+        print("  Error: no instances started successfully.")
+        sys.exit(1)
+
+    print(f"  ✓ {len(succeeded)} instance(s) built and started\n")
+
+    # Health checks ---------------------------------------------------------
+    health_spinner = Spinner(HEALTH_MESSAGES, message_interval=4.0)
+    health_spinner.set_progress(0.0)
+    health_spinner.start()
+
+    healthy_instances: list[int] = []
+    for i, n in enumerate(succeeded):
+        health_spinner.set_progress(i / len(succeeded))
+        if wait_for_instance_healthy(n):
+            healthy_instances.append(n)
+
+    health_spinner.set_progress(1.0)
+    health_spinner.stop()
+
+    # Summary ---------------------------------------------------------------
+    print()
+    all_running = sorted(set(running) | set(succeeded)) if action == "spawn" else succeeded
+    print(f"  {'Instance':<14} {'Port':<8} {'URL':<30} {'Status'}")
+    print(f"  {'─' * 14} {'─' * 8} {'─' * 30} {'─' * 8}")
+    for n in all_running:
+        port = _instance_port(n)
+        url = f"http://localhost:{port}"
+        status = "healthy" if n in healthy_instances else ("running" if n in succeeded else "existing")
+        print(f"  {_instance_project_name(n):<14} {port:<8} {url:<30} {status}")
     print()
 
-    healthy = wait_for_healthy()
-    print()
-
-    if healthy and not skip_browser:
-        open_browser(URL)
+    # Open browser for the first new healthy instance
+    if not skip_browser and healthy_instances:
+        first = healthy_instances[0]
+        first_url = f"http://localhost:{_instance_port(first)}"
+        open_browser(first_url)
         print()
 
-    print(f"  Maestro is running at {URL}")
-    print()
     if platform.system() != "Windows":
         print("  Useful commands:")
-        print("    make logs     Tail container logs")
-        print("    make status   Check container health")
-        print("    make down     Stop the container")
+        print("    make status       Show all running instances")
+        print("    make spawn        Spawn one more instance")
+        print("    make logs         Tail container logs")
+        print("    make down-all     Stop all instances")
     else:
         print("  Useful commands:")
-        print("    docker compose logs -f      Tail container logs")
-        print("    docker compose ps           Check container status")
-        print("    docker compose down         Stop the container")
+        print("    python setup.py --status    Show all running instances")
+        print("    python setup.py --spawn     Spawn one more instance")
+        print("    python setup.py --down      Stop all instances")
     print()
 
 
@@ -726,10 +1021,60 @@ def main() -> None:
 
     if "--dev" in args:
         dev_setup()
-    else:
-        skip_browser = "--no-browser" in args
-        verbose = "--verbose" in args
-        docker_setup(skip_browser=skip_browser, verbose=verbose)
+        return
+
+    if "--status" in args:
+        print(BANNER)
+        show_instance_status()
+        return
+
+    if "--down" in args:
+        print(BANNER)
+        compose_base = find_compose_cmd()
+        running = detect_running_instances()
+        if running:
+            print(f"  Stopping {len(running)} instance(s) ...")
+            stop_all_instances(compose_base, running)
+            print("  ✓ All instances stopped\n")
+        else:
+            print("  No running instances found.\n")
+        return
+
+    skip_browser = "--no-browser" in args
+    verbose = "--verbose" in args
+
+    # --instances N
+    instances: int | None = None
+    if "--instances" in args:
+        idx = args.index("--instances")
+        if idx + 1 < len(args):
+            try:
+                instances = int(args[idx + 1])
+            except ValueError:
+                print("  Error: --instances requires a number")
+                sys.exit(1)
+        else:
+            print("  Error: --instances requires a number")
+            sys.exit(1)
+
+    # --spawn [N]  (N defaults to 1)
+    spawn: int | None = None
+    if "--spawn" in args:
+        idx = args.index("--spawn")
+        if idx + 1 < len(args):
+            try:
+                spawn = int(args[idx + 1])
+            except ValueError:
+                spawn = 1  # next arg wasn't a number, default to 1
+        else:
+            spawn = 1
+
+    docker_setup(
+        skip_browser=skip_browser,
+        verbose=verbose,
+        instances=instances,
+        spawn=spawn,
+    )
 
 
 if __name__ == "__main__":
