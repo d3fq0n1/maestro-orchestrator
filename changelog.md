@@ -2,9 +2,24 @@
 
 ## [7.1.5] - 2026-03-12
 
+### Added
+
+- **Automatic Background Updater** (`maestro/updater.py`) — New `AutoUpdater` class runs as a background asyncio task, periodically polling the git remote for new commits at a configurable interval (10s–3600s). Supports auto-apply mode for seamless iterative development where the developer is actively pushing fixes while using the tool. Event-based listener system emits real-time notifications (`check`, `available`, `applying`, `applied`, `error`, `up_to_date`). Adaptive back-off on repeated errors. Singleton accessor via `get_auto_updater()` configured from environment variables.
+- **Auto-Updater SSE Stream** (`maestro/api_update.py`) — New `GET /api/update/stream` endpoint provides a Server-Sent Events stream of real-time update notifications with 15s keepalive. Clients receive events as they happen without polling.
+- **Auto-Updater Configuration API** (`maestro/api_update.py`) — New `GET /api/update/auto` returns auto-updater status (enabled, running, poll_interval, auto_apply, updates_applied, last_check_info). New `PUT /api/update/auto` updates settings on the fly with persistence to `.env`.
+- **WebUI Live Update Banner** (`frontend/src/maestroUI.tsx`) — Persistent notification banner at the top of the page powered by `EventSource` SSE stream. Appears automatically when updates are detected, dismissible, clickable to open the Update panel. No polling required.
+- **WebUI Auto-Update Controls** (`frontend/src/maestroUI.tsx`, `frontend/src/style.css`) — Toggle checkboxes for auto-check and auto-apply, interval selector dropdown (15s/30s/1m/2m/5m/10m), applied-count display. All settings persisted to `.env` via the API.
+- **TUI Auto-Update Loop** (`maestro/tui/app.py`) — Background event-driven update loop that notifies users in the response viewer when updates are available, being applied, or completed. Toggle auto-update via `T` key in the Update screen.
+- **FastAPI Lifespan Integration** (`backend/main.py`) — Auto-updater starts on server startup and stops cleanly on shutdown via FastAPI's lifespan context manager.
+- **New Environment Variables** — `MAESTRO_UPDATE_INTERVAL` (poll interval in seconds, default 60), `MAESTRO_AUTO_APPLY_UPDATES` (auto-apply without confirmation).
+
 ### Fixed
 
 - **TUI crash on launch (`BadIdentifier`)** (`maestro/tui/widgets.py`) — Agent display names containing spaces and dots (e.g. "Claude Sonnet 4.6") were used directly as Textual widget IDs, which only allow letters, numbers, underscores, and hyphens. Added `_sanitize_id()` helper that replaces invalid characters with hyphens before constructing widget identifiers.
+
+### Changed
+
+- **Version bumped to v7.1.5** across readme, frontend, docs, roadmap, node server, plugin manager, release notes, and changelog.
 
 ---
 
