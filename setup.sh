@@ -4,7 +4,8 @@
 # ──────────────────────────────────────────────
 set -euo pipefail
 
-URL="http://localhost:8000"
+PORT="${MAESTRO_PORT:-8000}"
+URL="http://localhost:$PORT"
 COMPOSE="docker compose"
 
 # Fall back to docker-compose (v1) if docker compose (v2) is missing
@@ -73,7 +74,37 @@ main() {
     # Ensure .env exists so docker-compose doesn't error on a missing env_file.
     touch .env
 
-    echo "  Building and starting container ..."
+    echo "  Stopping any existing containers ..."
+    $COMPOSE down --remove-orphans 2>/dev/null || true
+
+    # Kill leftover processes from prior Maestro sessions holding the port.
+    if command -v lsof &>/dev/null; then
+        local pids
+        pids=$(lsof -ti :"$PORT" 2>/dev/null || true)
+        if [ -n "$pids" ]; then
+            echo "  Killing leftover processes on port $PORT (PIDs: $pids) ..."
+            echo "$pids" | xargs kill -9 2>/dev/null || true
+            sleep 1
+        fi
+    elif command -v ss &>/dev/null; then
+        local pids
+        pids=$(ss -tlnp "sport = :$PORT" 2>/dev/null | grep -oP 'pid=\K[0-9]+' || true)
+        if [ -n "$pids" ]; then
+            echo "  Killing leftover processes on port $PORT (PIDs: $pids) ..."
+            echo "$pids" | xargs kill -9 2>/dev/null || true
+            sleep 1
+        fi
+    fi
+
+    # Stop stale Docker containers (from manual runs) holding the port.
+    local stale
+    stale=$(docker ps -q --filter "publish=$PORT" 2>/dev/null || true)
+    if [ -n "$stale" ]; then
+        echo "  Stopping stale Docker containers on port $PORT ..."
+        echo "$stale" | xargs docker rm -f 2>/dev/null || true
+    fi
+
+    echo "  Building and starting containers ..."
     $COMPOSE up -d --build
 
     echo ""
@@ -87,7 +118,7 @@ main() {
     echo "  Useful commands:"
     echo "    make logs     Tail container logs"
     echo "    make status   Check container health"
-    echo "    make down     Stop the container"
+    echo "    make down     Stop all containers"
     echo ""
 }
 
