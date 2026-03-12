@@ -1,10 +1,28 @@
-# Maestro-Orchestrator v0.7.1
+# Maestro-Orchestrator v0.7.2
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
 
 ---
 
-## What's New in v0.7.1
+## What's New in v0.7.2
+
+### Interactive Mode Selector
+
+No more memorizing `python -m maestro.tui --mode http` or `python -m maestro.cli`. After Docker setup completes (or when the startup wrapper runs without `dialog`), Maestro now shows a **fancy arrow-key selector** — navigate with Up/Down, press Enter to launch:
+
+- **TUI Dashboard** — Terminal dashboard optimized for SoC / Raspi
+- **Interactive CLI** — Command-line REPL with full pipeline access
+- **Web UI** — Full dashboard (API + React UI)
+
+The selector uses ANSI colors and highlights, falls back to a numbered prompt on non-interactive terminals, and works everywhere Python runs.
+
+### TUI Crash Fix
+
+Fixed `AttributeError: 'list' object has no attribute '_append'` that prevented the TUI from launching. The `ShardNetworkPanel` widget was accidentally overwriting Textual's internal `_nodes` attribute.
+
+---
+
+## Highlights from v0.7.1
 
 ### Model Deliberation
 

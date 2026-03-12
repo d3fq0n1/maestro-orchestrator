@@ -1,7 +1,7 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v0.7.1
-**Last Updated:** 2026-03-11
+**Current Version:** v0.7.2
+**Last Updated:** 2026-03-12
 **Maintainer:** defcon
 
 ---
@@ -41,6 +41,7 @@
 - **Windows Setup Fix (v0.6.3.1)** -- `setup.py` now works correctly when Python is installed via winget or the Microsoft Store: UTF-8 output encoding forced at startup (fixes `UnicodeEncodeError` crash-on-launch), and working directory pinned to the project root (fixes "no configuration file provided" Docker Compose error when run from a non-root path).
 - **TUI Dashboard (v0.7.0)** -- Textual-based terminal dashboard optimized for SoC devices. Mainframe-style single-keypress navigation, first-run API key setup wizard, BTOP-style shard network monitor with animated indicators, LAN shard discovery panel. Full orchestration pipeline with live agent status, consensus/quorum/R2/dissent/NCG metrics, scrollable response viewer. Dual backend modes: direct import (in-process) and HTTP client (multi-device clusters).
 - **Model Deliberation (v0.7.1)** -- After initial response collection, each agent reads its peers' responses and produces a refined reply before any analysis runs. Configurable rounds (default 1), default on, non-fatal. All downstream analysis (dissent, NCG, quorum) operates on deliberated positions. Full API exposure (`deliberation_enabled`, `deliberation_rounds`) with SSE events for the streaming endpoint. See [`deliberation.md`](./deliberation.md).
+- **Interactive Mode Selector (v0.7.2)** -- Arrow-key terminal selector replaces static command suggestions after Docker setup and in the startup wrapper. TUI crash fix (`ShardNetworkPanel._nodes` collision with Textual internals).
 
 ---
 

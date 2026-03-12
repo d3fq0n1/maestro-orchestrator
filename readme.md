@@ -1,7 +1,7 @@
 
 # Maestro-Orchestrator
 
-![Version](https://img.shields.io/badge/version-v0.7.1-blue)
+![Version](https://img.shields.io/badge/version-v0.7.2-blue)
 ![License](https://img.shields.io/badge/license-Custom%20Open%20Use-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-green)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)
@@ -52,6 +52,7 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - **Weight State Snapshots** -- Save, restore, diff, and delete system configuration snapshots (plugins, agents, thresholds, runtime config)
 - **React/Vite Frontend** -- Full analysis dashboard (R2 grade, quorum bar, dissent, NCG drift, session browser)
 - **TUI Dashboard** -- Textual-based terminal dashboard optimized for SoC devices (Raspberry Pi 5). Mainframe-style single-keypress navigation, first-run API key setup wizard, BTOP-style shard network monitor with animated indicators, LAN shard discovery panel. Supports direct import and HTTP client modes
+- **Interactive Mode Selector** -- Arrow-key selector on startup and after Docker setup when no graphical browser is detected; choose TUI, CLI, or Web-UI without memorizing commands
 - **Unified Startup Wrapper** -- Single Docker entrypoint with a GUI that lets you choose Web-UI, CLI, or TUI mode
 - **Interactive CLI** -- Full orchestration pipeline in the terminal (REPL with agent responses, consensus, dissent, NCG, R2)
 - **Docker Support** -- Single-container deployment serving both UI and API
