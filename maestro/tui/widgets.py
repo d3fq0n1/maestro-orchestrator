@@ -63,7 +63,7 @@ class AgentPanel(Widget):
 
     def __init__(self, agent_names: list[str] | None = None, **kwargs):
         super().__init__(**kwargs)
-        self._agent_names = agent_names or ["Sol", "Aria", "Prism", "TempAgent"]
+        self._agent_names = agent_names or ["GPT-4o", "Claude Sonnet 4.6", "Gemini 2.5 Flash", "Llama 3.3 70B"]
         self._indicators: dict[str, AgentIndicator] = {}
 
     def compose(self) -> ComposeResult:

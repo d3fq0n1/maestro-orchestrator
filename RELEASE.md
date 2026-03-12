@@ -1,10 +1,20 @@
-# Maestro-Orchestrator v0.7.2
+# Maestro-Orchestrator v7.1.4
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
 
 ---
 
-## What's New in v0.7.2
+## What's New in v7.1.4
+
+### Fix Web UI Shard Visibility and Deprecated Agent Names
+
+The Storage Network panel in the Web UI now includes a **LAN Discovery** tab that shows discovered LAN peers, adjacency state, and Maestro Node formation status — matching the data the TUI already displays.
+
+The TUI Pipeline panel no longer shows deprecated codenames (Sol, Aria, Prism, TempAgent). It now displays the correct model names: GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B.
+
+Documentation updated throughout to replace deprecated agent codenames with display names in examples and references.
+
+### What was new in v0.7.2
 
 ### Interactive Mode Selector
 

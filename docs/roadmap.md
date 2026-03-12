@@ -1,6 +1,6 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v0.7.2
+**Current Version:** v7.1.4
 **Last Updated:** 2026-03-12
 **Maintainer:** defcon
 
@@ -42,6 +42,7 @@
 - **TUI Dashboard (v0.7.0)** -- Textual-based terminal dashboard optimized for SoC devices. Mainframe-style single-keypress navigation, first-run API key setup wizard, BTOP-style shard network monitor with animated indicators, LAN shard discovery panel. Full orchestration pipeline with live agent status, consensus/quorum/R2/dissent/NCG metrics, scrollable response viewer. Dual backend modes: direct import (in-process) and HTTP client (multi-device clusters).
 - **Model Deliberation (v0.7.1)** -- After initial response collection, each agent reads its peers' responses and produces a refined reply before any analysis runs. Configurable rounds (default 1), default on, non-fatal. All downstream analysis (dissent, NCG, quorum) operates on deliberated positions. Full API exposure (`deliberation_enabled`, `deliberation_rounds`) with SSE events for the streaming endpoint. See [`deliberation.md`](./deliberation.md).
 - **Interactive Mode Selector (v0.7.2)** -- Arrow-key terminal selector replaces static command suggestions after Docker setup and in the startup wrapper. TUI crash fix (`ShardNetworkPanel._nodes` collision with Textual internals).
+- **Web UI LAN Discovery & Agent Name Fix (v7.1.4)** -- Storage Network panel gains a LAN Discovery tab showing discovered peers, adjacency state, and Maestro Node formation status. TUI Pipeline panel now displays correct model names (GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B) instead of deprecated codenames. Documentation updated for consistency.
 
 ---
 

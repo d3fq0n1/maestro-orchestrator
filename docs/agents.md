@@ -1,6 +1,6 @@
 # Agent Layer -- Maestro-Orchestrator
 
-**Version:** v0.7.2
+**Version:** v7.1.4
 **Last Updated:** 2026-03-12
 **Maintainer:** defcon
 
@@ -32,12 +32,12 @@ Every agent implements one method: receive a prompt, return a response string. T
 
 ## Current Agent Council
 
-| Display Name         | Class      | Provider   | Model                                | Notes                                    |
-|----------------------|------------|------------|--------------------------------------|------------------------------------------|
-| GPT-4o               | `Sol`      | OpenAI     | `gpt-4o`                             | Primary reasoning engine                 |
-| Claude Sonnet 4.6    | `Aria`     | Anthropic  | `claude-sonnet-4-6`                  | Contextual analysis                      |
-| Gemini 2.5 Flash     | `Prism`    | Google     | `models/gemini-2.5-flash`            | Pattern-focused, low latency             |
-| Llama 3.3 70B        | `TempAgent`| OpenRouter | `meta-llama/llama-3.3-70b-instruct`  | Diversity anchor (open-weight model)     |
+| Display Name         | Class (internal) | Provider   | Model                                | Notes                                    |
+|----------------------|------------------|------------|--------------------------------------|------------------------------------------|
+| GPT-4o               | `Sol`            | OpenAI     | `gpt-4o`                             | Primary reasoning engine                 |
+| Claude Sonnet 4.6    | `Aria`           | Anthropic  | `claude-sonnet-4-6`                  | Contextual analysis                      |
+| Gemini 2.5 Flash     | `Prism`          | Google     | `models/gemini-2.5-flash`            | Pattern-focused, low latency             |
+| Llama 3.3 70B        | `TempAgent`      | OpenRouter | `meta-llama/llama-3.3-70b-instruct`  | Diversity anchor (open-weight model)     |
 | ShardNet             | `ShardAgent`| Distributed| `distributed`                       | Proof-of-storage distributed inference   |
 | MockAgent            | `MockAgent`| (built-in) | n/a                                 | Deterministic responses for testing      |
 | MockShardNode        | `MockShardNode`| (built-in)| n/a                              | Mock storage node for testing            |

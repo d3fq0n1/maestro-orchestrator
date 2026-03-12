@@ -953,8 +953,26 @@ function CommandSnippet({ command }: { command: string }) {
   );
 }
 
+interface DiscoveryPeer {
+  uid_short: string;
+  human_name: string;
+  host: string;
+  adjacency: string;
+  is_alive: boolean;
+  latency_ms: number;
+}
+
+interface DiscoverySnapshot {
+  identity: { human_name: string; uid: string; host: string; port: number };
+  node_status: { formed: boolean; member_names: string[] };
+  peer_count: number;
+  alive_count: number;
+  adjacent_count: number;
+  peers: Record<string, { human_name: string; host: string; adjacency: string; is_alive: boolean; latency_ms: number }>;
+}
+
 function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const [tab, setTab] = useState<"nodes" | "shards" | "shard-map" | "network">("network");
+  const [tab, setTab] = useState<"nodes" | "shards" | "shard-map" | "network" | "discovery">("network");
 
   // Nodes tab state
   const [nodes, setNodes] = useState<StorageNodeInfo[]>([]);
@@ -983,6 +1001,10 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
   const [topology, setTopology] = useState<NetworkTopology | null>(null);
   const [topoLoading, setTopoLoading] = useState(false);
 
+  // LAN Discovery state
+  const [discovery, setDiscovery] = useState<DiscoverySnapshot | null>(null);
+  const [discoveryLoading, setDiscoveryLoading] = useState(false);
+
   const loadTopology = async () => {
     setTopoLoading(true);
     try {
@@ -993,6 +1015,18 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
       }
     } catch { /* ignore */ }
     setTopoLoading(false);
+  };
+
+  const loadDiscovery = async () => {
+    setDiscoveryLoading(true);
+    try {
+      const res = await fetch("/api/storage/discovery");
+      if (res.ok) {
+        const data: DiscoverySnapshot = await res.json();
+        setDiscovery(data);
+      }
+    } catch { /* ignore */ }
+    setDiscoveryLoading(false);
   };
 
   const loadNodes = async () => {
@@ -1031,6 +1065,7 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
       if (tab === "nodes") loadNodes();
       else if (tab === "shards") loadModels();
       else if (tab === "network" || tab === "shard-map") loadTopology();
+      else if (tab === "discovery") loadDiscovery();
     }
   }, [visible, tab]);
 
@@ -1186,6 +1221,12 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
             onClick={() => setTab("shards")}
           >
             Shards
+          </button>
+          <button
+            className={`storage-tab${tab === "discovery" ? " storage-tab-active" : ""}`}
+            onClick={() => setTab("discovery")}
+          >
+            LAN Discovery
           </button>
         </div>
 
@@ -1690,6 +1731,108 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
               ))}
             </>
           )}
+
+          {/* ── LAN Discovery tab ── */}
+          {tab === "discovery" && (
+            <>
+              <div className="storage-tab-header">
+                <span className="muted">
+                  {discovery
+                    ? `${discovery.peer_count} peer${discovery.peer_count !== 1 ? "s" : ""} discovered, ${discovery.alive_count} alive, ${discovery.adjacent_count} adjacent`
+                    : "Loading..."}
+                </span>
+                <button className="toggle-btn" onClick={loadDiscovery} disabled={discoveryLoading}>
+                  {discoveryLoading ? "Loading..." : "Refresh"}
+                </button>
+              </div>
+
+              {discovery && (
+                <>
+                  {/* Identity card */}
+                  <div className="storage-node-card">
+                    <div className="storage-node-header">
+                      <span className="storage-node-id" style={{ fontWeight: 700 }}>
+                        {discovery.identity.human_name}
+                      </span>
+                      <span className="tag" style={{ background: "var(--color-ok)", color: "#fff" }}>
+                        Local
+                      </span>
+                      <span className="storage-node-host">
+                        {discovery.identity.host}:{discovery.identity.port}
+                      </span>
+                    </div>
+                    <div className="storage-node-stats">
+                      <span>UID: <strong>{discovery.identity.uid.slice(0, 8)}</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Node formation status */}
+                  <div className="storage-node-card">
+                    <div className="storage-node-header">
+                      <span className="storage-node-id">Maestro Node</span>
+                      <span
+                        className="tag"
+                        style={{
+                          background: discovery.node_status.formed ? "var(--color-ok)" : "var(--color-muted)",
+                          color: "#fff",
+                        }}
+                      >
+                        {discovery.node_status.formed ? "FORMED" : "Not Formed"}
+                      </span>
+                    </div>
+                    {discovery.node_status.formed ? (
+                      <div className="storage-node-stats">
+                        <span>Members: <strong>{discovery.node_status.member_names.join(", ")}</strong></span>
+                      </div>
+                    ) : (
+                      <p className="muted" style={{ margin: "0.3rem 0", fontSize: "0.82rem" }}>
+                        Need 3 adjacent shards to form a Maestro Node.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Peers */}
+                  {Object.keys(discovery.peers).length === 0 && (
+                    <div className="storage-empty">
+                      <p className="muted">No neighbors discovered yet. Waiting for LAN beacons...</p>
+                    </div>
+                  )}
+
+                  {Object.entries(discovery.peers).map(([uid, peer]) => (
+                    <div key={uid} className="storage-node-card">
+                      <div className="storage-node-header">
+                        <span className="storage-node-id" title={uid}>{peer.human_name}</span>
+                        <span
+                          className="tag"
+                          style={{
+                            background: peer.is_alive
+                              ? peer.adjacency === "confirmed" ? "var(--color-ok)" : "var(--color-warn)"
+                              : "var(--color-err)",
+                            color: "#fff",
+                          }}
+                        >
+                          {peer.is_alive ? peer.adjacency : "offline"}
+                        </span>
+                        <span className="storage-node-host">{peer.host}</span>
+                      </div>
+                      <div className="storage-node-stats">
+                        <span>UID: <strong>{uid.slice(0, 8)}</strong></span>
+                        {peer.latency_ms > 0 && (
+                          <span>Latency: <strong>{peer.latency_ms.toFixed(0)}ms</strong></span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {!discovery && !discoveryLoading && (
+                <div className="storage-empty">
+                  <p className="muted">LAN discovery is not running or unavailable.</p>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         <p className="settings-footer">
@@ -1699,6 +1842,8 @@ function StoragePanel({ visible, onClose }: { visible: boolean; onClose: () => v
             ? "Visual grid of which nodes hold which layer blocks. Green = redundant, yellow = single copy."
             : tab === "nodes"
             ? "Nodes auto-register when started with --orchestrator."
+            : tab === "discovery"
+            ? "LAN discovery uses UDP beacons to find nearby shard peers. 3 adjacent shards form a Maestro Node."
             : "Download shards from HuggingFace, then generate a node config to start serving."}
         </p>
       </div>
@@ -2084,7 +2229,7 @@ export default function MaestroUI() {
     <div className="maestro-root">
       <header className="maestro-header">
         <h1>Maestro-Orchestrator</h1>
-        <span className="version">v0.7.2</span>
+        <span className="version">v7.1.4</span>
         <div className="header-actions">
           <button
             className="toggle-btn settings-btn"

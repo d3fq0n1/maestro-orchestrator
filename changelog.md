@@ -1,5 +1,22 @@
 # Changelog
 
+## [7.1.4] - 2026-03-12
+
+### Added
+
+- **Web UI LAN Discovery tab** (`frontend/src/maestroUI.tsx`) — The Storage Network panel now includes a "LAN Discovery" tab that shows the local shard identity, Maestro Node formation status, and all discovered LAN peers with adjacency state, latency, and alive/offline indicators. This surfaces the same LAN discovery data that the TUI already displays.
+
+### Fixed
+
+- **TUI deprecated agent names** (`maestro/tui/widgets.py`) — The Pipeline panel was displaying deprecated codenames (Sol, Aria, Prism, TempAgent) due to hardcoded defaults in `AgentPanel`. Now correctly shows model display names: GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B.
+- **Documentation consistency** — Replaced deprecated agent codenames with display names in `docs/magi.md`, `docs/r2-engine.md`, and `docs/storage-network.md` examples and references.
+
+### Changed
+
+- **Version bumped to v7.1.4** across readme, frontend, docs, roadmap, node server, plugin manager, release notes, and changelog.
+
+---
+
 ## [0.7.2] - 2026-03-12
 
 ### Added
