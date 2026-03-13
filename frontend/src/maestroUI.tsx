@@ -2203,6 +2203,232 @@ function DependencyPanel({ visible, onClose }: { visible: boolean; onClose: () =
   );
 }
 
+/* ── Instance Management Panel ────────────────────────────────── */
+
+interface InstanceInfo {
+  number: number;
+  project: string;
+  port: number;
+  url: string;
+  healthy: boolean | null;
+  role: string;
+  shard_index: number | null;
+  human_name: string;
+  container_ip: string;
+}
+
+interface InstanceListResponse {
+  instances: InstanceInfo[];
+  total: number;
+  healthy: number;
+  shards: number;
+}
+
+function InstancePanel({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const [data, setData] = useState<InstanceListResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [spawning, setSpawning] = useState(false);
+  const [stopping, setStopping] = useState<number | null>(null);
+
+  const loadInstances = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/instances");
+      if (res.ok) {
+        setData(await res.json());
+      } else {
+        setError(`Server returned ${res.status}`);
+      }
+    } catch {
+      setError("Could not reach the backend.");
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (visible) {
+      setActionMsg(null);
+      loadInstances();
+    }
+  }, [visible]);
+
+  const handleSpawn = async () => {
+    setSpawning(true);
+    setActionMsg(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/instances/spawn", { method: "POST" });
+      if (res.ok) {
+        const info: InstanceInfo = await res.json();
+        const roleLabel = info.role === "shard" && info.shard_index != null
+          ? `shard [${info.shard_index}]`
+          : info.role;
+        setActionMsg(`\u2714 ${info.human_name} spawned as ${roleLabel} on :${info.port}`);
+        await loadInstances();
+      } else {
+        const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+        setError(body.detail || `Spawn failed (${res.status})`);
+      }
+    } catch {
+      setError("Could not reach the backend.");
+    }
+    setSpawning(false);
+  };
+
+  const handleStop = async (n: number) => {
+    setStopping(n);
+    setActionMsg(null);
+    setError(null);
+    try {
+      const res = await fetch(`/api/instances/${n}/stop`, { method: "POST" });
+      if (res.ok) {
+        setActionMsg(`\u2714 Instance #${n} stopped`);
+        await loadInstances();
+      } else {
+        const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+        setError(body.detail || `Stop failed (${res.status})`);
+      }
+    } catch {
+      setError("Could not reach the backend.");
+    }
+    setStopping(null);
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div className="settings-overlay" onClick={onClose}>
+      <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="settings-header">
+          <h2>Cluster Instances</h2>
+          <div className="settings-header-actions">
+            <button className="toggle-btn" onClick={handleSpawn} disabled={spawning}>
+              {spawning ? "Spawning..." : "+ Spawn"}
+            </button>
+            <button className="toggle-btn" onClick={loadInstances} disabled={loading}>
+              {loading ? "Loading..." : "Refresh"}
+            </button>
+            <button className="settings-close" onClick={onClose} aria-label="Close">
+              x
+            </button>
+          </div>
+        </div>
+
+        <div className="settings-body">
+          {error && (
+            <div className="agent-warning-item agent-warning-error">
+              <span className="agent-warning-title">Error</span>
+              <span className="agent-warning-detail">{error}</span>
+            </div>
+          )}
+          {actionMsg && (
+            <div
+              className="dep-summary"
+              style={{
+                padding: "0.5rem 0.75rem",
+                borderRadius: "6px",
+                marginBottom: "0.75rem",
+                background: "rgba(76, 175, 80, 0.1)",
+                border: "1px solid var(--color-ok)",
+                color: "var(--color-ok)",
+                fontWeight: 600,
+              }}
+            >
+              {actionMsg}
+            </div>
+          )}
+
+          {loading && !data && <p className="muted">Scanning cluster...</p>}
+
+          {data && (
+            <>
+              {/* Cluster Summary */}
+              <div
+                className="dep-summary"
+                style={{
+                  padding: "0.75rem 1rem",
+                  borderRadius: "6px",
+                  marginBottom: "1rem",
+                  background: data.total > 0 ? "rgba(76, 175, 80, 0.08)" : "rgba(100, 100, 100, 0.08)",
+                  border: `1px solid ${data.total > 0 ? "var(--color-ok)" : "var(--color-muted)"}`,
+                }}
+              >
+                <p style={{ margin: 0, fontWeight: 600 }}>
+                  {data.total > 0
+                    ? `${data.total} node${data.total !== 1 ? "s" : ""}, ${data.shards} shard${data.shards !== 1 ? "s" : ""}, ${data.healthy}/${data.total} healthy`
+                    : "No running instances. Press \u201c+ Spawn\u201d to start the first cluster member."}
+                </p>
+              </div>
+
+              {/* Instance Table */}
+              {data.instances.length > 0 && (
+                <table className="instance-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Name</th>
+                      <th>Role</th>
+                      <th>Port</th>
+                      <th>IP</th>
+                      <th>Health</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.instances.map((inst) => {
+                      const roleLabel = inst.role === "shard" && inst.shard_index != null
+                        ? `shard [${inst.shard_index}]`
+                        : inst.role;
+                      return (
+                        <tr key={inst.number}>
+                          <td>{inst.number}</td>
+                          <td>{inst.human_name || inst.project}</td>
+                          <td>
+                            <span className={`instance-role instance-role-${inst.role}`}>
+                              {roleLabel}
+                            </span>
+                          </td>
+                          <td>{inst.port}</td>
+                          <td className="muted">{inst.container_ip || "\u2014"}</td>
+                          <td>
+                            <span
+                              className="instance-health"
+                              style={{ color: inst.healthy ? "var(--color-ok)" : "var(--color-err)" }}
+                            >
+                              {inst.healthy ? "\u25cf healthy" : "\u25cf down"}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              className="instance-stop-btn"
+                              onClick={() => handleStop(inst.number)}
+                              disabled={stopping === inst.number}
+                              title={`Stop instance #${inst.number}`}
+                            >
+                              {stopping === inst.number ? "..." : "Stop"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </>
+          )}
+        </div>
+
+        <p className="settings-footer">
+          Manage Docker-based Maestro cluster instances. The first instance is the orchestrator; additional instances join as shard workers.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main ────────────────────────────────────────────────────── */
 
 export default function MaestroUI() {
@@ -2213,6 +2439,7 @@ export default function MaestroUI() {
   const [updateOpen, setUpdateOpen] = useState(false);
   const [storageOpen, setStorageOpen] = useState(false);
   const [depsOpen, setDepsOpen] = useState(false);
+  const [instancesOpen, setInstancesOpen] = useState(false);
 
   // Streaming state: the in-progress result being built up from SSE events
   const [streamEntry, setStreamEntry] = useState<Partial<OrchestratorResponse> | null>(null);
@@ -2419,6 +2646,13 @@ export default function MaestroUI() {
           </button>
           <button
             className="toggle-btn settings-btn"
+            onClick={() => setInstancesOpen(true)}
+            title="Manage cluster instances"
+          >
+            Instances
+          </button>
+          <button
+            className="toggle-btn settings-btn"
             onClick={() => setStorageOpen(true)}
             title="Storage Network"
           >
@@ -2442,6 +2676,7 @@ export default function MaestroUI() {
       </header>
 
       <DependencyPanel visible={depsOpen} onClose={() => setDepsOpen(false)} />
+      <InstancePanel visible={instancesOpen} onClose={() => setInstancesOpen(false)} />
       <StoragePanel visible={storageOpen} onClose={() => setStorageOpen(false)} />
       <UpdatePanel visible={updateOpen} onClose={() => setUpdateOpen(false)} />
       <ApiKeySettings visible={settingsOpen} onClose={() => setSettingsOpen(false)} />

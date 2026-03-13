@@ -54,6 +54,12 @@ This guide outlines the structure and behavior of the Maestro-Orchestrator front
   * **Shards tab** — Download form for HuggingFace model shards with layer range selection, live download status polling, per-model cards showing layer coverage, completeness, precision, file count, disk usage, verify/generate-config/remove actions
   * **LAN Discovery tab** — Shows the local shard identity, Maestro Node formation status (formed/not formed with member count), and discovered LAN peers with adjacency state (confirmed/handshake/discovered/offline), latency, and alive indicators. Surfaces the same data as the TUI's LAN Discovery panel
 
+* **Cluster Instance Panel:**
+  * View all running Maestro instances with health status, role (orchestrator/shard), port, and container IP
+  * Spawn new cluster members (first becomes orchestrator, additional join as shard workers)
+  * Stop individual instances or view the cluster summary
+  * Matches the TUI's Instance Manager (`M` key) functionality
+
 * **System Update Panel:**
   * Check for updates from the configured remote repository
   * View new commits available with one-line summaries
