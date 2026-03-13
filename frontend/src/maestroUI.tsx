@@ -2408,7 +2408,7 @@ export default function MaestroUI() {
       <UpdateBanner onOpen={() => setUpdateOpen(true)} />
       <header className="maestro-header">
         <h1>Maestro-Orchestrator</h1>
-        <span className="version">v7.1.6</span>
+        <span className="version">v7.2.0</span>
         <div className="header-actions">
           <button
             className="toggle-btn settings-btn"

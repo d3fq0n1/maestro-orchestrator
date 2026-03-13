@@ -103,7 +103,36 @@ Use `POST /api/cluster/proof/challenge` on the orchestrator to challenge all sha
 
 ## Running the Local Cluster
 
-### Full cluster (5 containers)
+### TUI Instance Manager (recommended)
+
+The easiest way to build a cluster is through the TUI:
+
+1. Launch the TUI: `python -m maestro.tui`
+2. Press `M` to open the Instance manager
+3. Press `+` to spawn cluster members
+
+The first spawn creates the **orchestrator** along with shared infrastructure (Docker network + Redis). Each subsequent `+` press spawns a new **shard worker** that auto-registers with the cluster. Every instance receives:
+
+- A human-readable name (e.g. "swift-falcon")
+- An auto-assigned shard index
+- A container IP on the shared cluster network
+- Cluster environment variables so all instances see each other
+
+The TUI dashboard shows the live cluster topology:
+
+```
+  #    Name             Role          Port    IP               Health
+  ──── ──────────────── ───────────── ─────── ──────────────── ──────────
+  1    bold-eagle       orchestrator  8000    172.18.0.2       ● healthy
+  2    swift-fox        shard [0]     8010    172.18.0.3       ● healthy
+  3    calm-owl         shard [1]     8020    172.18.0.4       ● healthy
+
+  Cluster: 3 node(s), 2 shard(s), 3/3 healthy
+```
+
+Press `1-9` to stop a specific instance, or `R` to refresh.
+
+### Full cluster via Docker Compose (5 containers)
 
 ```bash
 docker compose up --build

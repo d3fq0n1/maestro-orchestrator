@@ -1,7 +1,7 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v7.1.6
-**Last Updated:** 2026-03-12
+**Current Version:** v7.2.0
+**Last Updated:** 2026-03-13
 **Maintainer:** defcon
 
 ---
@@ -45,6 +45,7 @@
 - **Web UI LAN Discovery & Agent Name Fix (v7.1.4)** -- Storage Network panel gains a LAN Discovery tab showing discovered peers, adjacency state, and Maestro Node formation status. TUI Pipeline panel now displays correct model names (GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B) instead of deprecated codenames. Documentation updated for consistency.
 - **Automatic Background Updater (v7.1.5)** -- Background auto-updater that polls git for new commits at a configurable interval (10s–3600s) and optionally auto-applies updates. SSE stream endpoint for real-time notifications. WebUI live banner and auto-update controls. TUI background loop with event-driven notifications and toggle. FastAPI lifespan integration. New env vars: `MAESTRO_UPDATE_INTERVAL`, `MAESTRO_AUTO_APPLY_UPDATES`.
 - **TUI Node Detail Crash Fix (v7.1.6)** -- Fixed `NodeDetailScreen._nodes` collision with Textual internals (same class of bug as the v0.7.2 `ShardNetworkPanel` fix). Pressing `N` for node details no longer crashes the TUI.
+- **Cluster-Aware Instance Spawning (v7.2.0)** -- TUI Instance manager (`+` key) now spawns fully functional shard/node cluster members with auto-assigned names, IPs, and shard indices. First instance = orchestrator, subsequent = shard workers. Shared Docker network and Redis for inter-node communication. Persistent instance registry. Thread-safe TUI updates. 23 new tests.
 
 ---
 

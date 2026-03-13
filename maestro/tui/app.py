@@ -670,10 +670,11 @@ class UpdateScreen(ModalScreen[str | None]):
 # ───────────────────────────────────────────────────────────────────
 
 class InstanceScreen(ModalScreen[None]):
-    """Modal overlay for managing multiple Maestro Docker instances.
+    """Modal overlay for managing Maestro shard/node cluster instances.
 
-    Shows running instances and lets users spawn or stop them without
-    ever touching the command line.
+    Shows running instances with their cluster role, shard index,
+    human-readable name, and IP.  Lets users spawn or stop shard
+    members without ever touching the command line.
     """
 
     BINDINGS = [
@@ -688,9 +689,9 @@ class InstanceScreen(ModalScreen[None]):
         align: center middle;
     }
     #instance-dialog {
-        width: 74;
+        width: 80;
         height: auto;
-        max-height: 24;
+        max-height: 28;
         border: thick $primary;
         background: $surface;
         padding: 1 2;
@@ -699,15 +700,15 @@ class InstanceScreen(ModalScreen[None]):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._instances: list = []
+        self._instance_data: list = []
 
     def compose(self) -> ComposeResult:
         with Vertical(id="instance-dialog"):
-            yield Label("[bold]Maestro Instances[/]", id="instance-title")
+            yield Label("[bold]Maestro Cluster Instances[/]", id="instance-title")
             yield Static("", id="instance-table")
             yield Static("", id="instance-status")
             yield Static(
-                "\n[dim]  [b]+[/] Spawn new instance  "
+                "\n[dim]  [b]+[/] Spawn new shard  "
                 "[b]1-9[/] Stop instance #N  "
                 "[b]R[/] Refresh  "
                 "[b]Esc[/] Close[/]",
@@ -719,65 +720,103 @@ class InstanceScreen(ModalScreen[None]):
 
     @work(thread=True)
     def action_refresh(self) -> None:
-        self._set_status("  [yellow]\u25d4 Scanning...[/]")
+        self._set_status_threadsafe("  [yellow]\u25d4 Scanning cluster...[/]")
         try:
             from maestro.instances import get_all_status
-            self._instances = get_all_status()
+            self._instance_data = get_all_status()
             self.app.call_from_thread(self._render_table)
-            self._set_status("")
+            self._set_status_threadsafe("")
         except Exception as exc:
-            self._set_status(f"  [red]\u2718 {exc}[/]")
+            self._set_status_threadsafe(f"  [red]\u2718 {exc}[/]")
 
-    def _set_status(self, text: str) -> None:
+    def _set_status_threadsafe(self, text: str) -> None:
+        """Update the status label from any thread."""
+        try:
+            self.app.call_from_thread(self._do_set_status, text)
+        except Exception:
+            # Fallback for cases where app isn't available yet
+            try:
+                self.query_one("#instance-status", Static).update(text)
+            except Exception:
+                pass
+
+    def _do_set_status(self, text: str) -> None:
         try:
             self.query_one("#instance-status", Static).update(text)
         except Exception:
             pass
 
     def _render_table(self) -> None:
-        if not self._instances:
+        if not self._instance_data:
             self.query_one("#instance-table", Static).update(
                 "\n  [dim]No running instances.[/]\n"
-                "  Press [b]+[/] to spawn the first one.\n"
+                "  Press [b]+[/] to spawn the first shard.\n"
             )
             return
 
-        header = f"\n  {'#':<4} {'Instance':<14} {'Port':<8} {'URL':<28} {'Health'}"
-        sep = f"  {'─' * 4} {'─' * 14} {'─' * 8} {'─' * 28} {'─' * 10}"
+        header = (
+            f"\n  {'#':<4} {'Name':<16} {'Role':<13} "
+            f"{'Port':<7} {'IP':<16} {'Health'}"
+        )
+        sep = (
+            f"  {'─' * 4} {'─' * 16} {'─' * 13} "
+            f"{'─' * 7} {'─' * 16} {'─' * 10}"
+        )
         lines = [header, sep]
-        for inst in self._instances:
+        for inst in self._instance_data:
             health_str = (
                 "[green]\u25cf healthy[/]" if inst.healthy
                 else "[red]\u25cf down[/]"
             )
+            name = inst.human_name or inst.project
+            role_str = inst.role
+            if inst.role == "shard" and inst.shard_index is not None:
+                role_str = f"shard [{inst.shard_index}]"
+            ip_str = inst.container_ip or "[dim]pending[/]"
             lines.append(
-                f"  {inst.number:<4} {inst.project:<14} {inst.port:<8} "
-                f"{inst.url:<28} {health_str}"
+                f"  {inst.number:<4} {name:<16} {role_str:<13} "
+                f"{inst.port:<7} {ip_str:<16} {health_str}"
             )
+
+        # Cluster summary
+        total = len(self._instance_data)
+        healthy = sum(1 for i in self._instance_data if i.healthy)
+        shards = sum(1 for i in self._instance_data if i.role == "shard")
+        lines.append("")
+        lines.append(
+            f"  [dim]Cluster: {total} node(s), {shards} shard(s), "
+            f"{healthy}/{total} healthy[/]"
+        )
         lines.append("")
         self.query_one("#instance-table", Static).update("\n".join(lines))
 
     @work(thread=True)
     def action_spawn(self) -> None:
-        self._set_status("  [bold yellow]\u25d4 Spawning new instance...[/]")
+        self._set_status_threadsafe(
+            "  [bold yellow]\u25d4 Spawning new cluster member...[/]"
+        )
         try:
             from maestro.instances import spawn
 
             def _cb(msg):
-                self._set_status(f"  [yellow]\u25d4 {msg}[/]")
+                self._set_status_threadsafe(f"  [yellow]\u25d4 {msg}[/]")
 
             info = spawn(callback=_cb)
             health = "[green]healthy[/]" if info.healthy else "[yellow]starting[/]"
-            self._set_status(
-                f"  [bold green]\u2714 {info.project}[/] spawned on "
+            role_label = info.role
+            if info.role == "shard" and info.shard_index is not None:
+                role_label = f"shard [{info.shard_index}]"
+            self._set_status_threadsafe(
+                f"  [bold green]\u2714[/] [{info.human_name}] spawned as "
+                f"[bold]{role_label}[/] on "
                 f"[bold]:{info.port}[/] ({health})"
             )
             # Refresh the table
             from maestro.instances import get_all_status
-            self._instances = get_all_status()
+            self._instance_data = get_all_status()
             self.app.call_from_thread(self._render_table)
         except Exception as exc:
-            self._set_status(f"  [red]\u2718 Spawn failed: {exc}[/]")
+            self._set_status_threadsafe(f"  [red]\u2718 Spawn failed: {exc}[/]")
 
     def _stop_instance(self, n: int) -> None:
         """Stop instance *n* in a background thread."""
@@ -785,22 +824,32 @@ class InstanceScreen(ModalScreen[None]):
 
     @work(thread=True)
     def _do_stop(self, n: int) -> None:
-        self._set_status(f"  [yellow]\u25d4 Stopping maestro-{n}...[/]")
+        # Find the human name for the status message
+        name = f"maestro-{n}"
+        for inst in self._instance_data:
+            if inst.number == n and inst.human_name:
+                name = inst.human_name
+                break
+        self._set_status_threadsafe(f"  [yellow]\u25d4 Stopping [{name}]...[/]")
         try:
             from maestro.instances import stop as stop_instance
             stop_instance(n)
-            self._set_status(f"  [green]\u2714 maestro-{n} stopped[/]")
+            self._set_status_threadsafe(
+                f"  [green]\u2714 [{name}] stopped[/]"
+            )
             from maestro.instances import get_all_status
-            self._instances = get_all_status()
+            self._instance_data = get_all_status()
             self.app.call_from_thread(self._render_table)
         except Exception as exc:
-            self._set_status(f"  [red]\u2718 Stop failed: {exc}[/]")
+            self._set_status_threadsafe(f"  [red]\u2718 Stop failed: {exc}[/]")
 
     def on_key(self, event) -> None:
         """Handle number keys 1-9 to stop specific instances."""
         if event.character and event.character.isdigit():
             n = int(event.character)
-            if n > 0 and any(inst.number == n for inst in self._instances):
+            if n > 0 and any(
+                inst.number == n for inst in self._instance_data
+            ):
                 self._stop_instance(n)
                 event.prevent_default()
 
