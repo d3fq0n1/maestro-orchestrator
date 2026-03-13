@@ -16,6 +16,8 @@ help:
 	@echo "  make update   Pull latest changes and rebuild"
 	@echo "  make dev      Start local dev servers (no Docker)"
 	@echo ""
+	@echo "  Multi-instance management: launch the TUI and press M"
+	@echo ""
 
 # First-time setup: build, start, wait for healthy, open browser
 setup:
@@ -45,7 +47,7 @@ logs:
 status:
 	@docker compose ps
 	@echo ""
-	@docker compose exec maestro python -c \
+	@docker compose exec orchestrator python -c \
 		"import urllib.request, json; r = urllib.request.urlopen('http://localhost:8000/api/health'); print('  Health:', json.loads(r.read().decode())['status'])" \
 		2>/dev/null || echo "  Health: not reachable"
 

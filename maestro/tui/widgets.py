@@ -506,8 +506,8 @@ class StatusBar(Widget):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            " [b]?[/]:Help  [b]K[/]:Keys  [b]N[/]:Nodes  [b]D[/]:Deps  "
-            "[b]H[/]:History  [b]U[/]:Update  [b]S[/]:Setup  "
+            " [b]?[/]:Help  [b]M[/]:Instances  [b]K[/]:Keys  [b]N[/]:Nodes  "
+            "[b]D[/]:Deps  [b]U[/]:Update  [b]S[/]:Setup  "
             "[b]Q[/]:Quit",
             id="status-bar-content",
         )
@@ -515,13 +515,13 @@ class StatusBar(Widget):
     def set_stage(self, stage: str) -> None:
         self.query_one("#status-bar-content", Static).update(
             f" [bold yellow]{stage}[/]  |  "
-            "[b]?[/]:Help [b]K[/]:Keys [b]N[/]:Nodes [b]D[/]:Deps "
+            "[b]?[/]:Help [b]M[/]:Instances [b]K[/]:Keys [b]N[/]:Nodes "
             "[b]U[/]:Update [b]Q[/]:Quit"
         )
 
     def reset(self) -> None:
         self.query_one("#status-bar-content", Static).update(
-            " [b]?[/]:Help  [b]K[/]:Keys  [b]N[/]:Nodes  [b]D[/]:Deps  "
-            "[b]H[/]:History  [b]U[/]:Update  [b]S[/]:Setup  "
+            " [b]?[/]:Help  [b]M[/]:Instances  [b]K[/]:Keys  [b]N[/]:Nodes  "
+            "[b]D[/]:Deps  [b]U[/]:Update  [b]S[/]:Setup  "
             "[b]Q[/]:Quit"
         )

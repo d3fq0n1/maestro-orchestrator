@@ -71,6 +71,7 @@ class HelpScreen(ModalScreen[None]):
                 "  [b]?[/]           This help screen\n"
                 "  [b]S[/]           API key setup wizard\n"
                 "  [b]K[/]           Show API key status\n"
+                "  [b]M[/]           Manage instances (spawn / stop)\n"
                 "  [b]N[/]           Shard network / node details\n"
                 "  [b]D[/]           Dependency health check\n"
                 "  [b]H[/]           Recent session history\n"
@@ -665,6 +666,146 @@ class UpdateScreen(ModalScreen[str | None]):
 
 
 # ───────────────────────────────────────────────────────────────────
+# Instance manager screen (M key)
+# ───────────────────────────────────────────────────────────────────
+
+class InstanceScreen(ModalScreen[None]):
+    """Modal overlay for managing multiple Maestro Docker instances.
+
+    Shows running instances and lets users spawn or stop them without
+    ever touching the command line.
+    """
+
+    BINDINGS = [
+        ("escape", "dismiss", "Close"),
+        ("plus", "spawn", "Spawn"),
+        ("equal", "spawn", "Spawn"),      # unshifted + on US keyboards
+        ("r", "refresh", "Refresh"),
+    ]
+
+    DEFAULT_CSS = """
+    InstanceScreen {
+        align: center middle;
+    }
+    #instance-dialog {
+        width: 74;
+        height: auto;
+        max-height: 24;
+        border: thick $primary;
+        background: $surface;
+        padding: 1 2;
+    }
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._instances: list = []
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="instance-dialog"):
+            yield Label("[bold]Maestro Instances[/]", id="instance-title")
+            yield Static("", id="instance-table")
+            yield Static("", id="instance-status")
+            yield Static(
+                "\n[dim]  [b]+[/] Spawn new instance  "
+                "[b]1-9[/] Stop instance #N  "
+                "[b]R[/] Refresh  "
+                "[b]Esc[/] Close[/]",
+                id="instance-actions",
+            )
+
+    def on_mount(self) -> None:
+        self.action_refresh()
+
+    @work(thread=True)
+    def action_refresh(self) -> None:
+        self._set_status("  [yellow]\u25d4 Scanning...[/]")
+        try:
+            from maestro.instances import get_all_status
+            self._instances = get_all_status()
+            self.app.call_from_thread(self._render_table)
+            self._set_status("")
+        except Exception as exc:
+            self._set_status(f"  [red]\u2718 {exc}[/]")
+
+    def _set_status(self, text: str) -> None:
+        try:
+            self.query_one("#instance-status", Static).update(text)
+        except Exception:
+            pass
+
+    def _render_table(self) -> None:
+        if not self._instances:
+            self.query_one("#instance-table", Static).update(
+                "\n  [dim]No running instances.[/]\n"
+                "  Press [b]+[/] to spawn the first one.\n"
+            )
+            return
+
+        header = f"\n  {'#':<4} {'Instance':<14} {'Port':<8} {'URL':<28} {'Health'}"
+        sep = f"  {'─' * 4} {'─' * 14} {'─' * 8} {'─' * 28} {'─' * 10}"
+        lines = [header, sep]
+        for inst in self._instances:
+            health_str = (
+                "[green]\u25cf healthy[/]" if inst.healthy
+                else "[red]\u25cf down[/]"
+            )
+            lines.append(
+                f"  {inst.number:<4} {inst.project:<14} {inst.port:<8} "
+                f"{inst.url:<28} {health_str}"
+            )
+        lines.append("")
+        self.query_one("#instance-table", Static).update("\n".join(lines))
+
+    @work(thread=True)
+    def action_spawn(self) -> None:
+        self._set_status("  [bold yellow]\u25d4 Spawning new instance...[/]")
+        try:
+            from maestro.instances import spawn
+
+            def _cb(msg):
+                self._set_status(f"  [yellow]\u25d4 {msg}[/]")
+
+            info = spawn(callback=_cb)
+            health = "[green]healthy[/]" if info.healthy else "[yellow]starting[/]"
+            self._set_status(
+                f"  [bold green]\u2714 {info.project}[/] spawned on "
+                f"[bold]:{info.port}[/] ({health})"
+            )
+            # Refresh the table
+            from maestro.instances import get_all_status
+            self._instances = get_all_status()
+            self.app.call_from_thread(self._render_table)
+        except Exception as exc:
+            self._set_status(f"  [red]\u2718 Spawn failed: {exc}[/]")
+
+    def _stop_instance(self, n: int) -> None:
+        """Stop instance *n* in a background thread."""
+        self._do_stop(n)
+
+    @work(thread=True)
+    def _do_stop(self, n: int) -> None:
+        self._set_status(f"  [yellow]\u25d4 Stopping maestro-{n}...[/]")
+        try:
+            from maestro.instances import stop as stop_instance
+            stop_instance(n)
+            self._set_status(f"  [green]\u2714 maestro-{n} stopped[/]")
+            from maestro.instances import get_all_status
+            self._instances = get_all_status()
+            self.app.call_from_thread(self._render_table)
+        except Exception as exc:
+            self._set_status(f"  [red]\u2718 Stop failed: {exc}[/]")
+
+    def on_key(self, event) -> None:
+        """Handle number keys 1-9 to stop specific instances."""
+        if event.character and event.character.isdigit():
+            n = int(event.character)
+            if n > 0 and any(inst.number == n for inst in self._instances):
+                self._stop_instance(n)
+                event.prevent_default()
+
+
+# ───────────────────────────────────────────────────────────────────
 # Main application
 # ───────────────────────────────────────────────────────────────────
 
@@ -692,6 +833,7 @@ class MaestroTUI(App):
         Binding("n", "show_nodes", "Nodes", show=False, priority=True),
         Binding("d", "show_deps", "Deps", show=False, priority=True),
         Binding("h", "show_history_key", "History", show=False, priority=True),
+        Binding("m", "show_instances", "Instances", show=False, priority=True),
         Binding("i", "run_improve", "Improve", show=False, priority=True),
         Binding("u", "show_update", "Update", show=False, priority=True),
         Binding("l", "clear_log", "Clear", show=False, priority=True),
@@ -801,6 +943,9 @@ class MaestroTUI(App):
             return
         if lower in ("/update", "/updates"):
             self.action_show_update()
+            return
+        if lower in ("/instances", "/spawn", "/multi"):
+            self.action_show_instances()
             return
 
         if self._busy:
@@ -918,6 +1063,9 @@ class MaestroTUI(App):
     def action_show_deps(self) -> None:
         report = resolve_all()
         self.push_screen(DependencyScreen(report))
+
+    def action_show_instances(self) -> None:
+        self.push_screen(InstanceScreen())
 
     def action_show_update(self) -> None:
         self.push_screen(UpdateScreen())

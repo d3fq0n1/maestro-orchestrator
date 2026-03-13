@@ -6,10 +6,12 @@ Works on Windows, macOS, and Linux. Requires only Python 3.10+ and Docker.
 Replaces the bash-only setup.sh for universal compatibility.
 
 Usage:
-    python setup.py          # Build, start, wait for healthy, open browser
-    python setup.py --no-browser   # Skip opening the browser
-    python setup.py --dev    # Local dev mode (no Docker)
-    python setup.py --verbose      # Show full Docker build output
+    python setup.py                  # Build, start, wait for healthy, open browser
+    python setup.py --no-browser     # Skip opening the browser
+    python setup.py --dev            # Local dev mode (no Docker)
+    python setup.py --verbose        # Show full Docker build output
+
+Multi-instance management is available through the TUI (press M).
 """
 
 import itertools
@@ -649,6 +651,8 @@ def docker_setup(skip_browser: bool = False, verbose: bool = False) -> None:
         print("    make logs     Tail container logs")
         print("    make status   Check container health")
         print("    make down     Stop the container")
+        print()
+        print("  Multi-instance: launch the TUI and press M")
     else:
         print("  Useful commands:")
         print("    docker compose logs -f      Tail container logs")

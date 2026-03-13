@@ -73,20 +73,37 @@ class KeyStatus:
 
 
 def _default_env_path() -> Path:
-    """Resolve the `.env` file that dotenv loaded (or would load)."""
+    """Resolve the `.env` file that dotenv loaded (or would load).
+
+    Checks several candidate paths in priority order and returns the first
+    existing file.  If no `.env` file exists anywhere, creates one at the
+    best fallback location so callers never hit ``FileNotFoundError``.
+    """
     # In the Docker container the working directory is /app/backend,
     # and `orchestrator_foundry.py` loads `.env` from that directory.
+    env_file_var = os.environ.get("MAESTRO_ENV_FILE", "").strip()
+    project_root = Path(__file__).resolve().parent.parent
+
     candidates = [
-        Path(os.environ.get("MAESTRO_ENV_FILE", "")).resolve(),
+        Path(env_file_var).resolve() if env_file_var else None,
         Path.cwd() / ".env",
-        Path(__file__).resolve().parent.parent / "backend" / ".env",
-        Path(__file__).resolve().parent.parent / ".env",
+        project_root / "backend" / ".env",
+        project_root / ".env",
     ]
     for p in candidates:
-        if p.is_file():
+        if p is not None and p.is_file():
             return p
-    # Fall back to the backend location (will be created on first write).
-    return Path(__file__).resolve().parent.parent / "backend" / ".env"
+
+    # No .env found — create one.  Prefer the MAESTRO_ENV_FILE location
+    # (Docker volume-backed) if set, otherwise use the project root.
+    if env_file_var:
+        fallback = Path(env_file_var).resolve()
+    else:
+        fallback = project_root / ".env"
+
+    fallback.parent.mkdir(parents=True, exist_ok=True)
+    fallback.touch(exist_ok=True)
+    return fallback
 
 
 def mask_key(key: str) -> str:
