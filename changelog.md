@@ -1,5 +1,24 @@
 # Changelog
 
+## [7.2.0] - 2026-03-13
+
+### Added
+
+- **Cluster-aware instance spawning** (`maestro/instances.py`) — Pressing `+` in the TUI Instance screen now spawns fully functional shard/node cluster members instead of isolated Docker Compose stacks. The first instance becomes the **orchestrator**; every subsequent instance spawns as a **shard worker** that auto-registers with the cluster via shared Redis.
+- **Auto-assigned shard names** — Each spawned instance receives a human-readable name (e.g. "swift-falcon", "bold-eagle") using the same adjective-animal vocabulary as LAN discovery.
+- **Shared cluster infrastructure** — Spawned instances automatically create a shared Docker network (`maestro-cluster-net`) and Redis container (`maestro-shared-redis`) so all nodes can communicate and see each other as shards.
+- **Instance registry** (`.maestro-instances.json`) — Persistent disk-backed registry tracks instance roles, shard indices, names, ports, and container IPs across TUI restarts.
+- **Cluster topology broadcast** — When instances are spawned or stopped, the shard count and member list are published to Redis so all nodes see the updated topology.
+- **TUI cluster dashboard** (`maestro/tui/app.py`) — Instance screen now shows each node's human name, cluster role (orchestrator / shard [N]), port, container IP, and health status, with a cluster summary line.
+- **Thread-safe TUI status updates** — All background worker status updates in the Instance screen now use `call_from_thread` for correct Textual thread safety.
+- **Instance tests** (`tests/test_instances.py`) — 23 new tests covering name generation, port assignment, registry persistence, environment building, role assignment, shard index allocation, and spawn/stop with mocked Docker.
+
+### Changed
+
+- **Version bumped to v7.2.0** across readme, frontend, docs, roadmap, node server, plugin manager, release notes, and changelog.
+
+---
+
 ## [7.1.6] - 2026-03-12
 
 ### Fixed

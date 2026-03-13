@@ -1,10 +1,46 @@
-# Maestro-Orchestrator v7.1.6
+# Maestro-Orchestrator v7.2.0
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
 
 ---
 
-## What's New in v7.1.6
+## What's New in v7.2.0
+
+### Cluster-Aware Instance Spawning
+
+Pressing `+` in the TUI Instance screen now spawns **fully functional shard/node cluster members** that see each other as peers. No more isolated Docker stacks — each instance is a real member of a Maestro cluster.
+
+**How it works:**
+
+1. Press `M` to open the Instance manager, then `+` to spawn
+2. The first instance becomes the **orchestrator** (coordinator)
+3. Every subsequent instance spawns as a **shard worker** with an auto-assigned shard index
+4. All instances share a Docker network and Redis state bus, so they discover each other automatically
+5. Each instance gets a human-readable name (e.g. "swift-falcon", "bold-eagle")
+6. Container IPs, roles, and health are displayed in the TUI dashboard
+
+**Instance table now shows:**
+
+```
+  #    Name             Role          Port    IP               Health
+  ──── ──────────────── ───────────── ─────── ──────────────── ──────────
+  1    bold-eagle       orchestrator  8000    172.18.0.2       ● healthy
+  2    swift-fox        shard [0]     8010    172.18.0.3       ● healthy
+  3    calm-owl         shard [1]     8020    172.18.0.4       ● healthy
+
+  Cluster: 3 node(s), 2 shard(s), 3/3 healthy
+```
+
+**Technical details:**
+- Shared Docker network (`maestro-cluster-net`) for inter-node communication
+- Shared Redis container (`maestro-shared-redis`) for cluster state bus
+- Persistent instance registry (`.maestro-instances.json`) survives TUI restarts
+- Topology broadcast to Redis on every spawn/stop so all nodes see changes
+- Thread-safe TUI updates via `call_from_thread`
+
+---
+
+## What was new in v7.1.6
 
 ### TUI Node Detail Crash Fix
 

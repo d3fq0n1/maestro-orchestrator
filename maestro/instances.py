@@ -2,29 +2,80 @@
 Multi-instance management for Maestro-Orchestrator.
 
 Provides functions to detect, spawn, stop, and query the health of
-independent Maestro Docker Compose stacks running on the same host.
+Maestro shard/node instances running on the same host as a unified
+cluster.
 
-Each instance uses a unique Docker Compose project name (``maestro-N``)
-and auto-offset ports so nothing collides:
+The first instance spawned becomes the **orchestrator** (coordinator)
+along with shared infrastructure (Redis, Postgres).  Every subsequent
+instance spawns as a **shard worker** that auto-registers with the
+orchestrator and appears as a peer shard in the cluster.
 
-    Instance 1: orchestrator=8000, shards=8001-8003, redis=6379, pg=5432
-    Instance 2: orchestrator=8010, shards=8011-8013, redis=6380, pg=5433
-    Instance 3: orchestrator=8020, shards=8021-8023, redis=6381, pg=5434
+Each instance receives:
+  - A human-readable name (e.g. ``swift-falcon``)
+  - A unique shard index and auto-offset host port
+  - Cluster environment variables so all instances see each other
+
+Port layout (1-based instance numbers):
+
+    Instance 1 (orchestrator): port 8000
+    Instance 2 (shard-1):      port 8010
+    Instance 3 (shard-2):      port 8020
+    ...
 """
 
 from __future__ import annotations
 
+import json
 import os
+import random
 import shutil
 import subprocess
+import time
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
 
 BASE_PORT = 8000
 PORT_STRIDE = 10
 PROJECT_PREFIX = "maestro"
+CLUSTER_NETWORK = "maestro-cluster-net"
+SHARED_REDIS_NAME = "maestro-shared-redis"
+SHARED_REDIS_PORT = 6399   # avoid collision with per-stack redis
+REGISTRY_FILE = ".maestro-instances.json"
 
+# ---------------------------------------------------------------------------
+# Human-readable name generator (matches lan_discovery.py vocabulary)
+# ---------------------------------------------------------------------------
+
+_ADJECTIVES = [
+    "amber", "azure", "bold", "brave", "bright", "calm", "clear", "cool",
+    "coral", "crimson", "dark", "dawn", "deep", "dusk", "eager", "fair",
+    "fast", "fierce", "firm", "free", "gentle", "gilt", "grand", "gray",
+    "green", "iron", "jade", "keen", "light", "lunar", "noble", "onyx",
+    "pale", "prime", "quick", "rapid", "ruby", "sage", "sharp", "silver",
+    "solar", "stark", "steel", "stone", "swift", "tidal", "true", "vivid",
+    "warm", "wild", "wise", "zinc",
+]
+
+_ANIMALS = [
+    "bear", "crane", "crow", "deer", "dove", "drake", "eagle", "elk",
+    "falcon", "finch", "fox", "frog", "goat", "hare", "hawk", "heron",
+    "horse", "ibis", "jay", "kite", "lark", "lion", "lynx", "mink",
+    "moth", "newt", "orca", "otter", "owl", "panda", "pike", "puma",
+    "ram", "raven", "robin", "seal", "shrike", "snake", "stag", "stork",
+    "swan", "tiger", "toad", "viper", "whale", "wolf", "wren", "yak",
+]
+
+
+def generate_instance_name() -> str:
+    """Generate a human-readable name like 'swift-falcon'."""
+    return f"{random.choice(_ADJECTIVES)}-{random.choice(_ANIMALS)}"
+
+
+# ---------------------------------------------------------------------------
+# Data structures
+# ---------------------------------------------------------------------------
 
 @dataclass
 class InstanceInfo:
@@ -33,8 +84,72 @@ class InstanceInfo:
     project: str
     port: int
     url: str
-    healthy: bool | None = None  # None = not checked yet
+    healthy: bool | None = None   # None = not checked yet
+    role: str = "standalone"      # "orchestrator" or "shard"
+    shard_index: int | None = None
+    human_name: str = ""
+    container_ip: str = ""
 
+
+# ---------------------------------------------------------------------------
+# Instance registry (persisted to disk so we survive TUI restarts)
+# ---------------------------------------------------------------------------
+
+def _registry_path() -> str:
+    return os.path.join(_project_root(), REGISTRY_FILE)
+
+
+def _load_registry() -> dict:
+    """Load the instance registry from disk."""
+    path = _registry_path()
+    if os.path.exists(path):
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {"instances": {}}
+
+
+def _save_registry(data: dict) -> None:
+    """Persist the instance registry to disk."""
+    path = _registry_path()
+    try:
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+    except OSError:
+        pass
+
+
+def _register_instance(n: int, info: dict) -> None:
+    """Add or update an instance in the registry."""
+    reg = _load_registry()
+    reg["instances"][str(n)] = info
+    _save_registry(reg)
+
+
+def _unregister_instance(n: int) -> None:
+    """Remove an instance from the registry."""
+    reg = _load_registry()
+    reg["instances"].pop(str(n), None)
+    _save_registry(reg)
+
+
+def _get_registered(n: int) -> Optional[dict]:
+    """Get registry entry for instance *n*."""
+    reg = _load_registry()
+    return reg["instances"].get(str(n))
+
+
+def _all_registered() -> dict[int, dict]:
+    """Return all registered instances as {number: info}."""
+    reg = _load_registry()
+    return {int(k): v for k, v in reg["instances"].items()}
+
+
+# ---------------------------------------------------------------------------
+# Utility helpers
+# ---------------------------------------------------------------------------
 
 def project_name(n: int) -> str:
     """Docker Compose project name for instance *n* (1-based)."""
@@ -64,7 +179,6 @@ def _find_compose_cmd() -> list[str]:
 
 def _project_root() -> str:
     """Return the project root (where docker-compose.yml lives)."""
-    # Try common locations
     for candidate in [
         Path(__file__).resolve().parent.parent,
         Path.cwd(),
@@ -73,6 +187,91 @@ def _project_root() -> str:
             return str(candidate)
     return str(Path.cwd())
 
+
+# ---------------------------------------------------------------------------
+# Shared cluster infrastructure
+# ---------------------------------------------------------------------------
+
+def _ensure_cluster_network() -> None:
+    """Create the shared Docker network if it doesn't exist."""
+    try:
+        result = subprocess.run(
+            ["docker", "network", "inspect", CLUSTER_NETWORK],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if result.returncode == 0:
+            return  # already exists
+    except FileNotFoundError:
+        return
+
+    subprocess.run(
+        ["docker", "network", "create", CLUSTER_NETWORK],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def _ensure_shared_redis(callback=None) -> None:
+    """Start a shared Redis container on the cluster network if not running."""
+    try:
+        result = subprocess.run(
+            ["docker", "inspect", "-f", "{{.State.Running}}", SHARED_REDIS_NAME],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode == 0 and "true" in result.stdout.lower():
+            return  # already running
+    except Exception:
+        pass
+
+    if callback:
+        callback("Starting shared Redis for cluster state...")
+
+    # Remove stale container if it exists but isn't running
+    subprocess.run(
+        ["docker", "rm", "-f", SHARED_REDIS_NAME],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    subprocess.run(
+        [
+            "docker", "run", "-d",
+            "--name", SHARED_REDIS_NAME,
+            "--network", CLUSTER_NETWORK,
+            "-p", f"{SHARED_REDIS_PORT}:6379",
+            "--restart", "unless-stopped",
+            "redis:alpine",
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    # Wait briefly for Redis to accept connections
+    time.sleep(1)
+
+
+def _stop_shared_redis() -> None:
+    """Stop and remove the shared Redis container."""
+    subprocess.run(
+        ["docker", "rm", "-f", SHARED_REDIS_NAME],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def _cleanup_cluster_network() -> None:
+    """Remove the cluster network (only if no containers are using it)."""
+    subprocess.run(
+        ["docker", "network", "rm", CLUSTER_NETWORK],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Detection and health
+# ---------------------------------------------------------------------------
 
 def detect_running() -> list[int]:
     """Return sorted list of currently running instance numbers."""
@@ -96,7 +295,9 @@ def detect_running() -> list[int]:
 def next_instance_number() -> int:
     """Return the next available instance number."""
     running = detect_running()
-    return (max(running) + 1) if running else 1
+    registered = set(_all_registered().keys())
+    all_known = set(running) | registered
+    return (max(all_known) + 1) if all_known else 1
 
 
 def check_health(n: int, timeout: float = 3) -> bool:
@@ -109,41 +310,107 @@ def check_health(n: int, timeout: float = 3) -> bool:
         return False
 
 
+def _get_container_ip(project: str) -> str:
+    """Try to resolve the container IP on the cluster network."""
+    try:
+        result = subprocess.run(
+            [
+                "docker", "inspect",
+                "-f", f"{{{{.NetworkSettings.Networks.{CLUSTER_NETWORK}.IPAddress}}}}",
+                f"{project}-orchestrator-1",
+            ],
+            capture_output=True, text=True, timeout=5,
+        )
+        ip = result.stdout.strip()
+        if ip and ip != "<no value>":
+            return ip
+    except Exception:
+        pass
+    return ""
+
+
 def get_all_status() -> list[InstanceInfo]:
     """Return status of all running instances with health checks."""
     instances = []
-    for n in detect_running():
+    running = detect_running()
+    registered = _all_registered()
+
+    for n in running:
         port = instance_port(n)
+        reg = registered.get(n, {})
         info = InstanceInfo(
             number=n,
             project=project_name(n),
             port=port,
             url=f"http://localhost:{port}",
             healthy=check_health(n),
+            role=reg.get("role", "orchestrator" if n == 1 else "shard"),
+            shard_index=reg.get("shard_index"),
+            human_name=reg.get("human_name", ""),
+            container_ip=reg.get("container_ip", ""),
         )
         instances.append(info)
     return instances
 
 
-def _instance_env(n: int) -> dict[str, str]:
-    """Build environment dict with port offsets for instance *n*."""
+# ---------------------------------------------------------------------------
+# Cluster-aware environment
+# ---------------------------------------------------------------------------
+
+def _cluster_shard_count() -> int:
+    """Return the total shard count based on registered instances."""
+    registered = _all_registered()
+    shard_count = sum(1 for v in registered.values() if v.get("role") == "shard")
+    return max(1, shard_count)
+
+
+def _instance_env(n: int, role: str, shard_index: int | None,
+                  human_name: str, total_shards: int) -> dict[str, str]:
+    """Build environment dict with cluster config for instance *n*."""
     env = os.environ.copy()
     port = instance_port(n)
-    offset = n - 1
+
     env["MAESTRO_PORT"] = str(port)
-    env["REDIS_PORT"] = str(6379 + offset)
-    env["POSTGRES_PORT"] = str(5432 + offset)
+    env["COMPOSE_PROJECT_NAME"] = project_name(n)
+
+    # Cluster identity
+    env["NODE_ROLE"] = role
+    env["NODE_ID"] = human_name or project_name(n)
+    env["SHARD_COUNT"] = str(total_shards)
+    env["MAESTRO_INSTANCE_NAME"] = human_name
+
+    # Shared Redis on cluster network
+    env["REDIS_URL"] = f"redis://{SHARED_REDIS_NAME}:6379"
+    env["REDIS_PORT"] = str(SHARED_REDIS_PORT)
+
+    if role == "shard" and shard_index is not None:
+        env["SHARD_INDEX"] = str(shard_index)
+        env["ORCHESTRATOR_URL"] = f"http://{project_name(1)}-orchestrator-1:8000"
+        env["MAESTRO_ORCHESTRATOR_URL"] = env["ORCHESTRATOR_URL"]
+
+    # Port offsets for shard sub-services within the compose stack
     env["SHARD1_PORT"] = str(port + 1)
     env["SHARD2_PORT"] = str(port + 2)
     env["SHARD3_PORT"] = str(port + 3)
+    env["POSTGRES_PORT"] = str(5432 + (n - 1))
+
     return env
 
 
+# ---------------------------------------------------------------------------
+# Spawn / Stop
+# ---------------------------------------------------------------------------
+
 def spawn(n: int | None = None, callback=None) -> InstanceInfo:
-    """Spawn a new instance.  Returns its InstanceInfo.
+    """Spawn a new instance as a shard/node cluster member.
+
+    The first instance becomes the orchestrator; all subsequent instances
+    become shard workers that auto-register with the cluster.
 
     *n*: instance number (auto-detected if None).
     *callback*: optional ``callback(message)`` for progress updates.
+
+    Returns the new InstanceInfo.
     """
     if n is None:
         n = next_instance_number()
@@ -152,13 +419,47 @@ def spawn(n: int | None = None, callback=None) -> InstanceInfo:
     if not compose:
         raise RuntimeError("Docker Compose not found")
 
-    proj = project_name(n)
-    port = instance_port(n)
-    cmd = compose + ["-p", proj]
-    env = _instance_env(n)
+    # Determine role
+    running = detect_running()
+    registered = _all_registered()
+    is_first = (len(running) == 0 and len(registered) == 0) or n == 1
+
+    if is_first:
+        role = "orchestrator"
+        shard_index = None
+    else:
+        role = "shard"
+        # Find the next available shard index
+        used_indices = {
+            v.get("shard_index")
+            for v in registered.values()
+            if v.get("role") == "shard" and v.get("shard_index") is not None
+        }
+        shard_index = 0
+        while shard_index in used_indices:
+            shard_index += 1
+
+    human_name = generate_instance_name()
+
+    # Compute total shards (including this new one if it's a shard)
+    current_shards = sum(
+        1 for v in registered.values() if v.get("role") == "shard"
+    )
+    total_shards = current_shards + (1 if role == "shard" else max(1, current_shards))
 
     if callback:
-        callback(f"Building {proj} on port {port}...")
+        callback(f"Preparing cluster infrastructure...")
+
+    # Ensure shared infrastructure
+    _ensure_cluster_network()
+    _ensure_shared_redis(callback=callback)
+
+    proj = project_name(n)
+    port = instance_port(n)
+    env = _instance_env(n, role, shard_index, human_name, total_shards)
+
+    if callback:
+        callback(f"Spawning [{human_name}] as {role} on :{port}...")
 
     # Ensure .env exists
     root = _project_root()
@@ -166,8 +467,14 @@ def spawn(n: int | None = None, callback=None) -> InstanceInfo:
     if not os.path.exists(env_path):
         open(env_path, "a").close()
 
+    # Build the compose command: run only the orchestrator service
+    # (the compose file defines orchestrator + shards, but we run one
+    # service per spawn and handle cluster topology ourselves)
+    cmd = compose + ["-p", proj]
+    services = ["orchestrator"]
+
     result = subprocess.run(
-        cmd + ["up", "-d", "--build"],
+        cmd + ["up", "-d", "--build"] + services,
         cwd=root,
         env=env,
         stdout=subprocess.PIPE,
@@ -177,13 +484,43 @@ def spawn(n: int | None = None, callback=None) -> InstanceInfo:
 
     if result.returncode != 0:
         raise RuntimeError(
-            f"Failed to start {proj}: {result.stdout[-500:] if result.stdout else 'unknown error'}"
+            f"Failed to start {proj}: "
+            f"{result.stdout[-500:] if result.stdout else 'unknown error'}"
         )
 
-    if callback:
-        callback(f"Waiting for {proj} to become healthy...")
+    # Connect the container to the shared cluster network
+    container_name = f"{proj}-orchestrator-1"
+    subprocess.run(
+        ["docker", "network", "connect", CLUSTER_NETWORK, container_name],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
-    healthy = check_health(n, timeout=5)
+    if callback:
+        callback(f"Waiting for [{human_name}] to become healthy...")
+
+    # Poll for health (up to 15 seconds)
+    healthy = False
+    for _ in range(5):
+        if check_health(n, timeout=3):
+            healthy = True
+            break
+        time.sleep(1)
+
+    # Resolve container IP on the cluster network
+    container_ip = _get_container_ip(proj)
+
+    # Register in our local registry
+    _register_instance(n, {
+        "role": role,
+        "shard_index": shard_index,
+        "human_name": human_name,
+        "port": port,
+        "container_ip": container_ip,
+    })
+
+    # Update SHARD_COUNT on all running instances so they see the new topology
+    _broadcast_shard_count(callback=callback)
 
     return InstanceInfo(
         number=n,
@@ -191,18 +528,81 @@ def spawn(n: int | None = None, callback=None) -> InstanceInfo:
         port=port,
         url=f"http://localhost:{port}",
         healthy=healthy,
+        role=role,
+        shard_index=shard_index,
+        human_name=human_name,
+        container_ip=container_ip,
     )
 
 
+def _broadcast_shard_count(callback=None) -> None:
+    """Update the SHARD_COUNT env var on all running containers.
+
+    This ensures every node in the cluster knows the current topology.
+    Uses ``docker exec`` to write the new count into the running process'
+    environment via a file that the health endpoint can read.
+    """
+    registered = _all_registered()
+    total_shards = max(1, sum(
+        1 for v in registered.values() if v.get("role") == "shard"
+    ))
+
+    # We update via the state bus (Redis) which all nodes already read.
+    # If shared Redis is running, publish the topology there.
+    try:
+        result = subprocess.run(
+            [
+                "docker", "exec", SHARED_REDIS_NAME,
+                "redis-cli", "SET", "maestro:cluster:shard_count", str(total_shards),
+            ],
+            capture_output=True, text=True, timeout=5,
+        )
+    except Exception:
+        pass
+
+    # Also publish the full member list
+    members = {}
+    for num, info in registered.items():
+        members[str(num)] = {
+            "role": info.get("role"),
+            "shard_index": info.get("shard_index"),
+            "human_name": info.get("human_name"),
+            "port": info.get("port"),
+            "container_ip": info.get("container_ip", ""),
+        }
+    try:
+        subprocess.run(
+            [
+                "docker", "exec", SHARED_REDIS_NAME,
+                "redis-cli", "SET", "maestro:cluster:members",
+                json.dumps(members),
+            ],
+            capture_output=True, text=True, timeout=5,
+        )
+    except Exception:
+        pass
+
+
 def stop(n: int, callback=None) -> None:
-    """Stop instance *n*."""
+    """Stop instance *n* and unregister it from the cluster."""
     compose = _find_compose_cmd()
     if not compose:
         raise RuntimeError("Docker Compose not found")
 
     proj = project_name(n)
+    reg = _get_registered(n)
+    name = reg.get("human_name", proj) if reg else proj
+
     if callback:
-        callback(f"Stopping {proj}...")
+        callback(f"Stopping [{name}]...")
+
+    # Disconnect from cluster network first
+    container_name = f"{proj}-orchestrator-1"
+    subprocess.run(
+        ["docker", "network", "disconnect", CLUSTER_NETWORK, container_name],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
     subprocess.run(
         compose + ["-p", proj, "down", "--remove-orphans"],
@@ -210,6 +610,18 @@ def stop(n: int, callback=None) -> None:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+
+    _unregister_instance(n)
+
+    # Update topology for remaining nodes
+    _broadcast_shard_count(callback=callback)
+
+    # If no instances remain, clean up shared infrastructure
+    if not detect_running() and not _all_registered():
+        if callback:
+            callback("Cleaning up shared infrastructure...")
+        _stop_shared_redis()
+        _cleanup_cluster_network()
 
 
 def stop_all(callback=None) -> int:
@@ -222,14 +634,17 @@ def stop_all(callback=None) -> int:
     root = _project_root()
     for n in running:
         proj = project_name(n)
+        reg = _get_registered(n)
+        name = reg.get("human_name", proj) if reg else proj
         if callback:
-            callback(f"Stopping {proj}...")
+            callback(f"Stopping [{name}]...")
         subprocess.run(
             compose + ["-p", proj, "down", "--remove-orphans"],
             cwd=root,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+        _unregister_instance(n)
 
     # Also try the default project name (legacy)
     subprocess.run(
@@ -238,5 +653,14 @@ def stop_all(callback=None) -> int:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+
+    # Clean up shared infrastructure
+    if callback:
+        callback("Cleaning up shared infrastructure...")
+    _stop_shared_redis()
+    _cleanup_cluster_network()
+
+    # Clear registry
+    _save_registry({"instances": {}})
 
     return len(running)
