@@ -1306,6 +1306,82 @@ code {
   vertical-align: middle;
 }
 
+/* ── Instance Management Panel ─────────────────────────────── */
+
+.instance-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-top: 0.5rem;
+}
+
+.instance-table th,
+.instance-table td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.instance-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.instance-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.instance-role {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.instance-role-orchestrator {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.instance-role-shard {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--color-ok);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.instance-health {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.instance-stop-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.instance-stop-btn:hover:not(:disabled) {
+  border-color: var(--color-err);
+  color: var(--color-err);
+}
+
+.instance-stop-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Fade-in for progressively arriving agent cards */
 .agent-card {
   animation: fade-slide-in 0.3s ease-out;

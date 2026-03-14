@@ -15,6 +15,7 @@ from maestro.api_update import router as update_router
 from maestro.api_storage import router as storage_router
 from maestro.api_plugins import router as plugins_router
 from maestro.api_cluster import router as cluster_router
+from maestro.api_instances import router as instances_router
 from maestro.updater import get_auto_updater
 
 
@@ -53,6 +54,7 @@ app.include_router(update_router)
 app.include_router(storage_router)
 app.include_router(plugins_router)
 app.include_router(cluster_router)
+app.include_router(instances_router)
 
 # === Health check ===
 @app.get("/api/health")
