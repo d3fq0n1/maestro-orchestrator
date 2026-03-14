@@ -19,10 +19,13 @@ from maestro.instances import (
     CLUSTER_NETWORK,
     PORT_STRIDE,
     SHARED_REDIS_NAME,
+    SHARED_REDIS_PORT,
     InstanceInfo,
     _all_registered,
     _cluster_shard_count,
+    _ensure_shared_redis,
     _instance_env,
+    _is_port_available,
     _load_registry,
     _register_instance,
     _save_registry,
@@ -134,6 +137,15 @@ class TestInstanceEnv:
         assert SHARED_REDIS_NAME in env["REDIS_URL"]
         assert "SHARD_INDEX" not in env
 
+    def test_redis_port_not_in_env(self):
+        """REDIS_PORT must NOT be set — it controls docker-compose host port
+        binding and would collide with the shared redis container."""
+        env = _instance_env(
+            n=1, role="orchestrator", shard_index=None,
+            human_name="bold-eagle", total_shards=1,
+        )
+        assert "REDIS_PORT" not in env
+
     def test_shard_env(self):
         env = _instance_env(
             n=2, role="shard", shard_index=0,
@@ -232,6 +244,55 @@ class TestInstanceInfo:
         assert info.role == "shard"
         assert info.shard_index == 0
         assert info.human_name == "swift-fox"
+
+
+# ---------------------------------------------------------------------------
+# Port availability & shared Redis guard
+# ---------------------------------------------------------------------------
+
+class TestPortAvailability:
+    def test_free_port(self):
+        """An unused high port should be available."""
+        import socket
+        # Find a free port by binding to 0
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("", 0))
+            free_port = s.getsockname()[1]
+        assert _is_port_available(free_port) is True
+
+    def test_occupied_port(self):
+        """A port that's already bound should be unavailable."""
+        import socket
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("0.0.0.0", 0))
+            occupied_port = s.getsockname()[1]
+            s.listen(1)
+            assert _is_port_available(occupied_port) is False
+
+
+class TestEnsureSharedRedisGuard:
+    @patch("maestro.instances.subprocess.run")
+    @patch("maestro.instances._is_port_available", return_value=False)
+    def test_raises_when_port_occupied(self, mock_port, mock_run):
+        """If the shared Redis port is occupied, _ensure_shared_redis raises."""
+        # Simulate: container not already running
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="")
+        with pytest.raises(RuntimeError, match="already in use"):
+            _ensure_shared_redis()
+
+    @patch("maestro.instances.subprocess.run")
+    @patch("maestro.instances._is_port_available", return_value=True)
+    def test_raises_when_docker_run_fails(self, mock_port, mock_run):
+        """If docker run itself fails, _ensure_shared_redis raises."""
+        # First call: inspect (not running)
+        inspect_result = MagicMock(returncode=1, stdout="", stderr="")
+        # Second call: docker rm
+        rm_result = MagicMock(returncode=0)
+        # Third call: docker run (failure)
+        run_result = MagicMock(returncode=1, stdout="", stderr="port is already allocated")
+        mock_run.side_effect = [inspect_result, rm_result, run_result]
+        with pytest.raises(RuntimeError, match="Failed to start shared Redis"):
+            _ensure_shared_redis()
 
 
 # ---------------------------------------------------------------------------

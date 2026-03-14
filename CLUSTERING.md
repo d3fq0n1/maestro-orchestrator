@@ -31,7 +31,7 @@ Maestro can run as a distributed multi-node cluster where a primary orchestrator
 
 **Shard workers** — Run the node_server FastAPI app. Accept tasks that fall within their assigned keyspace. Register themselves with the orchestrator and Redis on startup.
 
-**Redis** — Shared state bus. Tracks task assignments, shard registrations, storage proofs, and cluster health. Optional: if `REDIS_URL` is not set, the system falls back to in-process state (single-node mode).
+**Redis** — Shared state bus. Tracks task assignments, shard registrations, storage proofs, and cluster health. In cluster mode (TUI instance manager), a dedicated shared Redis container (`maestro-shared-redis`) is started on host port **6399** to avoid collisions with per-stack Redis (default 6379). Per-stack Redis/Postgres services from docker-compose.yml are **not** started in cluster mode — the shared container handles all state. If `REDIS_URL` is not set, the system falls back to in-process state (single-node mode).
 
 **Postgres** — Persistent ledger storage. Optional for local development.
 
@@ -111,7 +111,7 @@ The easiest way to build a cluster is through the TUI:
 2. Press `M` to open the Instance manager
 3. Press `+` to spawn cluster members
 
-The first spawn creates the **orchestrator** along with shared infrastructure (Docker network + Redis). Each subsequent `+` press spawns a new **shard worker** that auto-registers with the cluster. Every instance receives:
+The first spawn creates the **orchestrator** along with shared infrastructure (Docker network + shared Redis on port 6399). Each subsequent `+` press spawns a new **shard worker** that auto-registers with the cluster. If port 6399 is already in use by another process, the spawn will fail with a clear error message — stop the conflicting process before retrying. Every instance receives:
 
 - A human-readable name (e.g. "swift-falcon")
 - An auto-assigned shard index
