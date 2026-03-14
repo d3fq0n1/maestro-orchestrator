@@ -433,6 +433,54 @@ def _instance_env(n: int, role: str, shard_index: int | None,
 # Spawn / Stop
 # ---------------------------------------------------------------------------
 
+def _cleanup_stale_project(proj: str, compose: list[str],
+                           callback=None) -> None:
+    """Tear down a stale compose project that may still hold port bindings."""
+    root = _project_root()
+    # Check if there are any containers (running or stopped) for this project
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "-a", "-q", "--filter", f"label=com.docker.compose.project={proj}"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.stdout.strip():
+            if callback:
+                callback(f"Cleaning up stale containers for {proj}...")
+            subprocess.run(
+                compose + ["-p", proj, "down", "--remove-orphans", "--timeout", "5"],
+                cwd=root,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=30,
+            )
+    except Exception:
+        pass
+
+
+def _release_port(port: int, callback=None) -> None:
+    """Remove any Docker container bound to *port* on the host."""
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "-q", "--filter", f"publish={port}"],
+            capture_output=True, text=True, timeout=10,
+        )
+        container_ids = result.stdout.strip()
+        if container_ids:
+            if callback:
+                callback(f"Removing containers bound to port {port}...")
+            for cid in container_ids.splitlines():
+                subprocess.run(
+                    ["docker", "rm", "-f", cid],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=10,
+                )
+            # Give the OS a moment to release the socket
+            time.sleep(1)
+    except Exception:
+        pass
+
+
 def spawn(n: int | None = None, callback=None) -> InstanceInfo:
     """Spawn a new instance as a shard/node cluster member.
 
@@ -488,6 +536,22 @@ def spawn(n: int | None = None, callback=None) -> InstanceInfo:
 
     proj = project_name(n)
     port = instance_port(n)
+
+    # ── Pre-flight: clean up stale containers & check port ──────────
+    # A previous instance may have been killed without a proper `stop`,
+    # leaving a dead container that still holds the host port binding.
+    # Tear down any leftover compose project for this slot first.
+    _cleanup_stale_project(proj, compose, callback=callback)
+
+    # Also kill any non-Maestro container squatting on the port.
+    _release_port(port, callback=callback)
+
+    if not _is_port_available(port):
+        raise RuntimeError(
+            f"Port {port} is still in use after cleanup. "
+            f"Stop the process occupying port {port} before spawning instance {n}."
+        )
+
     env = _instance_env(n, role, shard_index, human_name, total_shards)
 
     if callback:
