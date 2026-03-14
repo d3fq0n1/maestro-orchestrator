@@ -29,6 +29,7 @@ import json
 import os
 import random
 import shutil
+import socket
 import subprocess
 import time
 import urllib.request
@@ -212,8 +213,23 @@ def _ensure_cluster_network() -> None:
     )
 
 
+def _is_port_available(port: int) -> bool:
+    """Return True if *port* is free on all local interfaces."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(1)
+            s.bind(("0.0.0.0", port))
+        return True
+    except OSError:
+        return False
+
+
 def _ensure_shared_redis(callback=None) -> None:
-    """Start a shared Redis container on the cluster network if not running."""
+    """Start a shared Redis container on the cluster network if not running.
+
+    Raises ``RuntimeError`` if the designated port is occupied by a process
+    other than the expected shared-redis container.
+    """
     try:
         result = subprocess.run(
             ["docker", "inspect", "-f", "{{.State.Running}}", SHARED_REDIS_NAME],
@@ -223,6 +239,14 @@ def _ensure_shared_redis(callback=None) -> None:
             return  # already running
     except Exception:
         pass
+
+    # Before starting, verify the host port is actually available.
+    if not _is_port_available(SHARED_REDIS_PORT):
+        raise RuntimeError(
+            f"Port {SHARED_REDIS_PORT} is already in use by another process. "
+            f"Stop the process occupying port {SHARED_REDIS_PORT} or set a "
+            f"different SHARED_REDIS_PORT before spawning."
+        )
 
     if callback:
         callback("Starting shared Redis for cluster state...")
@@ -234,7 +258,7 @@ def _ensure_shared_redis(callback=None) -> None:
         stderr=subprocess.DEVNULL,
     )
 
-    subprocess.run(
+    result = subprocess.run(
         [
             "docker", "run", "-d",
             "--name", SHARED_REDIS_NAME,
@@ -243,9 +267,14 @@ def _ensure_shared_redis(callback=None) -> None:
             "--restart", "unless-stopped",
             "redis:alpine",
         ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        capture_output=True, text=True,
     )
+
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or "unknown error"
+        raise RuntimeError(
+            f"Failed to start shared Redis container: {detail}"
+        )
 
     # Wait briefly for Redis to accept connections
     time.sleep(1)
@@ -379,9 +408,12 @@ def _instance_env(n: int, role: str, shard_index: int | None,
     env["SHARD_COUNT"] = str(total_shards)
     env["MAESTRO_INSTANCE_NAME"] = human_name
 
-    # Shared Redis on cluster network
+    # Shared Redis on cluster network — the app connects by container name
+    # on the internal 6379 port.  Do NOT set REDIS_PORT here: that variable
+    # controls the *host port mapping* in docker-compose.yml and would cause
+    # the per-stack redis service to collide with the shared redis container
+    # that is already bound to SHARED_REDIS_PORT on the host.
     env["REDIS_URL"] = f"redis://{SHARED_REDIS_NAME}:6379"
-    env["REDIS_PORT"] = str(SHARED_REDIS_PORT)
 
     if role == "shard" and shard_index is not None:
         env["SHARD_INDEX"] = str(shard_index)
@@ -469,12 +501,15 @@ def spawn(n: int | None = None, callback=None) -> InstanceInfo:
 
     # Build the compose command: run only the orchestrator service
     # (the compose file defines orchestrator + shards, but we run one
-    # service per spawn and handle cluster topology ourselves)
+    # service per spawn and handle cluster topology ourselves).
+    # --no-deps prevents Docker Compose from also starting the per-stack
+    # redis/postgres services declared in depends_on — cluster mode uses
+    # the shared redis container started by _ensure_shared_redis() instead.
     cmd = compose + ["-p", proj]
     services = ["orchestrator"]
 
     result = subprocess.run(
-        cmd + ["up", "-d", "--build"] + services,
+        cmd + ["up", "-d", "--no-deps", "--build"] + services,
         cwd=root,
         env=env,
         stdout=subprocess.PIPE,

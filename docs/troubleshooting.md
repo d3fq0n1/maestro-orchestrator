@@ -75,6 +75,31 @@ Each API provider has its own rate limits. If an agent returns errors:
 - Press `P` to focus the prompt input when you want to type a query
 - If the TUI auto-opens the setup wizard, it means no API keys are configured — paste at least one key to continue
 
+### Redis port conflict when spawning cluster instances
+
+If you see `Bind for 0.0.0.0:6399 failed: port is already allocated` when spawning a shard via the TUI instance manager, it means another process is already using port 6399. Common causes:
+
+1. **A previous `maestro-shared-redis` container wasn't cleaned up.** Run:
+   ```bash
+   docker rm -f maestro-shared-redis
+   ```
+
+2. **Another Redis or service is bound to port 6399.** Identify it with:
+   ```bash
+   # Linux
+   ss -tlnp | grep 6399
+   # macOS
+   lsof -i :6399
+   ```
+   Stop the conflicting process, then retry.
+
+3. **A full `docker compose up` was run before using the TUI instance manager.** The per-stack Redis in docker-compose.yml uses `REDIS_PORT` (default 6379), but if `REDIS_PORT=6399` leaked into your environment it will collide. Unset it:
+   ```bash
+   unset REDIS_PORT
+   ```
+
+The TUI instance manager now checks port availability before starting the shared Redis container and will display a clear error if the port is occupied.
+
 ### TUI crashes when pressing N (Nodes)
 
 If you see `AttributeError: 'list' object has no attribute '_append'` when pressing `N` to open the Node Details modal, this was a bug where `NodeDetailScreen` stored node data as `self._nodes`, overwriting Textual's internal `_nodes` attribute. Fixed in v7.1.6 — renamed to `self._node_data`.

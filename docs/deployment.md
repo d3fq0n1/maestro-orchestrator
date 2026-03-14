@@ -182,6 +182,7 @@ In production, make sure to:
   - Health check with 30s start period
   - `restart: unless-stopped` for crash recovery
   - Named volumes for session, R2, and key persistence
+  - **Note:** In cluster mode (TUI instance manager), per-stack Redis/Postgres from this file are **not** started. A dedicated shared Redis container on port 6399 is used instead. Only `docker compose up --build` (full-stack mode) uses the per-stack services.
 
 - **`Makefile`**: Common operations for macOS/Linux (setup, up, down, logs, status, build, clean, dev)
 
