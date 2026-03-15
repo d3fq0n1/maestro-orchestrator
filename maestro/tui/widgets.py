@@ -546,14 +546,14 @@ class ClusterDashboard(Widget):
         if not self._instances:
             return
         self._frame = (self._frame + 1) % _SPINNER_LEN
-        self._render()
+        self._refresh_display()
 
     def update_instances(self, instances: list) -> None:
         """Update the instance list (expects InstanceInfo objects or dicts)."""
         self._instances = instances
-        self._render()
+        self._refresh_display()
 
-    def _render(self) -> None:
+    def _refresh_display(self) -> None:
         content = self.query_one("#cluster-dash-content", Static)
 
         if not self._instances:
