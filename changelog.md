@@ -1,5 +1,20 @@
 # Changelog
 
+## [7.2.1] - 2026-03-15
+
+### Added
+
+- **Live Cluster Dashboard** (`maestro/tui/widgets.py`, `maestro/tui/app.py`) — New always-visible `ClusterDashboard` widget on the main TUI screen shows running cluster instances with BTOP-style spinning health indicators, color-coded roles (cyan orchestrator, yellow shards), port/IP info, and a cluster summary line. Auto-refreshes every 5 seconds. Eliminates the need to open the Instance Manager modal just to check cluster health.
+- **`C` key binding** — Press `C` from the main screen to force-refresh the cluster dashboard immediately. Also available as `/cluster` slash command.
+- **Port conflict auto-cleanup** (`maestro/instances.py`) — `spawn()` now checks port availability before starting Docker Compose, cleaning up stale containers that hold port bindings from crashed sessions. Prevents the recurring "port is already allocated" error.
+
+### Changed
+
+- **Status bar** updated to include `C:Cluster` hint alongside existing key hints.
+- **Help screen** updated with `C` key reference for cluster dashboard refresh.
+
+---
+
 ## [7.2.0] - 2026-03-13
 
 ### Added

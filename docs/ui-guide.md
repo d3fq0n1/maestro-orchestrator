@@ -152,6 +152,7 @@ Tips for entering keys:
 * **Agent Panel (top-left):** Live status indicators for each agent in the council (ready/running/done/error)
 * **Consensus Panel (top-right):** Real-time metrics -- agreement ratio, quorum status, confidence level, dissent level, R2 grade, NCG drift
 * **Response Viewer (center):** Scrollable log showing agent responses and consensus output as they stream in
+* **Cluster Dashboard:** Always-visible live monitor of running cluster instances with BTOP-style spinning health indicators, color-coded roles (cyan orchestrator, yellow shards), port/IP info, and a cluster summary line. Auto-refreshes every 5 seconds. Press `C` to force refresh or `M` to open the full management screen
 * **LAN Discovery Panel:** Shows local shard identity, Maestro Node formation status, and discovered LAN peers with adjacency indicators
 * **Shard Network Panel:** BTOP-style view of storage nodes with spinning green asterisk indicators for connected nodes, red indicators for offline/missing nodes, memory usage bars, and reputation scores
 * **Prompt Input:** Text input for submitting prompts (press `P` to focus)
@@ -166,6 +167,8 @@ Press these keys anywhere (except when typing in the prompt input):
 | `?` | Help screen (quick reference) |
 | `S` | API key setup wizard |
 | `K` | Show API key status |
+| `M` | Manage instances (spawn / stop) |
+| `C` | Refresh cluster dashboard |
 | `N` | Shard network / node details |
 | `D` | Dependency health check |
 | `H` | Recent session history |
@@ -190,6 +193,7 @@ Slash commands are still supported for power users when the prompt input is focu
 | `/history` | Recent session history |
 | `/deps` | Dependency health check |
 | `/update` | Check for updates |
+| `/cluster` | Refresh cluster dashboard |
 | `/clear` | Clear response log |
 | `/quit` | Exit the TUI |
 

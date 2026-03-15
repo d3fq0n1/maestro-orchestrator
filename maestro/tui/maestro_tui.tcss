@@ -58,6 +58,19 @@ Header {
     padding: 0 1;
 }
 
+/* ── Cluster dashboard (live instance monitor) ──────────────── */
+
+#cluster-dashboard {
+    height: auto;
+    max-height: 12;
+    min-height: 3;
+}
+
+#cluster-dash-title {
+    text-style: bold;
+    color: $text;
+}
+
 /* ── LAN Discovery panel ─────────────────────────────────────── */
 
 #discovery-panel {

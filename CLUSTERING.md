@@ -118,19 +118,20 @@ The first spawn creates the **orchestrator** along with shared infrastructure (D
 - A container IP on the shared cluster network
 - Cluster environment variables so all instances see each other
 
-The TUI dashboard shows the live cluster topology:
+The **Cluster Dashboard** panel on the main TUI screen shows live health for all instances with spinning BTOP-style indicators — no need to open a modal. It auto-refreshes every 5 seconds, or press `C` to refresh immediately:
 
 ```
-  #    Name             Role          Port    IP               Health
-  ──── ──────────────── ───────────── ─────── ──────────────── ──────────
-  1    bold-eagle       orchestrator  8000    172.18.0.2       ● healthy
-  2    swift-fox        shard [0]     8010    172.18.0.3       ● healthy
-  3    calm-owl         shard [1]     8020    172.18.0.4       ● healthy
+ Cluster
+ #   Name           Role          Port   IP              Health
+ ─── ────────────── ──────────── ────── ─────────────── ────────
+ 1   bold-eagle     orchestrator  8000   172.18.0.2      ✶ ok
+ 2   swift-fox      shard [0]     8010   172.18.0.3      ✶ ok
+ 3   calm-owl       shard [1]     8020   172.18.0.4      ✶ ok
 
-  Cluster: 3 node(s), 2 shard(s), 3/3 healthy
+ 3 node(s), 2 shard(s), 3/3 healthy  |  M:Manage  +:Spawn
 ```
 
-Press `1-9` to stop a specific instance, or `R` to refresh.
+Press `M` to open the full Instance Manager, where you can press `1-9` to stop a specific instance, `+` to spawn, or `R` to refresh.
 
 ### Full cluster via Docker Compose (5 containers)
 

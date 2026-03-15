@@ -100,6 +100,17 @@ If you see `Bind for 0.0.0.0:6399 failed: port is already allocated` when spawni
 
 The TUI instance manager now checks port availability before starting the shared Redis container and will display a clear error if the port is occupied.
 
+### "Port is already allocated" when spawning instances
+
+If you see `Bind for 0.0.0.0:8000 failed: port is already allocated`, a stale container from a previous crashed session is still holding the port. As of v7.2.1 this is **auto-resolved** — the spawn process cleans up stale containers and force-releases the port before starting. If the error persists despite cleanup, a non-Docker process is using the port:
+
+```bash
+# Find the process on Linux
+ss -tlnp | grep 8000
+# macOS
+lsof -i :8000
+```
+
 ### TUI crashes when pressing N (Nodes)
 
 If you see `AttributeError: 'list' object has no attribute '_append'` when pressing `N` to open the Node Details modal, this was a bug where `NodeDetailScreen` stored node data as `self._nodes`, overwriting Textual's internal `_nodes` attribute. Fixed in v7.1.6 — renamed to `self._node_data`.
