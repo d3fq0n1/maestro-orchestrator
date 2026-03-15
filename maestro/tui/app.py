@@ -29,6 +29,7 @@ from textual.widgets import Header, Footer, Input, Static, Label, RichLog
 from maestro.tui.backend import MaestroBackend, TUIEvent, create_backend
 from maestro.tui.widgets import (
     AgentPanel,
+    ClusterDashboard,
     ConsensusPanel,
     ResponseViewer,
     ShardDiscoveryPanel,
@@ -72,6 +73,7 @@ class HelpScreen(ModalScreen[None]):
                 "  [b]S[/]           API key setup wizard\n"
                 "  [b]K[/]           Show API key status\n"
                 "  [b]M[/]           Manage instances (spawn / stop)\n"
+                "  [b]C[/]           Refresh cluster dashboard now\n"
                 "  [b]N[/]           Shard network / node details\n"
                 "  [b]D[/]           Dependency health check\n"
                 "  [b]H[/]           Recent session history\n"
@@ -811,10 +813,11 @@ class InstanceScreen(ModalScreen[None]):
                 f"[bold]{role_label}[/] on "
                 f"[bold]:{info.port}[/] ({health})"
             )
-            # Refresh the table
+            # Refresh the table and the main dashboard
             from maestro.instances import get_all_status
             self._instance_data = get_all_status()
             self.app.call_from_thread(self._render_table)
+            self._refresh_main_dashboard()
         except Exception as exc:
             self._set_status_threadsafe(f"  [red]\u2718 Spawn failed: {exc}[/]")
 
@@ -840,8 +843,19 @@ class InstanceScreen(ModalScreen[None]):
             from maestro.instances import get_all_status
             self._instance_data = get_all_status()
             self.app.call_from_thread(self._render_table)
+            self._refresh_main_dashboard()
         except Exception as exc:
             self._set_status_threadsafe(f"  [red]\u2718 Stop failed: {exc}[/]")
+
+    def _refresh_main_dashboard(self) -> None:
+        """Push updated instance data to the main screen's ClusterDashboard."""
+        try:
+            dashboard = self.app.query_one("#cluster-dashboard", ClusterDashboard)
+            self.app.call_from_thread(
+                dashboard.update_instances, self._instance_data
+            )
+        except Exception:
+            pass
 
     def on_key(self, event) -> None:
         """Handle number keys 1-9 to stop specific instances."""
@@ -883,6 +897,7 @@ class MaestroTUI(App):
         Binding("d", "show_deps", "Deps", show=False, priority=True),
         Binding("h", "show_history_key", "History", show=False, priority=True),
         Binding("m", "show_instances", "Instances", show=False, priority=True),
+        Binding("c", "refresh_cluster", "Cluster", show=False, priority=True),
         Binding("i", "run_improve", "Improve", show=False, priority=True),
         Binding("u", "show_update", "Update", show=False, priority=True),
         Binding("l", "clear_log", "Clear", show=False, priority=True),
@@ -912,6 +927,7 @@ class MaestroTUI(App):
             yield AgentPanel(id="agent-panel")
             yield ConsensusPanel(id="consensus-panel")
         yield ResponseViewer(id="response-viewer")
+        yield ClusterDashboard(id="cluster-dashboard")
         yield ShardDiscoveryPanel(id="discovery-panel")
         yield ShardNetworkPanel(id="shard-panel")
         yield Input(placeholder="Press P to focus | Enter to submit | ? for help", id="prompt-input")
@@ -924,6 +940,7 @@ class MaestroTUI(App):
         self._startup_update_check()
         self._start_discovery()
         self._check_first_run()
+        self._start_cluster_refresh()
 
     # ── First-run detection ────────────────────────────────────────
 
@@ -995,6 +1012,9 @@ class MaestroTUI(App):
             return
         if lower in ("/instances", "/spawn", "/multi"):
             self.action_show_instances()
+            return
+        if lower in ("/cluster",):
+            self.action_refresh_cluster()
             return
 
         if self._busy:
@@ -1115,6 +1135,11 @@ class MaestroTUI(App):
 
     def action_show_instances(self) -> None:
         self.push_screen(InstanceScreen())
+
+    @work(thread=False)
+    async def action_refresh_cluster(self) -> None:
+        """Manually refresh the cluster dashboard."""
+        await self._refresh_cluster_dashboard()
 
     def action_show_update(self) -> None:
         self.push_screen(UpdateScreen())
@@ -1242,6 +1267,38 @@ class MaestroTUI(App):
                 viewer.write_info(f"  {sid}  {grade:<12} {prompt_text}")
         except Exception as exc:
             viewer.write_error(f"Could not load history: {exc}")
+
+    # ── Cluster dashboard refresh ─────────────────────────────────
+
+    @work(thread=False)
+    async def _start_cluster_refresh(self) -> None:
+        """Periodically refresh the cluster dashboard with live instance status."""
+        while True:
+            try:
+                await self._refresh_cluster_dashboard()
+            except Exception:
+                pass
+            await asyncio.sleep(5.0)
+
+    async def _refresh_cluster_dashboard(self) -> None:
+        """Fetch cluster instance status and update the dashboard widget."""
+        import concurrent.futures
+
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            instances = await loop.run_in_executor(pool, self._fetch_instances)
+
+        dashboard = self.query_one("#cluster-dashboard", ClusterDashboard)
+        dashboard.update_instances(instances)
+
+    @staticmethod
+    def _fetch_instances() -> list:
+        """Synchronous helper to fetch cluster instance status."""
+        try:
+            from maestro.instances import get_all_status
+            return get_all_status()
+        except Exception:
+            return []
 
     # ── LAN Shard Discovery ────────────────────────────────────────
 

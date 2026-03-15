@@ -489,6 +489,158 @@ class ShardDiscoveryPanel(Widget):
 
 
 # ---------------------------------------------------------------------------
+# Cluster instance dashboard (live monitoring)
+# ---------------------------------------------------------------------------
+
+# Health-state icons
+_HEALTH_ICONS = {
+    True:  ("bold green", "\u25cf"),    # ● green for healthy
+    False: ("bold red",   "\u25cf"),    # ● red for down
+    None:  ("dim",        "\u25cb"),    # ○ dim for unknown
+}
+
+
+class ClusterDashboard(Widget):
+    """Always-visible panel showing live cluster instance health.
+
+    Renders a compact table of running Maestro instances with BTOP-style
+    spinning indicators for healthy nodes.  Auto-refreshed by the app
+    every few seconds.  When empty, shows a hint to spawn the first
+    instance.
+
+    QOL features:
+    - Spinning asterisks on healthy nodes (matches ShardNetworkPanel style)
+    - Color-coded roles (cyan orchestrator, yellow shard)
+    - Uptime display when available
+    - Cluster summary line with node/shard/health counts
+    - Compact single-line-per-instance layout
+    """
+
+    DEFAULT_CSS = """
+    ClusterDashboard {
+        height: auto;
+        max-height: 12;
+        min-height: 3;
+        border: solid $primary;
+        padding: 0 1;
+    }
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._instances: list = []
+        self._frame = 0
+        self._timer = None
+
+    def compose(self) -> ComposeResult:
+        yield Label(" Cluster", id="cluster-dash-title")
+        yield Static(
+            " [dim]No cluster instances. Press [b]M[/b] to manage.[/]",
+            id="cluster-dash-content",
+        )
+
+    def on_mount(self) -> None:
+        self._timer = self.set_interval(0.25, self._tick)
+
+    def _tick(self) -> None:
+        if not self._instances:
+            return
+        self._frame = (self._frame + 1) % _SPINNER_LEN
+        self._render()
+
+    def update_instances(self, instances: list) -> None:
+        """Update the instance list (expects InstanceInfo objects or dicts)."""
+        self._instances = instances
+        self._render()
+
+    def _render(self) -> None:
+        content = self.query_one("#cluster-dash-content", Static)
+
+        if not self._instances:
+            content.update(
+                " [dim]No cluster instances. Press [b]M[/b] to manage.[/]"
+            )
+            return
+
+        lines = []
+        # Compact header
+        lines.append(
+            f" {'#':<3} {'Name':<14} {'Role':<12} "
+            f"{'Port':<6} {'IP':<15} {'Health'}"
+        )
+        lines.append(
+            f" {'─' * 3} {'─' * 14} {'─' * 12} "
+            f"{'─' * 6} {'─' * 15} {'─' * 8}"
+        )
+
+        for inst in self._instances:
+            # Support both InstanceInfo objects and dicts
+            if hasattr(inst, "healthy"):
+                healthy = inst.healthy
+                number = inst.number
+                name = inst.human_name or inst.project
+                role = inst.role
+                shard_idx = inst.shard_index
+                port = inst.port
+                ip = inst.container_ip or ""
+            else:
+                healthy = inst.get("healthy")
+                number = inst.get("number", "?")
+                name = inst.get("human_name") or inst.get("project", "?")
+                role = inst.get("role", "?")
+                shard_idx = inst.get("shard_index")
+                port = inst.get("port", "?")
+                ip = inst.get("container_ip", "")
+
+            # Health indicator with spinner for healthy nodes
+            if healthy is True:
+                spinner = _SPINNER_FRAMES[self._frame]
+                health_str = f"[bold green]{spinner} ok[/]"
+            elif healthy is False:
+                health_str = "[bold red]\u25cf down[/]"
+            else:
+                health_str = "[dim]\u25cb ---[/]"
+
+            # Role display with color
+            if role == "orchestrator":
+                role_str = "[bold cyan]orchestrator[/]"
+            elif role == "shard" and shard_idx is not None:
+                role_str = f"[yellow]shard [{shard_idx}][/]"
+            elif role == "shard":
+                role_str = "[yellow]shard[/]"
+            else:
+                role_str = f"[dim]{role}[/]"
+
+            # Truncate name to fit
+            display_name = str(name)[:14]
+            ip_str = str(ip)[:15] if ip else "[dim]pending[/]"
+
+            lines.append(
+                f" {number:<3} {display_name:<14} {role_str:<22} "
+                f"{port:<6} {ip_str:<15} {health_str}"
+            )
+
+        # Cluster summary
+        total = len(self._instances)
+        healthy_count = sum(
+            1 for i in self._instances
+            if (i.healthy if hasattr(i, "healthy") else i.get("healthy"))
+        )
+        shard_count = sum(
+            1 for i in self._instances
+            if (i.role if hasattr(i, "role") else i.get("role")) == "shard"
+        )
+        lines.append("")
+        lines.append(
+            f" [dim]{total} node(s), {shard_count} shard(s), "
+            f"{healthy_count}/{total} healthy  |  "
+            f"[b]M[/b]:Manage  [b]+[/b]:Spawn[/]"
+        )
+
+        content.update("\n".join(lines))
+
+
+# ---------------------------------------------------------------------------
 # Status bar (mainframe-style with single-key hints)
 # ---------------------------------------------------------------------------
 
@@ -506,8 +658,8 @@ class StatusBar(Widget):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            " [b]?[/]:Help  [b]M[/]:Instances  [b]K[/]:Keys  [b]N[/]:Nodes  "
-            "[b]D[/]:Deps  [b]U[/]:Update  [b]S[/]:Setup  "
+            " [b]?[/]:Help  [b]M[/]:Instances  [b]C[/]:Cluster  [b]K[/]:Keys  "
+            "[b]N[/]:Nodes  [b]D[/]:Deps  [b]U[/]:Update  [b]S[/]:Setup  "
             "[b]Q[/]:Quit",
             id="status-bar-content",
         )
@@ -515,13 +667,13 @@ class StatusBar(Widget):
     def set_stage(self, stage: str) -> None:
         self.query_one("#status-bar-content", Static).update(
             f" [bold yellow]{stage}[/]  |  "
-            "[b]?[/]:Help [b]M[/]:Instances [b]K[/]:Keys [b]N[/]:Nodes "
-            "[b]U[/]:Update [b]Q[/]:Quit"
+            "[b]?[/]:Help [b]M[/]:Instances [b]C[/]:Cluster [b]K[/]:Keys "
+            "[b]N[/]:Nodes [b]U[/]:Update [b]Q[/]:Quit"
         )
 
     def reset(self) -> None:
         self.query_one("#status-bar-content", Static).update(
-            " [b]?[/]:Help  [b]M[/]:Instances  [b]K[/]:Keys  [b]N[/]:Nodes  "
-            "[b]D[/]:Deps  [b]U[/]:Update  [b]S[/]:Setup  "
+            " [b]?[/]:Help  [b]M[/]:Instances  [b]C[/]:Cluster  [b]K[/]:Keys  "
+            "[b]N[/]:Nodes  [b]D[/]:Deps  [b]U[/]:Update  [b]S[/]:Setup  "
             "[b]Q[/]:Quit"
         )
