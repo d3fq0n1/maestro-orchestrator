@@ -151,7 +151,7 @@ Maestro-Orchestrator is a modular, lightweight orchestration framework designed 
 - `.env` file is optional (`required: false`) — API keys can be configured via the Web-UI at runtime
 - Named volumes for persistent session, R2, and key data
 - `Makefile` with common operations (setup, up, down, logs, status, build, clean, dev)
-- `setup.py` cross-platform setup script (dep check, build, health wait, browser open). Works on Windows, macOS, and Linux
+- `setup.py` cross-platform setup script (Docker check, Python package auto-install, build, health wait, browser open). Works on Windows, macOS, and Linux
 
 ---
 

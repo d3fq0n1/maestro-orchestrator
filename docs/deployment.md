@@ -186,7 +186,7 @@ In production, make sure to:
 
 - **`Makefile`**: Common operations for macOS/Linux (setup, up, down, logs, status, build, clean, dev)
 
-- **`setup.py`**: Cross-platform setup script (dep check, build, health wait, browser open). Works on Windows, macOS, and Linux
+- **`setup.py`**: Cross-platform setup script (Docker check, Python package verification and auto-install, build, health wait, browser open). Works on Windows, macOS, and Linux
 
 ---
 

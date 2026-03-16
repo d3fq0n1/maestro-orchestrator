@@ -620,12 +620,43 @@ BANNER = r"""
 """
 
 
+def _ensure_python_packages() -> None:
+    """Check for missing Python packages and install them."""
+    sys.path.insert(0, os.path.join(PROJECT_ROOT, "backend"))
+    sys.path.insert(0, PROJECT_ROOT)
+    from maestro.dependency_resolver import ensure_packages, check_python_packages
+
+    missing = [c for c in check_python_packages() if c.severity.value == "error"]
+    if not missing:
+        print("  ✓ Python packages verified")
+        return
+
+    names = [c.name for c in missing]
+    print(f"  Installing missing packages: {', '.join(names)} ...")
+    installed = ensure_packages()
+    if installed:
+        print(f"  ✓ Installed: {', '.join(installed)}")
+
+    # Re-check for any that still failed
+    still_missing = [c for c in check_python_packages() if c.severity.value == "error"]
+    if still_missing:
+        names = [c.name for c in still_missing]
+        print(f"  ⚠ Could not install: {', '.join(names)}")
+        print("  You may need to install them manually:")
+        for c in still_missing:
+            print(f"    {c.hint}")
+        print()
+
+
 def docker_setup(skip_browser: bool = False, verbose: bool = False) -> None:
     """Build and start the container, wait for healthy, open browser."""
     print(BANNER)
 
     check_deps()
-    print("  ✓ Dependencies verified\n")
+    print("  ✓ Docker verified\n")
+
+    _ensure_python_packages()
+    print()
 
     compose = find_compose_cmd()
     port = os.environ.get("MAESTRO_PORT", "8000")
@@ -675,6 +706,10 @@ def dev_setup() -> None:
 
     print("  Installing backend dependencies ...")
     run([sys.executable, "-m", "pip", "install", "-r", backend_req])
+
+    # Verify all required packages are now importable
+    _ensure_python_packages()
+    print()
 
     # Check for frontend
     frontend_pkg = os.path.join("frontend", "package.json")

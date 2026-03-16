@@ -31,10 +31,16 @@ Tips for entering long API keys:
 
 ### Backend won't start
 
-Verify you have all dependencies installed:
+As of v7.2.3, `setup.py` and `entrypoint.py` automatically install missing Python packages at startup. If you're still seeing missing dependencies, install them manually:
 
 ```bash
 pip install -r requirements.txt
+```
+
+You can also check dependency health directly:
+
+```bash
+python -c "from maestro.dependency_resolver import resolve_all; r = resolve_all(); print(f'{len(r.errors)} errors, {r.ok_count} ok'); [print(f'  - {c.name}: {c.hint}') for c in r.errors]"
 ```
 
 Run with:
