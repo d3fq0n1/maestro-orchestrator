@@ -1,5 +1,17 @@
 # Changelog
 
+## [7.2.3] - 2026-03-16
+
+### Fixed
+
+- **Dependency health check** (`maestro/dependency_resolver.py`, `setup.py`, `entrypoint.py`) — The health check correctly detected missing Python packages but nothing installed them. Meanwhile `check_deps()` only verified Docker/Docker Compose and printed a misleading "Dependencies verified" message. Added `ensure_packages()` to auto-install missing required packages via pip at startup, with PEP 668 fallback for externally-managed environments. Both `setup.py` (Docker and dev paths) and `entrypoint.py` now call it before launching any mode. The "Dependencies verified" message is now split into "Docker verified" and "Python packages verified" for accuracy.
+
+### Changed
+
+- **Version bumped to v7.2.3** across readme, frontend, docs, roadmap, node server, plugin manager, release notes, and changelog.
+
+---
+
 ## [7.2.2] - 2026-03-16
 
 ### Fixed

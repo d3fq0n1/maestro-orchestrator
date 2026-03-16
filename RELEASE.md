@@ -1,10 +1,32 @@
-# Maestro-Orchestrator v7.2.2
+# Maestro-Orchestrator v7.2.3
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
 
 ---
 
-## What's New in v7.2.2
+## What's New in v7.2.3
+
+### Dependency Health Check Fix
+
+The dependency health check now accurately reflects the true state of your environment **and** automatically installs missing Python packages at startup.
+
+**What was wrong:**
+
+- `setup.py` printed "Dependencies verified" after only checking for Docker — Python packages were never verified
+- The health check correctly detected missing packages (openai, anthropic, pydantic, etc.) but nothing acted on the results
+- Running `entrypoint.py` directly (without Docker or `setup.py --dev`) skipped dependency installation entirely
+
+**What's fixed:**
+
+- New `ensure_packages()` in the dependency resolver auto-installs any missing required Python packages via pip
+- `setup.py` now verifies Python packages after Docker verification and after `pip install -r requirements.txt` in dev mode
+- `entrypoint.py` installs missing packages before launching any mode (web/cli/tui)
+- The misleading "Dependencies verified" message now reads "Docker verified" and "Python packages verified" separately
+- PEP 668 (externally-managed-environment) fallback for Debian/Ubuntu systems
+
+---
+
+## What was new in v7.2.2
 
 ### Cluster-Aware Instance Spawning
 
