@@ -9,12 +9,16 @@ before orchestration fails.
 from __future__ import annotations
 
 import importlib
+import logging
 import os
 import shutil
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
+
+log = logging.getLogger(__name__)
 
 
 class Severity(str, Enum):
@@ -273,6 +277,68 @@ def check_runtime() -> list[CheckResult]:
         ))
 
     return results
+
+
+# ---------------------------------------------------------------------------
+# Auto-install missing packages
+# ---------------------------------------------------------------------------
+
+
+def ensure_packages(quiet: bool = False) -> list[str]:
+    """Attempt to pip-install any missing required packages.
+
+    Returns the list of package names that were successfully installed.
+    Packages that are already importable are skipped.
+    """
+    missing: list[tuple[str, str]] = []
+    for import_name, pip_name, _used_by in _REQUIRED_PACKAGES:
+        try:
+            importlib.import_module(import_name)
+        except ImportError:
+            missing.append((import_name, pip_name))
+
+    if not missing:
+        return []
+
+    pip_names = [pip_name for _, pip_name in missing]
+    if not quiet:
+        log.info("Installing missing packages: %s", ", ".join(pip_names))
+
+    cmd = [sys.executable, "-m", "pip", "install", *pip_names]
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.DEVNULL if quiet else None,
+        stderr=subprocess.PIPE,
+    )
+
+    if result.returncode != 0:
+        stderr = result.stderr.decode(errors="replace")
+        # Retry with --break-system-packages for PEP 668 environments
+        if "externally-managed-environment" in stderr or "externally managed" in stderr.lower():
+            cmd_retry = [sys.executable, "-m", "pip", "install", "--break-system-packages", *pip_names]
+            result = subprocess.run(
+                cmd_retry,
+                stdout=subprocess.DEVNULL if quiet else None,
+                stderr=subprocess.PIPE,
+            )
+
+    if result.returncode != 0:
+        stderr = result.stderr.decode(errors="replace").strip()
+        log.warning("Failed to install packages: %s", stderr)
+        return []
+
+    # Verify which packages are now importable
+    installed: list[str] = []
+    for import_name, pip_name in missing:
+        # Invalidate import caches so newly-installed packages are found
+        importlib.invalidate_caches()
+        try:
+            importlib.import_module(import_name)
+            installed.append(pip_name)
+        except ImportError:
+            pass
+
+    return installed
 
 
 # ---------------------------------------------------------------------------

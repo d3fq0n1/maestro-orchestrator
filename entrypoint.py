@@ -201,6 +201,20 @@ def main():
         print(f"[Maestro] Starting as cluster orchestrator: {node_id} "
               f"(coordinating {shard_count} shards)")
 
+    # Ensure required Python packages are installed before any mode launches.
+    # Inside Docker this is a no-op (packages are baked into the image), but
+    # when running the entrypoint directly on the host this catches missing deps.
+    try:
+        project_root = os.path.dirname(os.path.abspath(__file__))
+        sys.path.insert(0, project_root)
+        sys.path.insert(0, os.path.join(project_root, "backend"))
+        from maestro.dependency_resolver import ensure_packages
+        installed = ensure_packages(quiet=True)
+        if installed:
+            print(f"[Maestro] Installed missing packages: {', '.join(installed)}")
+    except Exception:
+        pass  # Never block startup due to install failures
+
     # Allow environment variable to bypass the dialog entirely
     env_mode = os.environ.get("MAESTRO_MODE", "").lower()
     if env_mode in ("web", "cli", "tui"):
