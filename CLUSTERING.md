@@ -118,7 +118,7 @@ The first spawn creates the **orchestrator** along with shared infrastructure (D
 - A container IP on the shared cluster network
 - Cluster environment variables so all instances see each other
 
-The **Cluster Dashboard** panel on the main TUI screen shows live health for all instances with spinning BTOP-style indicators — no need to open a modal. It auto-refreshes every 2 seconds, or press `C` to refresh immediately. You can also press `+` on the main screen to spawn a new instance without opening the manager:
+The **Cluster Dashboard** panel on the main TUI screen shows live health for all instances with spinning BTOP-style indicators — no need to open a modal. It auto-refreshes every 5 seconds, or press `C` to refresh immediately. You can also press `+` on the main screen to spawn a new instance without opening the manager:
 
 ```
  Cluster
