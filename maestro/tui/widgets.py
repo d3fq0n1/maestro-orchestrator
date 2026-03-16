@@ -531,6 +531,8 @@ class ClusterDashboard(Widget):
         self._instances: list = []
         self._frame = 0
         self._timer = None
+        self._status_hint: str = ""
+        self._status_clear_timer = None
 
     def compose(self) -> ComposeResult:
         yield Label(" Cluster", id="cluster-dash-title")
@@ -538,6 +540,7 @@ class ClusterDashboard(Widget):
             " [dim]No cluster instances. Press [b]M[/b] to manage.[/]",
             id="cluster-dash-content",
         )
+        yield Static("", id="cluster-dash-status")
 
     def on_mount(self) -> None:
         self._timer = self.set_interval(0.25, self._tick)
@@ -552,6 +555,37 @@ class ClusterDashboard(Widget):
         """Update the instance list (expects InstanceInfo objects or dicts)."""
         self._instances = instances
         self._refresh_display()
+
+    def update_status_hint(self, text: str, auto_clear: float = 8.0) -> None:
+        """Show a temporary status message below the cluster table.
+
+        *text*: Rich markup string to display (empty string clears).
+        *auto_clear*: seconds after which the hint auto-clears (0 = permanent).
+        """
+        self._status_hint = text
+        try:
+            self.query_one("#cluster-dash-status", Static).update(
+                f" {text}" if text else ""
+            )
+        except Exception:
+            pass
+        # Cancel any pending clear timer
+        if self._status_clear_timer is not None:
+            self._status_clear_timer.stop()
+            self._status_clear_timer = None
+        if text and auto_clear > 0:
+            self._status_clear_timer = self.set_timer(
+                auto_clear, self._clear_status_hint
+            )
+
+    def _clear_status_hint(self) -> None:
+        """Clear the status hint line."""
+        self._status_hint = ""
+        self._status_clear_timer = None
+        try:
+            self.query_one("#cluster-dash-status", Static).update("")
+        except Exception:
+            pass
 
     def _refresh_display(self) -> None:
         content = self.query_one("#cluster-dash-content", Static)
