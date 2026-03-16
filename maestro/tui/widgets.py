@@ -53,7 +53,7 @@ class AgentIndicator(Static):
         icon = {"ready": "\u25cb", "running": "\u25d4", "done": "\u25cf", "error": "\u25cf"}.get(
             self.status, "\u25cb"
         )
-        self.update(f" [{style}]{icon}[/] {self.agent_name:<10} {label}")
+        self.update(f"  [{style}]{icon}[/] {self.agent_name:<22} [{style}]{label}[/]")
 
 
 class AgentPanel(Widget):
@@ -73,7 +73,7 @@ class AgentPanel(Widget):
         self._indicators: dict[str, AgentIndicator] = {}
 
     def compose(self) -> ComposeResult:
-        yield Label(" Pipeline", id="agent-panel-title")
+        yield Label(" \u2502 Pipeline", id="agent-panel-title")
         for name in self._agent_names:
             indicator = AgentIndicator(name, id=f"agent-{_sanitize_id(name)}")
             self._indicators[name] = indicator
@@ -108,13 +108,13 @@ class ConsensusPanel(Widget):
     """
 
     def compose(self) -> ComposeResult:
-        yield Label(" Consensus", id="consensus-panel-title")
-        yield Static(" Agreement : ---", id="metric-agreement")
-        yield Static(" Quorum    : ---", id="metric-quorum")
-        yield Static(" Confidence: ---", id="metric-confidence")
-        yield Static(" Dissent   : ---", id="metric-dissent")
-        yield Static(" R2 Grade  : ---", id="metric-r2")
-        yield Static(" NCG Drift : ---", id="metric-ncg")
+        yield Label(" \u2502 Consensus", id="consensus-panel-title")
+        yield Static("  Agreement : [dim]---[/]", id="metric-agreement")
+        yield Static("  Quorum    : [dim]---[/]", id="metric-quorum")
+        yield Static("  Confidence: [dim]---[/]", id="metric-confidence")
+        yield Static("  Dissent   : [dim]---[/]", id="metric-dissent")
+        yield Static("  R2 Grade  : [dim]---[/]", id="metric-r2")
+        yield Static("  NCG Drift : [dim]---[/]", id="metric-ncg")
 
     def update_consensus(self, data: dict) -> None:
         ratio = data.get("agreement_ratio")
@@ -125,13 +125,13 @@ class ConsensusPanel(Widget):
             pct = f"{ratio:.0%}"
             style = "green" if ratio >= 0.66 else "yellow" if ratio >= 0.5 else "red"
             self.query_one("#metric-agreement", Static).update(
-                f" Agreement : [{style}]{pct}[/]"
+                f"  Agreement : [{style}]{pct}[/]"
             )
         if quorum is not None:
             q_str = "[green]MET[/]" if quorum else "[red]NOT MET[/]"
-            self.query_one("#metric-quorum", Static).update(f" Quorum    : {q_str}")
+            self.query_one("#metric-quorum", Static).update(f"  Quorum    : {q_str}")
         self.query_one("#metric-confidence", Static).update(
-            f" Confidence: {confidence}"
+            f"  Confidence: {confidence}"
         )
 
     def update_dissent(self, data: dict) -> None:
@@ -142,7 +142,7 @@ class ConsensusPanel(Widget):
         label = f"[{style}]{level}[/]"
         if agreement is not None:
             label += f" ({agreement:.2f})"
-        self.query_one("#metric-dissent", Static).update(f" Dissent   : {label}")
+        self.query_one("#metric-dissent", Static).update(f"  Dissent   : {label}")
 
     def update_r2(self, data: dict) -> None:
         grade = data.get("grade", "---")
@@ -160,7 +160,7 @@ class ConsensusPanel(Widget):
         flags = data.get("flags", [])
         if flags:
             label += f"  flags: {len(flags)}"
-        self.query_one("#metric-r2", Static).update(f" R2 Grade  : {label}")
+        self.query_one("#metric-r2", Static).update(f"  R2 Grade  : {label}")
 
     def update_ncg(self, data: dict) -> None:
         drift = data.get("mean_drift")
@@ -170,12 +170,20 @@ class ConsensusPanel(Widget):
             label = f"[{style}]{drift:.3f}[/]"
             if collapse:
                 label += " [bold red]COLLAPSE[/]"
-            self.query_one("#metric-ncg", Static).update(f" NCG Drift : {label}")
+            self.query_one("#metric-ncg", Static).update(f"  NCG Drift : {label}")
 
     def reset(self) -> None:
-        for mid in ("agreement", "quorum", "confidence", "dissent", "r2", "ncg"):
+        labels = {
+            "agreement": "Agreement",
+            "quorum": "Quorum",
+            "confidence": "Confidence",
+            "dissent": "Dissent",
+            "r2": "R2 Grade",
+            "ncg": "NCG Drift",
+        }
+        for mid, lbl in labels.items():
             self.query_one(f"#metric-{mid}", Static).update(
-                f" {mid.capitalize():<11}: ---"
+                f"  {lbl:<11}: [dim]---[/]"
             )
 
 
@@ -254,7 +262,7 @@ class ShardNetworkPanel(Widget):
         self._timer = None
 
     def compose(self) -> ComposeResult:
-        yield Label(" Shard Network", id="shard-panel-title")
+        yield Label(" \u2502 Shard Network", id="shard-panel-title")
         yield Static(" [dim]No nodes registered[/]", id="shard-node-list")
 
     def on_mount(self) -> None:
@@ -376,10 +384,10 @@ class ShardDiscoveryPanel(Widget):
         self._timer = None
 
     def compose(self) -> ComposeResult:
-        yield Label(" LAN Shards", id="discovery-panel-title")
-        yield Static(" [dim]identity[/]: ---", id="discovery-identity")
-        yield Static(" [dim]maestro node[/]: ---", id="discovery-node-status")
-        yield Static(" [dim]waiting for beacons...[/]", id="discovery-peer-list")
+        yield Label(" \u2502 LAN Shards", id="discovery-panel-title")
+        yield Static("  [dim]identity[/]: ---", id="discovery-identity")
+        yield Static("  [dim]maestro node[/]: ---", id="discovery-node-status")
+        yield Static("  [dim]scanning for peers...[/]", id="discovery-peer-list")
 
     def on_mount(self) -> None:
         self._timer = self.set_interval(0.25, self._tick_peers)
@@ -535,7 +543,7 @@ class ClusterDashboard(Widget):
         self._status_clear_timer = None
 
     def compose(self) -> ComposeResult:
-        yield Label(" Cluster", id="cluster-dash-title")
+        yield Label(" \u2502 Cluster", id="cluster-dash-title")
         yield Static(
             " [dim]No cluster instances. Press [b]M[/b] to manage.[/]",
             id="cluster-dash-content",
@@ -592,7 +600,7 @@ class ClusterDashboard(Widget):
 
         if not self._instances:
             content.update(
-                " [dim]No cluster instances. Press [b]M[/b] to manage.[/]"
+                " [dim]No cluster instances.  [b]M[/b]:Manage  [b]+[/b]:Spawn[/]"
             )
             return
 
@@ -691,23 +699,22 @@ class StatusBar(Widget):
     """
 
     def compose(self) -> ComposeResult:
-        yield Static(
+        yield Static(self._default_bar(), id="status-bar-content")
+
+    @staticmethod
+    def _default_bar() -> str:
+        return (
             " [b]?[/]:Help  [b]M[/]:Instances  [b]C[/]:Cluster  [b]K[/]:Keys  "
-            "[b]N[/]:Nodes  [b]D[/]:Deps  [b]U[/]:Update  [b]S[/]:Setup  "
-            "[b]Q[/]:Quit",
-            id="status-bar-content",
+            "[b]N[/]:Nodes  [b]D[/]:Deps  [b]+[/]:Spawn  "
+            "[b]U[/]:Update  [b]S[/]:Setup  [b]Q[/]:Quit"
         )
 
     def set_stage(self, stage: str) -> None:
         self.query_one("#status-bar-content", Static).update(
-            f" [bold yellow]{stage}[/]  |  "
-            "[b]?[/]:Help [b]M[/]:Instances [b]C[/]:Cluster [b]K[/]:Keys "
-            "[b]N[/]:Nodes [b]U[/]:Update [b]Q[/]:Quit"
+            f" [bold yellow]\u25b6 {stage}[/]  \u2502  "
+            "[b]?[/]:Help  [b]M[/]:Instances  [b]C[/]:Cluster  "
+            "[b]Q[/]:Quit"
         )
 
     def reset(self) -> None:
-        self.query_one("#status-bar-content", Static).update(
-            " [b]?[/]:Help  [b]M[/]:Instances  [b]C[/]:Cluster  [b]K[/]:Keys  "
-            "[b]N[/]:Nodes  [b]D[/]:Deps  [b]U[/]:Update  [b]S[/]:Setup  "
-            "[b]Q[/]:Quit"
-        )
+        self.query_one("#status-bar-content", Static).update(self._default_bar())

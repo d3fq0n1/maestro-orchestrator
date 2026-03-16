@@ -1,5 +1,19 @@
 # Changelog
 
+## [7.2.2] - 2026-03-16
+
+### Fixed
+
+- **Shard spawn keybinding** (`maestro/tui/app.py`) — The `+` key now reliably spawns cluster members from both the main screen and the Instance Manager modal. Added `shift+equal` binding and explicit character fallback in `on_key` handler to cover all terminal key-reporting variants.
+
+### Changed
+
+- **TUI visual polish** — Panel titles use │ prefix for cleaner appearance. Agent panel has wider columns with right-aligned status labels. Consensus panel metrics use dim placeholders and consistent 2-space indent. Status bar includes `+:Spawn` hint and uses ▶ prefix for active pipeline stages. Startup dependency check condensed to a single summary line instead of listing every error. Prompt placeholder uses │ separators.
+- **Help screen** updated with `+` key reference for quick-spawn.
+- **Version bumped to v7.2.2** across readme, frontend, docs, roadmap, node server, plugin manager, release notes, and changelog.
+
+---
+
 ## [7.2.1] - 2026-03-15
 
 ### Added

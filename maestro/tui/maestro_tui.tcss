@@ -3,6 +3,7 @@
  *
  * Optimized for 80x24 minimum terminal on Raspberry Pi 5.
  * Scales responsively to larger terminals.
+ * Polished for video-demo aesthetics.
  */
 
 /* ── Global ───────────────────────────────────────────────────── */
@@ -27,13 +28,13 @@ Header {
 
 #agent-panel {
     width: 1fr;
-    min-width: 28;
-    max-width: 32;
+    min-width: 36;
+    max-width: 42;
 }
 
 #agent-panel-title {
     text-style: bold;
-    color: $text;
+    color: $primary;
 }
 
 #consensus-panel {
@@ -43,7 +44,7 @@ Header {
 
 #consensus-panel-title {
     text-style: bold;
-    color: $text;
+    color: $primary;
 }
 
 /* ── Response viewer (main content area) ──────────────────────── */
@@ -68,7 +69,7 @@ Header {
 
 #cluster-dash-title {
     text-style: bold;
-    color: $text;
+    color: $primary;
 }
 
 /* ── LAN Discovery panel ─────────────────────────────────────── */
@@ -81,7 +82,7 @@ Header {
 
 #discovery-panel-title {
     text-style: bold;
-    color: $text;
+    color: $primary;
 }
 
 /* ── Shard network panel ──────────────────────────────────────── */
@@ -94,7 +95,7 @@ Header {
 
 #shard-panel-title {
     text-style: bold;
-    color: $text;
+    color: $primary;
 }
 
 /* ── Prompt input ─────────────────────────────────────────────── */
