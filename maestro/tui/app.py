@@ -908,9 +908,9 @@ class MaestroTUI(App):
         Binding("l", "clear_log", "Clear", show=False, priority=True),
         Binding("p", "focus_prompt", "Prompt", show=False, priority=True),
         Binding("q", "quit", "Quit", show=False, priority=True),
-        # Quick-spawn from main screen
-        Binding("plus", "quick_spawn", "Spawn", show=False, priority=True),
-        Binding("equal", "quick_spawn", "Spawn", show=False, priority=True),
+        # Quick-spawn from main screen (no priority — modal bindings take precedence)
+        Binding("plus", "quick_spawn", "Spawn", show=False),
+        Binding("equal", "quick_spawn", "Spawn", show=False),
         # Function keys still work as alternatives
         Binding("f1", "show_help", "Help", show=False),
         Binding("f2", "show_nodes", "Nodes", show=False),
@@ -1325,7 +1325,7 @@ class MaestroTUI(App):
                 await self._refresh_cluster_dashboard()
             except Exception as exc:
                 log.debug("Cluster dashboard refresh failed: %s", exc)
-            await asyncio.sleep(2.0)
+            await asyncio.sleep(5.0)
 
     async def _refresh_cluster_dashboard(self) -> None:
         """Fetch cluster instance status and update the dashboard widget."""
