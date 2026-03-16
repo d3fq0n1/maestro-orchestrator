@@ -766,10 +766,12 @@ class InstanceScreen(ModalScreen[None]):
         )
         lines = [header, sep]
         for inst in self._instance_data:
-            health_str = (
-                "[green]\u25cf healthy[/]" if inst.healthy
-                else "[red]\u25cf down[/]"
-            )
+            if inst.healthy is True:
+                health_str = "[green]\u25cf healthy[/]"
+            elif inst.healthy is False:
+                health_str = "[red]\u25cf down[/]"
+            else:
+                health_str = "[yellow]\u25cb checking...[/]"
             name = inst.human_name or inst.project
             role_str = inst.role
             if inst.role == "shard" and inst.shard_index is not None:
@@ -854,8 +856,11 @@ class InstanceScreen(ModalScreen[None]):
             self.app.call_from_thread(
                 dashboard.update_instances, self._instance_data
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            import logging
+            logging.getLogger("maestro.tui").debug(
+                "Could not update main dashboard: %s", exc
+            )
 
     def on_key(self, event) -> None:
         """Handle number keys 1-9 to stop specific instances."""
@@ -903,6 +908,9 @@ class MaestroTUI(App):
         Binding("l", "clear_log", "Clear", show=False, priority=True),
         Binding("p", "focus_prompt", "Prompt", show=False, priority=True),
         Binding("q", "quit", "Quit", show=False, priority=True),
+        # Quick-spawn from main screen
+        Binding("plus", "quick_spawn", "Spawn", show=False, priority=True),
+        Binding("equal", "quick_spawn", "Spawn", show=False, priority=True),
         # Function keys still work as alternatives
         Binding("f1", "show_help", "Help", show=False),
         Binding("f2", "show_nodes", "Nodes", show=False),
@@ -1141,6 +1149,43 @@ class MaestroTUI(App):
         """Manually refresh the cluster dashboard."""
         await self._refresh_cluster_dashboard()
 
+    @work(thread=True)
+    def action_quick_spawn(self) -> None:
+        """Spawn a new cluster instance directly from the main screen."""
+        import logging
+        log = logging.getLogger("maestro.tui")
+        try:
+            dashboard = self.query_one("#cluster-dashboard", ClusterDashboard)
+            self.call_from_thread(
+                dashboard.update_status_hint,
+                "[bold yellow]\u25d4 Spawning new cluster member...[/]",
+            )
+
+            from maestro.instances import spawn, get_all_status
+            info = spawn()
+
+            role_label = info.role
+            if info.role == "shard" and info.shard_index is not None:
+                role_label = f"shard [{info.shard_index}]"
+            health = "[green]healthy[/]" if info.healthy else "[yellow]starting[/]"
+
+            instances = get_all_status()
+            self.call_from_thread(dashboard.update_instances, instances)
+            self.call_from_thread(
+                dashboard.update_status_hint,
+                f"[bold green]\u2714[/] [{info.human_name}] spawned as "
+                f"[bold]{role_label}[/] on :{info.port} ({health})",
+            )
+        except Exception as exc:
+            log.debug("Quick spawn failed: %s", exc)
+            try:
+                self.call_from_thread(
+                    dashboard.update_status_hint,
+                    f"[red]\u2718 Spawn failed: {exc}[/]",
+                )
+            except Exception:
+                pass
+
     def action_show_update(self) -> None:
         self.push_screen(UpdateScreen())
 
@@ -1273,12 +1318,14 @@ class MaestroTUI(App):
     @work(thread=False)
     async def _start_cluster_refresh(self) -> None:
         """Periodically refresh the cluster dashboard with live instance status."""
+        import logging
+        log = logging.getLogger("maestro.tui")
         while True:
             try:
                 await self._refresh_cluster_dashboard()
-            except Exception:
-                pass
-            await asyncio.sleep(5.0)
+            except Exception as exc:
+                log.debug("Cluster dashboard refresh failed: %s", exc)
+            await asyncio.sleep(2.0)
 
     async def _refresh_cluster_dashboard(self) -> None:
         """Fetch cluster instance status and update the dashboard widget."""
@@ -1297,7 +1344,11 @@ class MaestroTUI(App):
         try:
             from maestro.instances import get_all_status
             return get_all_status()
-        except Exception:
+        except Exception as exc:
+            import logging
+            logging.getLogger("maestro.tui").debug(
+                "Failed to fetch instances: %s", exc
+            )
             return []
 
     # ── LAN Shard Discovery ────────────────────────────────────────
