@@ -1,10 +1,10 @@
-# Maestro-Orchestrator v7.2.0
+# Maestro-Orchestrator v7.2.2
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
 
 ---
 
-## What's New in v7.2.0
+## What's New in v7.2.2
 
 ### Cluster-Aware Instance Spawning
 

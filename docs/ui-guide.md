@@ -168,11 +168,11 @@ Press these keys anywhere (except when typing in the prompt input):
 | `S` | API key setup wizard |
 | `K` | Show API key status |
 | `M` | Manage instances (spawn / stop) |
+| `+` | Quick-spawn a new cluster shard |
 | `C` | Refresh cluster dashboard |
 | `N` | Shard network / node details |
 | `D` | Dependency health check |
 | `H` | Recent session history |
-| `I` | Self-improvement (planned) |
 | `U` | Check for updates |
 | `L` | Clear response log |
 | `P` | Focus the prompt input |

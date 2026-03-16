@@ -73,11 +73,11 @@ class HelpScreen(ModalScreen[None]):
                 "  [b]S[/]           API key setup wizard\n"
                 "  [b]K[/]           Show API key status\n"
                 "  [b]M[/]           Manage instances (spawn / stop)\n"
+                "  [b]+[/]           Quick-spawn a new cluster shard\n"
                 "  [b]C[/]           Refresh cluster dashboard now\n"
                 "  [b]N[/]           Shard network / node details\n"
                 "  [b]D[/]           Dependency health check\n"
                 "  [b]H[/]           Recent session history\n"
-                "  [b]I[/]           Self-improvement (planned)\n"
                 "  [b]U[/]           Check for updates\n"
                 "  [b]L[/]           Clear response log\n"
                 "  [b]Q[/] / [b]Ctrl+C[/]  Quit\n"
@@ -682,7 +682,8 @@ class InstanceScreen(ModalScreen[None]):
     BINDINGS = [
         ("escape", "dismiss", "Close"),
         ("plus", "spawn", "Spawn"),
-        ("equal", "spawn", "Spawn"),      # unshifted + on US keyboards
+        ("equal", "spawn", "Spawn"),
+        ("shift+equal", "spawn", "Spawn"),
         ("r", "refresh", "Refresh"),
     ]
 
@@ -863,7 +864,12 @@ class InstanceScreen(ModalScreen[None]):
             )
 
     def on_key(self, event) -> None:
-        """Handle number keys 1-9 to stop specific instances."""
+        """Handle number keys 1-9 to stop, and + to spawn."""
+        if event.character == "+":
+            # Explicit fallback for terminals where 'plus' binding doesn't fire
+            self.action_spawn()
+            event.prevent_default()
+            return
         if event.character and event.character.isdigit():
             n = int(event.character)
             if n > 0 and any(
@@ -911,6 +917,7 @@ class MaestroTUI(App):
         # Quick-spawn from main screen (no priority — modal bindings take precedence)
         Binding("plus", "quick_spawn", "Spawn", show=False),
         Binding("equal", "quick_spawn", "Spawn", show=False),
+        Binding("shift+equal", "quick_spawn", "Spawn", show=False),
         # Function keys still work as alternatives
         Binding("f1", "show_help", "Help", show=False),
         Binding("f2", "show_nodes", "Nodes", show=False),
@@ -938,7 +945,7 @@ class MaestroTUI(App):
         yield ClusterDashboard(id="cluster-dashboard")
         yield ShardDiscoveryPanel(id="discovery-panel")
         yield ShardNetworkPanel(id="shard-panel")
-        yield Input(placeholder="Press P to focus | Enter to submit | ? for help", id="prompt-input")
+        yield Input(placeholder="Press P to focus \u2502 Enter to submit \u2502 ? for help", id="prompt-input")
         yield StatusBar()
 
     def on_mount(self) -> None:
@@ -1219,16 +1226,15 @@ class MaestroTUI(App):
         report = resolve_all()
         if not report.healthy:
             errors = report.errors
+            warnings = report.warnings
             viewer = self.query_one("#response-viewer", ResponseViewer)
-            viewer.write_error(
-                f"Dependency check: {len(errors)} error(s), "
-                f"{len(report.warnings)} warning(s)"
+            total = len(errors) + len(warnings)
+            viewer.write_info(
+                f"[yellow]\u26a0 {total} issue(s)[/] found  "
+                f"([red]{len(errors)} error(s)[/], "
+                f"[yellow]{len(warnings)} warning(s)[/])  \u2014  "
+                f"Press [b]D[/] for full report."
             )
-            for c in errors:
-                viewer.write_error(f"  {c.message}")
-                if c.hint:
-                    viewer.write_info(f"    {c.hint}")
-            viewer.write_info("  Press [b]D[/] for full report.")
 
     @work(thread=True)
     def _startup_update_check(self) -> None:
