@@ -359,12 +359,24 @@ def _get_container_ip(project: str) -> str:
 
 
 def get_all_status() -> list[InstanceInfo]:
-    """Return status of all running instances with health checks."""
+    """Return status of all known instances with health checks.
+
+    Merges both running containers (from ``docker ps``) and registry entries
+    so that a freshly-spawned instance that hasn't been detected by docker-ps
+    yet — or one whose container name doesn't match the detection pattern —
+    still appears in the dashboard.
+    """
     instances = []
-    running = detect_running()
+    running = set(detect_running())
     registered = _all_registered()
 
-    for n in running:
+    # Union: show every instance that is either running or registered so that
+    # the TUI always reflects what was spawned, even if docker ps temporarily
+    # misses it (e.g. container is still being created, or the name pattern
+    # doesn't match due to a Compose v1/v2 naming difference).
+    all_known = sorted(running | set(registered.keys()))
+
+    for n in all_known:
         port = instance_port(n)
         reg = registered.get(n, {})
         info = InstanceInfo(
@@ -435,7 +447,13 @@ def _instance_env(n: int, role: str, shard_index: int | None,
 
 def _cleanup_stale_project(proj: str, compose: list[str],
                            callback=None) -> None:
-    """Tear down a stale compose project that may still hold port bindings."""
+    """Tear down a stale compose project that may still hold port bindings.
+
+    Also removes the compose-managed network for this project to prevent the
+    "2 matches found based on name: network X is ambiguous" Docker error that
+    occurs when a leftover network from a previous (partial) teardown causes
+    Docker to find duplicate matches when the project is re-spawned.
+    """
     root = _project_root()
     # Check if there are any containers (running or stopped) for this project
     try:
@@ -452,6 +470,31 @@ def _cleanup_stale_project(proj: str, compose: list[str],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 timeout=30,
+            )
+    except Exception:
+        pass
+
+    # Always remove the compose-managed network for this project slot, even if
+    # no containers were found.  A previous partial teardown (e.g. compose down
+    # that removed containers but left the network because another container was
+    # transiently attached) produces a stale "{proj}_maestro-net" network.
+    # When Docker Compose later tries to create or look up that same network it
+    # can find both the leftover entry and the one it just created, triggering:
+    #   "2 matches found based on name: network {proj}_maestro-net is ambiguous"
+    compose_network = f"{proj}_maestro-net"
+    try:
+        inspect = subprocess.run(
+            ["docker", "network", "inspect", compose_network],
+            capture_output=True, text=True, timeout=10,
+        )
+        if inspect.returncode == 0:
+            if callback:
+                callback(f"Removing stale network {compose_network}...")
+            subprocess.run(
+                ["docker", "network", "rm", compose_network],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
             )
     except Exception:
         pass
