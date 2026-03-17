@@ -1,6 +1,6 @@
 # Mod Manager — Modular Plugin Architecture
 
-**Version:** v7.2.5
+**Version:** v7.2.6
 **Last Updated:** 2026-03-17
 **Maintainer:** defcon
 

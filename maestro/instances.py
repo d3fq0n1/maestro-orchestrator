@@ -474,28 +474,33 @@ def _cleanup_stale_project(proj: str, compose: list[str],
     except Exception:
         pass
 
-    # Always remove the compose-managed network for this project slot, even if
+    # Always remove ALL compose-managed networks for this project slot, even if
     # no containers were found.  A previous partial teardown (e.g. compose down
     # that removed containers but left the network because another container was
-    # transiently attached) produces a stale "{proj}_maestro-net" network.
-    # When Docker Compose later tries to create or look up that same network it
-    # can find both the leftover entry and the one it just created, triggering:
-    #   "2 matches found based on name: network {proj}_maestro-net is ambiguous"
+    # transiently attached) can leave multiple stale "{proj}_maestro-net"
+    # networks with the same name.  Removing by name fails when duplicates
+    # exist ("2 matches found based on name: network X is ambiguous"), so we
+    # enumerate by ID and remove each one individually.
     compose_network = f"{proj}_maestro-net"
     try:
-        inspect = subprocess.run(
-            ["docker", "network", "inspect", compose_network],
+        ls = subprocess.run(
+            ["docker", "network", "ls", "--no-trunc",
+             "--filter", f"name={compose_network}",
+             "--format", "{{.ID}}\t{{.Name}}"],
             capture_output=True, text=True, timeout=10,
         )
-        if inspect.returncode == 0:
-            if callback:
-                callback(f"Removing stale network {compose_network}...")
-            subprocess.run(
-                ["docker", "network", "rm", compose_network],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=10,
-            )
+        for line in ls.stdout.splitlines():
+            parts = line.strip().split("\t")
+            if len(parts) == 2 and parts[1] == compose_network:
+                net_id = parts[0]
+                if callback:
+                    callback(f"Removing stale network {compose_network} ({net_id[:12]})...")
+                subprocess.run(
+                    ["docker", "network", "rm", net_id],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=10,
+                )
     except Exception:
         pass
 

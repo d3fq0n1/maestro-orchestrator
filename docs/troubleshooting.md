@@ -117,6 +117,26 @@ ss -tlnp | grep 8000
 lsof -i :8000
 ```
 
+### "network X is ambiguous" when spawning a 4th (or later) cluster node
+
+If you see an error like `Spawn failed: Failed to start maestro-4: 2 matches found based on name: network maestro-4_maestro-net is ambiguous`, Docker has accumulated multiple networks with the same name from previous partial teardowns.
+
+**Root cause:** When `compose down` removes containers but another container is transiently attached to the bridge network, Docker leaves the network object behind. On the next spawn of the same slot, Docker Compose finds both the leftover network and the one it is about to create, causing the ambiguity error.
+
+**Auto-resolved as of v7.2.6** — the spawn pre-flight now enumerates networks by ID (via `docker network ls`) and removes every matching entry before bringing the new compose project up, so duplicates cannot block the start.
+
+If you hit this on an older version, clean up manually:
+
+```bash
+# List all networks matching the pattern
+docker network ls --filter name=maestro-4_maestro-net
+
+# Remove each by ID (repeat for every ID shown)
+docker network rm <network-id>
+```
+
+Then retry the spawn.
+
 ### TUI crashes when pressing N (Nodes)
 
 If you see `AttributeError: 'list' object has no attribute '_append'` when pressing `N` to open the Node Details modal, this was a bug where `NodeDetailScreen` stored node data as `self._nodes`, overwriting Textual's internal `_nodes` attribute. Fixed in v7.1.6 — renamed to `self._node_data`.
