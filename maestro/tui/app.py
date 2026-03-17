@@ -16,7 +16,10 @@ Supports two backend modes:
 from __future__ import annotations
 
 import asyncio
+import json
 import os
+from dataclasses import dataclass
+from pathlib import Path
 from typing import ClassVar
 
 from textual import on, work
@@ -38,6 +41,352 @@ from maestro.tui.widgets import (
 )
 from maestro.dependency_resolver import resolve_all, DependencyReport, Severity
 from maestro.updater import check_for_updates, apply_update, get_auto_updater, UpdateEvent
+
+
+# ───────────────────────────────────────────────────────────────────
+# Prompt templates — persistent storage
+# ───────────────────────────────────────────────────────────────────
+
+_TEMPLATES_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "prompt_templates.json"
+
+_BUILTIN_TEMPLATES = [
+    {"name": "General Question", "prompt": "What is the main ingredient in Coca-Cola?"},
+    {"name": "Code Review", "prompt": "Review this code for bugs, security issues, and performance problems:"},
+    {"name": "Summarize", "prompt": "Summarize the following text in 3 bullet points:"},
+    {"name": "Compare & Contrast", "prompt": "Compare and contrast the following two approaches:"},
+    {"name": "Explain Like I'm 5", "prompt": "Explain this concept in simple terms a child could understand:"},
+]
+
+
+def _load_templates() -> list[dict]:
+    """Load user templates from disk, falling back to builtins."""
+    try:
+        if _TEMPLATES_PATH.exists():
+            data = json.loads(_TEMPLATES_PATH.read_text())
+            if isinstance(data, list) and data:
+                return data
+    except (json.JSONDecodeError, OSError):
+        pass
+    return list(_BUILTIN_TEMPLATES)
+
+
+def _save_templates(templates: list[dict]) -> None:
+    """Persist user templates to disk."""
+    _TEMPLATES_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _TEMPLATES_PATH.write_text(json.dumps(templates, indent=2))
+
+
+def _save_template(name: str, prompt: str) -> None:
+    """Append a new template and persist."""
+    templates = _load_templates()
+    # Avoid duplicates by name
+    templates = [t for t in templates if t.get("name") != name]
+    templates.insert(0, {"name": name, "prompt": prompt})
+    _save_templates(templates)
+
+
+# ───────────────────────────────────────────────────────────────────
+# Prompt result dataclass
+# ───────────────────────────────────────────────────────────────────
+
+@dataclass
+class PromptResult:
+    """Return value from the PromptScreen."""
+    prompt: str
+    deliberation_enabled: bool = True
+    deliberation_rounds: int = 1
+
+
+# ───────────────────────────────────────────────────────────────────
+# Prompt screen (P key) — dedicated full-screen prompt interface
+# ───────────────────────────────────────────────────────────────────
+
+class PromptScreen(ModalScreen[PromptResult | None]):
+    """Full-screen modal for composing prompts with history, templates,
+    and deliberation controls.
+
+    Layout (80×24 target):
+    ┌─ Prompt ────────────────────────────────────────────────────────┐
+    │  [Input: type your prompt here]                                 │
+    │                                                                 │
+    │  ┌─ History ──────────────────┐  ┌─ Templates ───────────────┐  │
+    │  │  (recent sessions)         │  │  (click to fill prompt)   │  │
+    │  │  ...                       │  │  ...                      │  │
+    │  └────────────────────────────┘  └───────────────────────────┘  │
+    │                                                                 │
+    │  Deliberation: [ON]  Rounds: [1]   │  Enter:Submit  Esc:Cancel  │
+    └─────────────────────────────────────────────────────────────────┘
+    """
+
+    BINDINGS = [
+        Binding("escape", "dismiss", "Cancel", priority=True),
+        Binding("ctrl+s", "save_template", "Save Template", show=False),
+    ]
+
+    DEFAULT_CSS = """
+    PromptScreen {
+        align: center middle;
+    }
+    #prompt-dialog {
+        width: 78;
+        height: auto;
+        max-height: 22;
+        border: thick $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+    #prompt-title {
+        text-style: bold;
+        color: $accent;
+        margin-bottom: 1;
+    }
+    #prompt-text-input {
+        width: 100%;
+        margin-bottom: 1;
+    }
+    #prompt-panels {
+        height: auto;
+        max-height: 10;
+        margin-bottom: 1;
+    }
+    #prompt-history-panel {
+        width: 1fr;
+        height: auto;
+        max-height: 10;
+        border: solid $primary;
+        padding: 0 1;
+        margin-right: 1;
+    }
+    #prompt-templates-panel {
+        width: 1fr;
+        height: auto;
+        max-height: 10;
+        border: solid $primary;
+        padding: 0 1;
+    }
+    .prompt-panel-title {
+        text-style: bold;
+        color: $primary;
+    }
+    .prompt-list-item {
+        height: 1;
+    }
+    .prompt-list-item:hover {
+        background: $primary 20%;
+    }
+    #prompt-controls {
+        height: auto;
+        margin-top: 1;
+    }
+    #prompt-controls-row {
+        height: 1;
+    }
+    #prompt-delib-label {
+        width: auto;
+    }
+    #prompt-hints {
+        dock: right;
+        width: auto;
+        color: $text-muted;
+    }
+    """
+
+    def __init__(
+        self,
+        sessions: list[dict] | None = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self._sessions = sessions or []
+        self._templates = _load_templates()
+        self._deliberation_enabled = True
+        self._deliberation_rounds = 1
+        self._selected_history_idx: int = -1
+        self._selected_template_idx: int = -1
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="prompt-dialog"):
+            yield Label("[bold]  Maestro Prompt[/]", id="prompt-title")
+            yield Input(
+                placeholder="Type your prompt and press Enter to submit...",
+                id="prompt-text-input",
+            )
+            with Horizontal(id="prompt-panels"):
+                with Vertical(id="prompt-history-panel"):
+                    yield Label(" │ History", classes="prompt-panel-title")
+                    yield Static(
+                        self._render_history(), id="prompt-history-list"
+                    )
+                with Vertical(id="prompt-templates-panel"):
+                    yield Label(" │ Templates", classes="prompt-panel-title")
+                    yield Static(
+                        self._render_templates(), id="prompt-templates-list"
+                    )
+            with Horizontal(id="prompt-controls"):
+                with Horizontal(id="prompt-controls-row"):
+                    yield Static(self._render_delib_label(), id="prompt-delib-label")
+                    yield Static(
+                        "[dim]Enter[/]:Submit  [dim]Esc[/]:Cancel  "
+                        "[dim]Ctrl+S[/]:Save  "
+                        "[dim]1-9[/]:History  [dim]F1-F5[/]:Template",
+                        id="prompt-hints",
+                    )
+
+    def on_mount(self) -> None:
+        self.query_one("#prompt-text-input", Input).focus()
+
+    def _render_history(self) -> str:
+        if not self._sessions:
+            return " [dim]No sessions yet[/]"
+        lines = []
+        for i, s in enumerate(self._sessions[:9]):
+            sid = s.get("session_id", "?")[:8]
+            prompt_text = s.get("prompt", "?")[:38]
+            grade = s.get("r2_grade", s.get("grade", ""))
+            grade_str = f" [{self._grade_color(grade)}]{grade}[/]" if grade else ""
+            num = i + 1
+            marker = "[bold cyan]>[/] " if i == self._selected_history_idx else "  "
+            lines.append(f"{marker}[dim]{num}[/] {sid} {prompt_text}{grade_str}")
+        return "\n".join(lines)
+
+    def _render_templates(self) -> str:
+        if not self._templates:
+            return " [dim]No templates[/]"
+        lines = []
+        for i, t in enumerate(self._templates[:5]):
+            name = t.get("name", "?")[:30]
+            fkey = f"F{i + 1}"
+            marker = "[bold cyan]>[/] " if i == self._selected_template_idx else "  "
+            lines.append(f"{marker}[dim]{fkey}[/] {name}")
+        return "\n".join(lines)
+
+    def _render_delib_label(self) -> str:
+        if self._deliberation_enabled:
+            return (
+                f" Deliberation: [bold green]ON[/]  "
+                f"Rounds: [bold]{self._deliberation_rounds}[/]  "
+                f"[dim]T[/]:Toggle  [dim]R[/]:Rounds  "
+            )
+        return (
+            " Deliberation: [bold red]OFF[/]  "
+            "[dim]T[/]:Toggle  "
+        )
+
+    @staticmethod
+    def _grade_color(grade: str) -> str:
+        grade_l = (grade or "").lower()
+        if grade_l in ("strong",):
+            return "bold green"
+        if grade_l in ("acceptable",):
+            return "green"
+        if grade_l in ("weak",):
+            return "yellow"
+        if grade_l in ("suspicious",):
+            return "bold red"
+        return "dim"
+
+    def _update_delib_display(self) -> None:
+        try:
+            self.query_one("#prompt-delib-label", Static).update(
+                self._render_delib_label()
+            )
+        except Exception:
+            pass
+
+    def _update_history_display(self) -> None:
+        try:
+            self.query_one("#prompt-history-list", Static).update(
+                self._render_history()
+            )
+        except Exception:
+            pass
+
+    def _update_templates_display(self) -> None:
+        try:
+            self.query_one("#prompt-templates-list", Static).update(
+                self._render_templates()
+            )
+        except Exception:
+            pass
+
+    # ── Key handlers ──────────────────────────────────────────────
+
+    @on(Input.Submitted, "#prompt-text-input")
+    def _on_submit(self, event: Input.Submitted) -> None:
+        text = event.value.strip()
+        if not text:
+            return
+        self.dismiss(PromptResult(
+            prompt=text,
+            deliberation_enabled=self._deliberation_enabled,
+            deliberation_rounds=self._deliberation_rounds,
+        ))
+
+    def on_key(self, event) -> None:
+        key = event.key
+
+        # T — toggle deliberation
+        if key == "t" and not self.query_one("#prompt-text-input", Input).has_focus:
+            self._deliberation_enabled = not self._deliberation_enabled
+            self._update_delib_display()
+            event.prevent_default()
+            return
+
+        # R — cycle deliberation rounds
+        if key == "r" and not self.query_one("#prompt-text-input", Input).has_focus:
+            self._deliberation_rounds = (self._deliberation_rounds % 5) + 1
+            self._update_delib_display()
+            event.prevent_default()
+            return
+
+        # 1-9 — select history item and fill prompt
+        if key in "123456789":
+            inp = self.query_one("#prompt-text-input", Input)
+            if inp.has_focus and inp.value:
+                return  # Don't hijack if user is typing
+            idx = int(key) - 1
+            if idx < len(self._sessions):
+                prompt_text = self._sessions[idx].get("prompt", "")
+                if prompt_text:
+                    self._selected_history_idx = idx
+                    self._selected_template_idx = -1
+                    inp.value = prompt_text
+                    inp.focus()
+                    self._update_history_display()
+                    self._update_templates_display()
+                    event.prevent_default()
+            return
+
+        # F1-F5 — select template and fill prompt
+        fkey_map = {"f1": 0, "f2": 1, "f3": 2, "f4": 3, "f5": 4}
+        if key in fkey_map:
+            idx = fkey_map[key]
+            if idx < len(self._templates):
+                prompt_text = self._templates[idx].get("prompt", "")
+                if prompt_text:
+                    self._selected_template_idx = idx
+                    self._selected_history_idx = -1
+                    inp = self.query_one("#prompt-text-input", Input)
+                    inp.value = prompt_text
+                    inp.focus()
+                    self._update_history_display()
+                    self._update_templates_display()
+                    event.prevent_default()
+            return
+
+    def action_save_template(self) -> None:
+        """Save the current prompt text as a template."""
+        inp = self.query_one("#prompt-text-input", Input)
+        text = inp.value.strip()
+        if not text:
+            return
+        # Use first 30 chars as the template name
+        name = text[:30].rstrip()
+        if len(text) > 30:
+            name += "..."
+        _save_template(name, text)
+        self._templates = _load_templates()
+        self._update_templates_display()
 
 
 # ───────────────────────────────────────────────────────────────────
@@ -83,9 +432,11 @@ class HelpScreen(ModalScreen[None]):
                 "  [b]Q[/] / [b]Ctrl+C[/]  Quit\n"
             )
             yield Static(
-                "[bold]Prompt Input[/]  (press [b]Enter[/] or [b]P[/] to focus)\n"
-                "  Type your prompt, then [b]Enter[/] to submit.\n"
-                "  Slash commands also work: /nodes /keys /history /clear /quit\n"
+                "[bold]Prompt Screen[/]  (press [b]P[/] to open)\n"
+                "  Full-screen prompt interface with history, templates,\n"
+                "  and deliberation controls. Type prompt → [b]Enter[/] to submit.\n"
+                "  [b]1-9[/]: Re-run from history  [b]F1-F5[/]: Load template\n"
+                "  [b]T[/]: Toggle deliberation  [b]R[/]: Cycle rounds  [b]Ctrl+S[/]: Save template\n"
             )
             yield Static(
                 "[bold]Tips[/]\n"
@@ -948,7 +1299,11 @@ class MaestroTUI(App):
         yield ClusterDashboard(id="cluster-dashboard")
         yield ShardDiscoveryPanel(id="discovery-panel")
         yield ShardNetworkPanel(id="shard-panel")
-        yield Input(placeholder="Press P to focus \u2502 Enter to submit \u2502 ? for help", id="prompt-input")
+        yield Static(
+            " [b]P[/]:Prompt  [b]H[/]:History  [b]?[/]:Help  "
+            "[b]Q[/]:Quit",
+            id="prompt-hint",
+        )
         yield StatusBar()
 
     def on_mount(self) -> None:
@@ -991,66 +1346,27 @@ class MaestroTUI(App):
     def _open_setup_wizard(self) -> None:
         self.push_screen(KeySetupWizard())
 
-    # ── Input handling ──────────────────────────────────────────────
+    # ── Prompt result handling ─────────────────────────────────────
 
-    @on(Input.Submitted, "#prompt-input")
-    async def handle_input(self, event: Input.Submitted) -> None:
-        text = event.value.strip()
-        if not text:
+    def _on_prompt_result(self, result: PromptResult | None) -> None:
+        """Callback from PromptScreen — start orchestration if prompt given."""
+        if result is None:
             return
-
-        event.input.value = ""
-        lower = text.lower()
-
-        # Handle slash commands (still supported for power users)
-        if lower in ("/quit", "/exit", "/q"):
-            self.exit()
-            return
-        if lower in ("/help", "/h", "/?"):
-            self.action_show_help()
-            return
-        if lower in ("/clear", "/cls"):
-            self.action_clear_log()
-            return
-        if lower in ("/nodes",):
-            self.action_show_nodes()
-            return
-        if lower in ("/keys",):
-            self.action_show_keys()
-            return
-        if lower in ("/setup",):
-            self.action_show_setup()
-            return
-        if lower in ("/shards", "/discovery", "/lan"):
-            self._show_discovery_status()
-            return
-        if lower in ("/history",):
-            self._show_history()
-            return
-        if lower in ("/deps", "/dependencies", "/health"):
-            self.action_show_deps()
-            return
-        if lower in ("/update", "/updates"):
-            self.action_show_update()
-            return
-        if lower in ("/instances", "/spawn", "/multi"):
-            self.action_show_instances()
-            return
-        if lower in ("/cluster",):
-            self.action_refresh_cluster()
-            return
-
-        if self._busy:
-            viewer = self.query_one("#response-viewer", ResponseViewer)
-            viewer.write_info("Pipeline is already running. Please wait...")
-            return
-
-        self._run_orchestration(text)
+        self._run_orchestration(
+            result.prompt,
+            deliberation_enabled=result.deliberation_enabled,
+            deliberation_rounds=result.deliberation_rounds,
+        )
 
     # ── Orchestration ───────────────────────────────────────────────
 
     @work(thread=False)
-    async def _run_orchestration(self, prompt: str) -> None:
+    async def _run_orchestration(
+        self,
+        prompt: str,
+        deliberation_enabled: bool = True,
+        deliberation_rounds: int = 1,
+    ) -> None:
         self._busy = True
 
         agent_panel = self.query_one("#agent-panel", AgentPanel)
@@ -1062,11 +1378,23 @@ class MaestroTUI(App):
         # Reset UI
         agent_panel.set_all_running()
         consensus_panel.reset()
-        viewer.write_stage(f"Orchestrating: {prompt[:60]}{'...' if len(prompt) > 60 else ''}")
+        delib_info = ""
+        if deliberation_enabled and deliberation_rounds > 1:
+            delib_info = f"  [dim](deliberation: {deliberation_rounds} rounds)[/]"
+        elif not deliberation_enabled:
+            delib_info = "  [dim](deliberation: off)[/]"
+        viewer.write_stage(
+            f"Orchestrating: {prompt[:60]}{'...' if len(prompt) > 60 else ''}"
+            f"{delib_info}"
+        )
         status_bar.set_stage("Querying agents...")
 
         try:
-            async for event in self._backend.orchestrate(prompt):
+            async for event in self._backend.orchestrate(
+                prompt,
+                deliberation_enabled=deliberation_enabled,
+                deliberation_rounds=deliberation_rounds,
+            ):
                 self._handle_event(event)
         except Exception as exc:
             viewer.write_error(f"{type(exc).__name__}: {exc}")
@@ -1131,8 +1459,22 @@ class MaestroTUI(App):
     def action_show_setup(self) -> None:
         self.push_screen(KeySetupWizard())
 
-    def action_focus_prompt(self) -> None:
-        self.query_one("#prompt-input", Input).focus()
+    @work(thread=False)
+    async def action_focus_prompt(self) -> None:
+        """Open the dedicated Prompt screen."""
+        if self._busy:
+            viewer = self.query_one("#response-viewer", ResponseViewer)
+            viewer.write_info("Pipeline is already running. Please wait...")
+            return
+        # Fetch session history for the prompt screen
+        try:
+            sessions = await self._backend.get_session_history(limit=10)
+        except Exception:
+            sessions = []
+        self.push_screen(
+            PromptScreen(sessions=sessions),
+            callback=self._on_prompt_result,
+        )
 
     @work(thread=False)
     async def action_show_nodes(self) -> None:
