@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/instances", tags=["instances"])
 def _run_sync(fn, *args, **kwargs):
     """Run a blocking function in the default executor."""
     import functools
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return loop.run_in_executor(None, functools.partial(fn, *args, **kwargs))
 
 

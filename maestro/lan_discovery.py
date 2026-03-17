@@ -177,7 +177,7 @@ class _DiscoveryProtocol(asyncio.DatagramProtocol):
         sender_uid = msg.get("sender_uid", "")
         if sender_uid == self._engine.identity.uid:
             return
-        asyncio.get_event_loop().call_soon_threadsafe(
+        asyncio.get_running_loop().call_soon_threadsafe(
             self._engine._handle_message, msg, addr
         )
 
