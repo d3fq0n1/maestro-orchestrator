@@ -93,7 +93,7 @@ User types -> Clicks Submit (or Enter) -> Loading state
 * **Session History:** Browse past sessions from the UI
 * **Key Management:** Configure and validate API keys without editing `.env`
 * **Storage Network:** Full shard distribution, node topology, and mirror completeness visualization with copyable CLI commands
-* **System Update:** Check, apply, and restart from the UI with progress feedback
+* **System Update:** Check and apply updates from the UI with progress feedback. After a successful apply the TUI shows a 3-second countdown and automatically restarts (process replaced via `os.execv`, terminal session preserved)
 * **Error Handling:** Contextual HTTP error messages (404, 429, 401/403, 5xx, 422) shown inline
 * **Local Dev Support:** Fully CORS-compliant for FastAPI
 
@@ -173,7 +173,7 @@ Press these keys anywhere (except when typing in the prompt input):
 | `N` | Shard network / node details |
 | `D` | Dependency health check |
 | `H` | Recent session history |
-| `U` | Check for updates |
+| `U` | Open update screen (auto-checks on open; `C` re-check, `A` apply, `T` toggle auto-update) |
 | `L` | Clear response log |
 | `P` | Focus the prompt input |
 | `Q` | Quit |
@@ -192,7 +192,7 @@ Slash commands are still supported for power users when the prompt input is focu
 | `/shards` | Show LAN shard discovery status |
 | `/history` | Recent session history |
 | `/deps` | Dependency health check |
-| `/update` | Check for updates |
+| `/update` | Open update screen |
 | `/cluster` | Refresh cluster dashboard |
 | `/clear` | Clear response log |
 | `/quit` | Exit the TUI |

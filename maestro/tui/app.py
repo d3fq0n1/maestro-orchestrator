@@ -602,8 +602,8 @@ class UpdateScreen(ModalScreen[str | None]):
 
     @work(thread=True)
     def action_check(self) -> None:
-        self._set_status("  [bold yellow]\u25d4[/] Checking for updates...")
-        self._set_commits("")
+        self.app.call_from_thread(self._set_status, "  [bold yellow]\u25d4[/] Checking for updates...")
+        self.app.call_from_thread(self._set_commits, "")
         try:
             info = check_for_updates()
             self._info = info
@@ -636,8 +636,11 @@ class UpdateScreen(ModalScreen[str | None]):
                 self.app.call_from_thread(
                     self._set_status,
                     f"  [bold green]ok {message}[/]\n\n"
-                    f"  Restart the TUI to load changes.",
+                    f"  Update applied. Restarting in 3 seconds...",
                 )
+                import time as _time
+                _time.sleep(3)
+                self.app.call_from_thread(self.app.exit, 42)
             else:
                 self.app.call_from_thread(
                     self._set_status,
@@ -1335,11 +1338,9 @@ class MaestroTUI(App):
 
     async def _refresh_cluster_dashboard(self) -> None:
         """Fetch cluster instance status and update the dashboard widget."""
-        import concurrent.futures
-
-        loop = asyncio.get_event_loop()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            instances = await loop.run_in_executor(pool, self._fetch_instances)
+        instances = await asyncio.get_running_loop().run_in_executor(
+            None, self._fetch_instances
+        )
 
         dashboard = self.query_one("#cluster-dashboard", ClusterDashboard)
         dashboard.update_instances(instances)
