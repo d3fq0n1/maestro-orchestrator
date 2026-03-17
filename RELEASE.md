@@ -1,12 +1,25 @@
-# Maestro-Orchestrator v7.2.5
+# Maestro-Orchestrator v7.2.6
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
 
 ---
 
-## What's New in v7.2.5
+## What's New in v7.2.6
 
-### Six Bug Fixes (Critical → Low)
+### Bug Fix: 4th+ cluster node spawn fails with "ambiguous network" error
+
+Spawning a cluster node into a slot that previously held a crashed or partially torn-down node could fail with:
+
+```
+Spawn failed: Failed to start maestro-4: 2 matches found based on name:
+network maestro-4_maestro-net is ambiguous
+```
+
+**Root cause:** `compose down` sometimes removes containers but leaves the bridge network behind (e.g. when another container is transiently attached). On the next spawn of the same slot, Docker Compose finds both the leftover network and the one it is about to create — causing the ambiguity error.
+
+**Fix:** The spawn pre-flight (`_cleanup_stale_project`) now uses `docker network ls --filter name=...` to enumerate **all** matching network IDs and removes each by ID, so duplicates cannot survive to block the next start.
+
+### Previous fixes (v7.2.5)
 
 - **TUI update auto-restart (CRITICAL)** — Applying an update in the TUI now shows "Update applied. Restarting in 3 seconds..." and automatically replaces the process via `os.execv`, preserving the terminal session. Previously it printed a manual restart message and did nothing.
 - **DOM mutation race condition (CRITICAL)** — `action_check()` ran on a background worker thread and called DOM methods directly without `call_from_thread`. Fixed.

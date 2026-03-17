@@ -1,6 +1,6 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v7.2.5
+**Current Version:** v7.2.6
 **Last Updated:** 2026-03-17
 **Maintainer:** defcon
 
@@ -48,6 +48,7 @@
 - **Cluster-Aware Instance Spawning (v7.2.0)** -- TUI Instance manager (`+` key) now spawns fully functional shard/node cluster members with auto-assigned names, IPs, and shard indices. First instance = orchestrator, subsequent = shard workers. Shared Docker network and Redis for inter-node communication. Persistent instance registry. Thread-safe TUI updates. 23 new tests.
 - **Boot Loading Animation (v7.2.4)** -- Pre-launch sequence wrapped behind a bouncing-ball animation. Dependency installation runs quietly. All decorative emoji purged from codebase and replaced with ASCII equivalents.
 - **Six Bug Fixes — TUI stability & correctness (v7.2.5)** -- TUI update screen now auto-restarts the process on success (no manual restart). Fixed DOM mutation race condition in the update worker thread. Replaced all `asyncio.get_event_loop()` calls with `get_running_loop()`. Temp directory leak in `_apply_docker_mode()` fixed. Docker build output no longer corrupts the Textual terminal. Per-tick thread pool in cluster dashboard replaced with shared executor.
+- **Ambiguous Docker network fix — 4th+ cluster node spawn (v7.2.6)** -- Spawning a new cluster node into a previously-used slot no longer fails with "2 matches found based on name: network X is ambiguous". The spawn pre-flight now removes all duplicate stale networks by ID.
 
 ---
 

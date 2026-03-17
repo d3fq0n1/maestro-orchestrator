@@ -1,5 +1,17 @@
 # Changelog
 
+## [7.2.6] - 2026-03-17
+
+### Fixed
+
+- **Ambiguous Docker network blocks 4th+ cluster node spawn** (`maestro/instances.py`) — `_cleanup_stale_project()` previously removed stale compose networks by name via `docker network rm <name>`. When two networks shared the same name (from a prior partial teardown), Docker returned `2 matches found based on name: network maestro-N_maestro-net is ambiguous` and the removal silently failed, leaving both stale networks in place. The next `compose up` then hit the same ambiguity error and refused to start. Fixed by switching to `docker network ls --filter name=<name>` to enumerate all matching network IDs and removing each one individually by ID, so no stale entry survives regardless of how many duplicates exist.
+
+### Changed
+
+- **Troubleshooting docs updated** (`docs/troubleshooting.md`) — Added entry for the "network X is ambiguous" error with root-cause explanation, version note, and manual recovery steps.
+
+---
+
 ## [7.2.5] - 2026-03-17
 
 ### Fixed
