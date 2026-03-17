@@ -274,7 +274,7 @@ class KeySetupWizard(ModalScreen[None]):
             elif key_status.valid is False:
                 self.app.call_from_thread(
                     status_widget.update,
-                    f"  [yellow]\u26a0 Key saved but validation failed: "
+                    f"  [yellow]!! Key saved but validation failed: "
                     f"{key_status.error}[/]\n"
                     f"  [dim]The key is saved — you can fix it later.[/]"
                 )
@@ -1230,7 +1230,7 @@ class MaestroTUI(App):
             viewer = self.query_one("#response-viewer", ResponseViewer)
             total = len(errors) + len(warnings)
             viewer.write_info(
-                f"[yellow]\u26a0 {total} issue(s)[/] found  "
+                f"[yellow]!! {total} issue(s)[/] found  "
                 f"([red]{len(errors)} error(s)[/], "
                 f"[yellow]{len(warnings)} warning(s)[/])  \u2014  "
                 f"Press [b]D[/] for full report."

@@ -2050,9 +2050,9 @@ interface DepReport {
 
 function severityIcon(s: string): string {
   switch (s) {
-    case "ok": return "\u2714";
-    case "warn": return "\u26a0";
-    case "error": return "\u2718";
+    case "ok": return "[ok]";
+    case "warn": return "[!!]";
+    case "error": return "[x]";
     default: return "?";
   }
 }
@@ -2266,7 +2266,7 @@ function InstancePanel({ visible, onClose }: { visible: boolean; onClose: () => 
         const roleLabel = info.role === "shard" && info.shard_index != null
           ? `shard [${info.shard_index}]`
           : info.role;
-        setActionMsg(`\u2714 ${info.human_name} spawned as ${roleLabel} on :${info.port}`);
+        setActionMsg(`[ok] ${info.human_name} spawned as ${roleLabel} on :${info.port}`);
         await loadInstances();
       } else {
         const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
@@ -2285,7 +2285,7 @@ function InstancePanel({ visible, onClose }: { visible: boolean; onClose: () => 
     try {
       const res = await fetch(`/api/instances/${n}/stop`, { method: "POST" });
       if (res.ok) {
-        setActionMsg(`\u2714 Instance #${n} stopped`);
+        setActionMsg(`[ok] Instance #${n} stopped`);
         await loadInstances();
       } else {
         const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
