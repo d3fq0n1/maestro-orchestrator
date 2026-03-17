@@ -894,7 +894,7 @@ class MaestroTUI(App):
     """
 
     TITLE = "Maestro Orchestrator"
-    SUB_TITLE = "TUI Dashboard"
+    SUB_TITLE = "v7.2.7  |  TUI Dashboard"
 
     CSS_PATH = "maestro_tui.tcss"
 
@@ -968,6 +968,11 @@ class MaestroTUI(App):
         if self._first_run_checked:
             return
         self._first_run_checked = True
+
+        # Ensure .env is loaded regardless of backend mode (HTTP mode skips
+        # DirectBackend.__init__ which normally calls _load_env).
+        from maestro.tui.backend import _load_env
+        _load_env()
 
         from maestro.keyring import list_keys
         keys = list_keys()

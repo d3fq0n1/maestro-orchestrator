@@ -1,6 +1,34 @@
-# Maestro-Orchestrator v7.2.6
+# Maestro-Orchestrator v7.2.7
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
+
+---
+
+## What's New in v7.2.7
+
+### Bug Fix: "No API keys configured" shown despite keys being set
+
+When the TUI was launched in HTTP mode (`--mode http`), the first-run detection
+routine read API key status directly from `os.environ` without first loading the
+`.env` file. Because `DirectBackend.__init__` (which calls `_load_env`) is never
+instantiated in HTTP mode, the environment was always empty and the TUI incorrectly
+displayed "No API keys configured" even when keys were present on disk.
+
+**Fix:** `_check_first_run()` now calls `_load_env()` unconditionally before
+inspecting key status, so the `.env` file is always sourced regardless of backend
+mode.
+
+### TUI header now shows version number
+
+The sub-title of the Textual dashboard now includes the current version string
+(`v7.2.7 | TUI Dashboard`), making it immediately visible at the top of every
+TUI session.
+
+### Version canonicalized in `maestro/__init__.py`
+
+`__version__ = "7.2.7"` is now the single authoritative source; `_MAESTRO_VERSION`
+in `plugins/manager.py` and the FastAPI `version=` in `node_server.py` are updated
+to match.
 
 ---
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## [7.2.7] - 2026-03-17
+
+### Fixed
+
+- **"No API keys configured" shown despite keys being set** (`maestro/tui/app.py`) — `_check_first_run()` read API key status directly from `os.environ` without loading the `.env` file first. In HTTP mode (`--mode http`) `DirectBackend.__init__` is never called, so `_load_env()` was never invoked and the environment appeared empty. Fixed by calling `_load_env()` at the top of `_check_first_run()` unconditionally, so the `.env` is always sourced regardless of backend mode.
+
+### Added
+
+- **Version number in TUI header** (`maestro/tui/app.py`) — The Textual dashboard sub-title now shows `v7.2.7  |  TUI Dashboard` so the running version is always visible at a glance.
+
+### Changed
+
+- **Version bumped to v7.2.7** — `maestro/__init__.py` (`__version__`), `maestro/plugins/manager.py` (`_MAESTRO_VERSION`), `maestro/node_server.py`, `readme.md`, `RELEASE.md`, `docs/agents.md`, `docs/mod-manager.md`, `docs/quorum_logic.md`, `docs/storage-network.md`, `docs/roadmap.md`, and `changelog.md` all updated.
+
+---
+
 ## [7.2.6] - 2026-03-17
 
 ### Fixed
