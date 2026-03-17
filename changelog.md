@@ -1,5 +1,23 @@
 # Changelog
 
+## [7.2.5] - 2026-03-17
+
+### Fixed
+
+- **TUI update auto-restart** (`maestro/tui/app.py`, `maestro/tui/__main__.py`) — After `apply_update()` succeeds the TUI previously printed "Restart the TUI to load changes." with no action. Now shows "Update applied. Restarting in 3 seconds...", waits three seconds, and calls `app.exit(42)`. The `__main__.main()` entry point detects exit code 42 and calls `os.execv(sys.executable, ...)` to replace the process cleanly, preserving the terminal session.
+- **DOM mutation race condition** (`maestro/tui/app.py`) — The `@work(thread=True)` `action_check()` worker was calling `_set_status()` and `_set_commits()` directly on the background thread, bypassing Textual's thread safety. Both calls are now wrapped with `self.app.call_from_thread(...)`.
+- **`asyncio.get_event_loop()` deprecation** (`maestro/updater.py`, `maestro/lan_discovery.py`, `maestro/api_instances.py`) — Six occurrences of `asyncio.get_event_loop()` replaced with `asyncio.get_running_loop()` throughout the codebase. `get_event_loop()` emits `DeprecationWarning` in Python 3.10+ when called from inside a running coroutine.
+- **Temp directory leak on clone failure** (`maestro/updater.py`) — `_apply_docker_mode()` created a temp directory via `mkdtemp()` but did not clean it up on early-return or exception paths. The body is now wrapped in `try/finally` with `shutil.rmtree(tmp, ignore_errors=True)` in the `finally` block.
+- **Docker build output corrupts TUI** (`maestro/updater.py`) — `_maybe_rebuild()` called `subprocess.run(compose + ["up", "-d", "--build"])` without `capture_output=True`, allowing Docker's build output to bleed into the terminal that Textual owns. Added `capture_output=True`.
+- **Thread pool created per refresh tick** (`maestro/tui/app.py`) — `_refresh_cluster_dashboard()` created and destroyed a `ThreadPoolExecutor(max_workers=1)` on every 5-second cluster refresh. Replaced with `asyncio.get_running_loop().run_in_executor(None, ...)` to use the default shared executor.
+
+### Changed
+
+- **Documentation updated** — Version stamps in `docs/agents.md`, `docs/mod-manager.md`, `docs/quorum_logic.md`, `docs/storage-network.md` brought up to date. TUI update auto-restart behaviour documented in `docs/ui-guide.md` and `docs/deployment.md`. `MAESTRO_UPDATE_INTERVAL` env var added to deployment guide. `MAESTRO_AUTO_UPDATE` description corrected to reflect that it also enables the background polling daemon.
+- **Version bumped to v7.2.5** across readme, roadmap, docs version stamps, release notes, and changelog.
+
+---
+
 ## [7.2.4] - 2026-03-17
 
 ### Added

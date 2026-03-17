@@ -133,7 +133,8 @@ OPENROUTER_API_KEY=...
 
 ```env
 MAESTRO_MODE=web                        # Startup mode: web, cli, or tui (skip dialog)
-MAESTRO_AUTO_UPDATE=0                   # Set to 1 for startup update notification
+MAESTRO_AUTO_UPDATE=0                   # Set to 1 to enable startup update check and background auto-updater
+MAESTRO_UPDATE_INTERVAL=60              # Background update poll interval in seconds (min: 10, default: 60)
 MAESTRO_AUTO_INJECT=false               # Set to true for auto-injection of validated proposals
 MAESTRO_ENV_FILE=/path/to/.env          # Override .env file location
 MAESTRO_UPDATE_REMOTE=https://...       # Override update remote URL
@@ -216,6 +217,10 @@ Ensure proper firewall rules are in place for ports `8000` (API) and `80/443` (f
 
 Maestro includes a built-in auto-updater so you don't need to re-clone the repo. The remote URL defaults to `https://github.com/d3fq0n1/maestro-orchestrator.git` and can be changed in the Web-UI or via the `MAESTRO_UPDATE_REMOTE` environment variable.
 
+### From the TUI
+
+Press `U` to open the update screen. It auto-checks on open. Press `A` to apply — on success the screen shows "Update applied. Restarting in 3 seconds..." and then the TUI process replaces itself via `os.execv`, preserving your terminal session. No manual restart required.
+
 ### From the Web-UI
 
 Open the **System Update** panel from the header. The panel shows available commits, lets you apply updates with a progress bar, and offers a **Restart server** button to reload changes after a successful update.
@@ -234,9 +239,12 @@ This checks the remote for new commits, shows you what changed, and asks before 
 make update          # pulls latest + rebuilds Docker
 ```
 
-### Automatic startup check
+### Automatic update check and background updater
 
-Set `MAESTRO_AUTO_UPDATE=1` in your environment (or `.env`) to get a notification on startup when new commits are available. This is non-blocking -- it only prints a notice, it won't apply changes without your confirmation.
+Set `MAESTRO_AUTO_UPDATE=1` in your environment (or `.env`) to enable two behaviours:
+
+1. **Startup check** — prints a notice if new commits are available before the mode dialog appears. Non-blocking; never applies without confirmation.
+2. **Background auto-updater** — a polling daemon checks for updates every `MAESTRO_UPDATE_INTERVAL` seconds (default: 60). Notifications surface in the TUI and Web-UI SSE stream. Auto-apply is off by default; toggle it with `T` in the TUI update screen.
 
 ---
 

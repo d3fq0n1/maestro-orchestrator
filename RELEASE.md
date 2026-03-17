@@ -1,10 +1,23 @@
-# Maestro-Orchestrator v7.2.4
+# Maestro-Orchestrator v7.2.5
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
 
 ---
 
-## What's New in v7.2.4
+## What's New in v7.2.5
+
+### Six Bug Fixes (Critical → Low)
+
+- **TUI update auto-restart (CRITICAL)** — Applying an update in the TUI now shows "Update applied. Restarting in 3 seconds..." and automatically replaces the process via `os.execv`, preserving the terminal session. Previously it printed a manual restart message and did nothing.
+- **DOM mutation race condition (CRITICAL)** — `action_check()` ran on a background worker thread and called DOM methods directly without `call_from_thread`. Fixed.
+- **`asyncio.get_event_loop()` deprecation (HIGH)** — Six occurrences across `updater.py`, `lan_discovery.py`, and `api_instances.py` replaced with `asyncio.get_running_loop()`.
+- **Temp directory leak (HIGH)** — `_apply_docker_mode()` now wraps its clone+copy body in `try/finally` so the temp directory is always cleaned up.
+- **Docker build output corruption (MEDIUM)** — `_maybe_rebuild()` now uses `capture_output=True` to prevent Docker output from bleeding into the Textual terminal.
+- **Thread pool churn (LOW)** — `_refresh_cluster_dashboard()` no longer creates and destroys a `ThreadPoolExecutor` every 5 seconds; it now uses the default shared executor.
+
+---
+
+## What was new in v7.2.4
 
 ### Boot Loading Animation
 
