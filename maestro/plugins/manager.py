@@ -42,7 +42,7 @@ from maestro.plugins.base import (
 )
 
 
-_MAESTRO_VERSION = "7.2.4"
+_MAESTRO_VERSION = "7.2.7"
 
 # Valid hook points in the orchestration pipeline
 HOOK_POINTS = (

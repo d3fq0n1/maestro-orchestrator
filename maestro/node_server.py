@@ -236,7 +236,7 @@ async def lifespan(app: FastAPI):
 # App
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="Maestro Storage Node", version="7.2.4", lifespan=lifespan)
+app = FastAPI(title="Maestro Storage Node", version="7.2.7", lifespan=lifespan)
 
 
 # ---------------------------------------------------------------------------
