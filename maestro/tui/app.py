@@ -206,7 +206,7 @@ class KeySetupWizard(ModalScreen[None]):
 
     def _show_complete(self) -> None:
         self.query_one("#setup-provider-info", Static).update(
-            "\n  [bold green]\u2714 Setup complete![/]\n\n"
+            "\n  [bold green]ok Setup complete![/]\n\n"
             "  All providers have been reviewed.\n"
             "  Press [b]K[/] any time to check key status.\n"
             "  Press [b]S[/] any time to re-run this wizard."
@@ -255,7 +255,7 @@ class KeySetupWizard(ModalScreen[None]):
         except Exception as exc:
             self.app.call_from_thread(
                 status_widget.update,
-                f"  [red]\u2718 Error saving key: {exc}[/]"
+                f"  [red]x Error saving key: {exc}[/]"
             )
             return
 
@@ -269,7 +269,7 @@ class KeySetupWizard(ModalScreen[None]):
             if key_status.valid:
                 self.app.call_from_thread(
                     status_widget.update,
-                    f"  [bold green]\u2714 {label} key is valid![/]"
+                    f"  [bold green]ok {label} key is valid![/]"
                 )
             elif key_status.valid is False:
                 self.app.call_from_thread(
@@ -445,13 +445,13 @@ class DependencyScreen(ModalScreen[None]):
             # Summary line
             if self._report.healthy:
                 yield Static(
-                    f"  [green]\u2714[/] All clear — "
+                    f"  [green]ok[/] All clear — "
                     f"{self._report.ok_count} passed, "
                     f"{len(self._report.warnings)} warning(s)"
                 )
             else:
                 yield Static(
-                    f"  [red]\u2718[/] Issues found — "
+                    f"  [red]x[/] Issues found — "
                     f"{len(self._report.errors)} error(s), "
                     f"{len(self._report.warnings)} warning(s), "
                     f"{self._report.ok_count} ok"
@@ -567,7 +567,7 @@ class UpdateScreen(ModalScreen[str | None]):
     def _render_info(self, info: dict) -> None:
         error = info.get("error")
         if error:
-            self._set_status(f"  [red]\u2718 {error}[/]")
+            self._set_status(f"  [red]x {error}[/]")
             self._set_commits("")
             return
 
@@ -595,7 +595,7 @@ class UpdateScreen(ModalScreen[str | None]):
                 self._set_commits("")
         else:
             self._set_status(
-                f"  [green]\u2714 Up to date[/] on [bold]{branch}[/]\n"
+                f"  [green]ok Up to date[/] on [bold]{branch}[/]\n"
                 f"  Commit: [dim]{local}[/]"
             )
             self._set_commits("")
@@ -611,7 +611,7 @@ class UpdateScreen(ModalScreen[str | None]):
         except Exception as exc:
             self.app.call_from_thread(
                 self._set_status,
-                f"  [red]\u2718 Check failed: {exc}[/]",
+                f"  [red]x Check failed: {exc}[/]",
             )
 
     @work(thread=True)
@@ -635,18 +635,18 @@ class UpdateScreen(ModalScreen[str | None]):
             if success:
                 self.app.call_from_thread(
                     self._set_status,
-                    f"  [bold green]\u2714 {message}[/]\n\n"
+                    f"  [bold green]ok {message}[/]\n\n"
                     f"  Restart the TUI to load changes.",
                 )
             else:
                 self.app.call_from_thread(
                     self._set_status,
-                    f"  [red]\u2718 {message}[/]",
+                    f"  [red]x {message}[/]",
                 )
         except Exception as exc:
             self.app.call_from_thread(
                 self._set_status,
-                f"  [red]\u2718 Update failed: {exc}[/]",
+                f"  [red]x Update failed: {exc}[/]",
             )
 
     def action_toggle_auto(self) -> None:
@@ -730,7 +730,7 @@ class InstanceScreen(ModalScreen[None]):
             self.app.call_from_thread(self._render_table)
             self._set_status_threadsafe("")
         except Exception as exc:
-            self._set_status_threadsafe(f"  [red]\u2718 {exc}[/]")
+            self._set_status_threadsafe(f"  [red]x {exc}[/]")
 
     def _set_status_threadsafe(self, text: str) -> None:
         """Update the status label from any thread."""
@@ -812,7 +812,7 @@ class InstanceScreen(ModalScreen[None]):
             if info.role == "shard" and info.shard_index is not None:
                 role_label = f"shard [{info.shard_index}]"
             self._set_status_threadsafe(
-                f"  [bold green]\u2714[/] [{info.human_name}] spawned as "
+                f"  [bold green]ok[/] [{info.human_name}] spawned as "
                 f"[bold]{role_label}[/] on "
                 f"[bold]:{info.port}[/] ({health})"
             )
@@ -822,7 +822,7 @@ class InstanceScreen(ModalScreen[None]):
             self.app.call_from_thread(self._render_table)
             self._refresh_main_dashboard()
         except Exception as exc:
-            self._set_status_threadsafe(f"  [red]\u2718 Spawn failed: {exc}[/]")
+            self._set_status_threadsafe(f"  [red]x Spawn failed: {exc}[/]")
 
     def _stop_instance(self, n: int) -> None:
         """Stop instance *n* in a background thread."""
@@ -841,14 +841,14 @@ class InstanceScreen(ModalScreen[None]):
             from maestro.instances import stop as stop_instance
             stop_instance(n)
             self._set_status_threadsafe(
-                f"  [green]\u2714 [{name}] stopped[/]"
+                f"  [green]ok [{name}] stopped[/]"
             )
             from maestro.instances import get_all_status
             self._instance_data = get_all_status()
             self.app.call_from_thread(self._render_table)
             self._refresh_main_dashboard()
         except Exception as exc:
-            self._set_status_threadsafe(f"  [red]\u2718 Stop failed: {exc}[/]")
+            self._set_status_threadsafe(f"  [red]x Stop failed: {exc}[/]")
 
     def _refresh_main_dashboard(self) -> None:
         """Push updated instance data to the main screen's ClusterDashboard."""
@@ -1180,7 +1180,7 @@ class MaestroTUI(App):
             self.call_from_thread(dashboard.update_instances, instances)
             self.call_from_thread(
                 dashboard.update_status_hint,
-                f"[bold green]\u2714[/] [{info.human_name}] spawned as "
+                f"[bold green]ok[/] [{info.human_name}] spawned as "
                 f"[bold]{role_label}[/] on :{info.port} ({health})",
             )
         except Exception as exc:
@@ -1188,7 +1188,7 @@ class MaestroTUI(App):
             try:
                 self.call_from_thread(
                     dashboard.update_status_hint,
-                    f"[red]\u2718 Spawn failed: {exc}[/]",
+                    f"[red]x Spawn failed: {exc}[/]",
                 )
             except Exception:
                 pass
@@ -1287,7 +1287,7 @@ class MaestroTUI(App):
                 msg = event.data.get("message", "Updated successfully")
                 self.call_from_thread(
                     viewer.write_info,
-                    f"[bold green]\u2714 {msg}[/] — Restart the TUI to load changes."
+                    f"[bold green]ok {msg}[/] — Restart the TUI to load changes."
                 )
             elif event.kind == "error":
                 error = event.data.get("error", "Unknown error")

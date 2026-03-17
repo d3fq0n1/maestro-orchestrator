@@ -303,7 +303,7 @@ class ShardNetworkPanel(Widget):
                 else:
                     icon = f"[bold green]{spinner}[/]"
             elif status == "probation":
-                icon = "[bold red]\u2718[/]"
+                icon = "[bold red]x[/]"
             elif status in ("offline", "evicted"):
                 icon = "[red]\u25cf[/]"
             else:
@@ -406,7 +406,7 @@ class ShardDiscoveryPanel(Widget):
         host = identity.get("host", "?")
         port = identity.get("port", "?")
         self.query_one("#discovery-identity", Static).update(
-            f" [bold cyan]\u2726[/] [bold]{name}[/] "
+            f" [bold cyan]*[/] [bold]{name}[/] "
             f"[dim]({uid_short})[/]  {host}:{port}"
         )
 
@@ -418,7 +418,7 @@ class ShardDiscoveryPanel(Widget):
             names = node_status.get("member_names", [])
             label = ", ".join(names[:3])
             self.query_one("#discovery-node-status", Static).update(
-                f" [bold green]\u2714 MAESTRO NODE[/]  [{label}]"
+                f" [bold green]ok MAESTRO NODE[/]  [{label}]"
             )
         else:
             self.query_one("#discovery-node-status", Static).update(

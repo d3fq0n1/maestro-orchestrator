@@ -333,7 +333,7 @@ def check_deps() -> None:
                 print("  Error: Docker daemon did not become available within 120 seconds.")
                 print("  Please make sure Docker Desktop (or the docker service) is fully started, then try again.")
                 sys.exit(1)
-            print("  ✓ Docker daemon is now running")
+            print("  [ok] Docker daemon is now running")
         else:
             sys.exit(1)
 
@@ -461,7 +461,7 @@ def build_and_start(compose: list[str], verbose: bool = False) -> None:
     except OSError:
         pass
 
-    print("  ✓ Container built and started")
+    print("  [ok] Container built and started")
 
 
 def wait_for_healthy() -> bool:
@@ -478,7 +478,7 @@ def wait_for_healthy() -> bool:
                 with urllib.request.urlopen(HEALTH_ENDPOINT, timeout=3) as resp:
                     if resp.status == 200:
                         spinner.set_progress(1.0)
-                        spinner.stop("  ✓ Maestro is up and healthy")
+                        spinner.stop("  [ok] Maestro is up and healthy")
                         return True
             except Exception:
                 pass
@@ -489,7 +489,7 @@ def wait_for_healthy() -> bool:
 
     spinner.stop()
     total = HEALTH_RETRIES * HEALTH_DELAY
-    print(f"  ⚠ Maestro did not respond within {total}s.")
+    print(f"  [!!] Maestro did not respond within {total}s.")
     if platform.system() == "Windows":
         print("  Check logs with: docker compose logs -f")
     else:
@@ -530,7 +530,7 @@ def _install_tui_deps() -> None:
             stderr=subprocess.PIPE,
         )
         if result.returncode == 0:
-            print("  ✓ TUI dependencies installed")
+            print("  [ok] TUI dependencies installed")
             return
         # Second attempt — PEP 668 externally-managed environments (Debian/Ubuntu/Raspbian)
         # require --break-system-packages to install into the system Python.
@@ -542,12 +542,12 @@ def _install_tui_deps() -> None:
                 stderr=subprocess.PIPE,
             )
             if result2.returncode == 0:
-                print("  ✓ TUI dependencies installed")
+                print("  [ok] TUI dependencies installed")
                 return
             stderr = result2.stderr.decode(errors="replace").strip()
         else:
             stderr = stderr.strip()
-        print(f"  ⚠ Could not install TUI dependencies: {stderr}")
+        print(f"  [!!] Could not install TUI dependencies: {stderr}")
         print("  You can install them manually: pip install textual rich")
         print("  Or: pip install --break-system-packages textual rich")
 
@@ -571,7 +571,7 @@ def open_browser(url: str) -> None:
         return
     try:
         webbrowser.open(url)
-        print(f"  ✓ Browser opened to {url}")
+        print(f"  [ok] Browser opened to {url}")
     except Exception:
         print(f"  Open your browser to: {url}")
 
@@ -616,7 +616,7 @@ BANNER = r"""
        | |  | | (_| |  __/\__ \ |_| | | (_) |
        \_|  |_/\__,_|\___||___/\__|_|  \___/
 
-          ♫  Orchestrator Setup  ♫
+          --  Orchestrator Setup  --
 """
 
 
@@ -628,20 +628,20 @@ def _ensure_python_packages() -> None:
 
     missing = [c for c in check_python_packages() if c.severity.value == "error"]
     if not missing:
-        print("  ✓ Python packages verified")
+        print("  [ok] Python packages verified")
         return
 
     names = [c.name for c in missing]
     print(f"  Installing missing packages: {', '.join(names)} ...")
-    installed = ensure_packages()
+    installed = ensure_packages(quiet=True)
     if installed:
-        print(f"  ✓ Installed: {', '.join(installed)}")
+        print(f"  [ok] Installed: {', '.join(installed)}")
 
     # Re-check for any that still failed
     still_missing = [c for c in check_python_packages() if c.severity.value == "error"]
     if still_missing:
         names = [c.name for c in still_missing]
-        print(f"  ⚠ Could not install: {', '.join(names)}")
+        print(f"  [!!] Could not install: {', '.join(names)}")
         print("  You may need to install them manually:")
         for c in still_missing:
             print(f"    {c.hint}")
@@ -653,7 +653,7 @@ def docker_setup(skip_browser: bool = False, verbose: bool = False) -> None:
     print(BANNER)
 
     check_deps()
-    print("  ✓ Docker verified\n")
+    print("  [ok] Docker verified\n")
 
     _ensure_python_packages()
     print()
@@ -663,7 +663,7 @@ def docker_setup(skip_browser: bool = False, verbose: bool = False) -> None:
 
     print("  Stopping prior sessions ...")
     cleanup_stale_containers(compose, port)
-    print("  ✓ Clean slate\n")
+    print("  [ok] Clean slate\n")
 
     build_and_start(compose, verbose=verbose)
     print()

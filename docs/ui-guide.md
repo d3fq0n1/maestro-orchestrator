@@ -31,7 +31,7 @@ This guide outlines the structure and behavior of the Maestro-Orchestrator front
 
 * **Agent Response Section:**
   * Displays all agent responses in vertical list
-  * Includes emoji, agent name, and response text
+  * Includes agent marker, agent name, and response text
 
 * **Dissent Analysis:**
   * Pairwise semantic distances between agents (expandable)
@@ -89,7 +89,7 @@ User types -> Clicks Submit (or Enter) -> Loading state
 
 * **Real-time SSE Streaming:** Agent responses and pipeline stages arrive progressively via Server-Sent Events
 * **Full Analysis Rendering:** R2 grades, quorum bar, dissent, NCG drift -- all displayed per session
-* **Emoji Mapping:** Helps humanize model identity
+* **Agent Markers:** Color-coded agent identity indicators
 * **Session History:** Browse past sessions from the UI
 * **Key Management:** Configure and validate API keys without editing `.env`
 * **Storage Network:** Full shard distribution, node topology, and mirror completeness visualization with copyable CLI commands

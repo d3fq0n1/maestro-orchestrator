@@ -587,7 +587,7 @@
       background: rgba(210,153,34,.1);
       border-radius: 4px;
     }
-    .flag-list li::before { content: "⚠ "; }
+    .flag-list li::before { content: "[!] "; }
 
     .consensus-text {
       font-size: 13px;
@@ -769,7 +769,7 @@
 
     <!-- Alerts bar -->
     <div id="alerts-bar">
-      <span>⚠</span>
+      <span>[!]</span>
       <div class="alerts-list" id="alerts-list"></div>
       <button onclick="dismissAlerts()">Dismiss</button>
     </div>
@@ -994,10 +994,10 @@ let alerts = [];        // active alert strings
 
 /* ── Agent definitions ───────────────────────────────────────── */
 const AGENTS = [
-  { id: 'openai',     name: 'Sol',       model: 'gpt-4o',                  provider: 'OpenAI',    emoji: '⚡', color: '#74aa9c' },
-  { id: 'anthropic',  name: 'Aria',      model: 'claude-sonnet-4-6',       provider: 'Anthropic', emoji: '◈', color: '#d97757' },
-  { id: 'google',     name: 'Prism',     model: 'gemini-2.0-flash',        provider: 'Google',    emoji: '◉', color: '#4285f4' },
-  { id: 'openrouter', name: 'TempAgent', model: 'llama-3.3-70b-instruct',  provider: 'OpenRouter',emoji: '◎', color: '#bc8cff' },
+  { id: 'openai',     name: 'Sol',       model: 'gpt-4o',                  provider: 'OpenAI',    emoji: '>', color: '#74aa9c' },
+  { id: 'anthropic',  name: 'Aria',      model: 'claude-sonnet-4-6',       provider: 'Anthropic', emoji: '>', color: '#d97757' },
+  { id: 'google',     name: 'Prism',     model: 'gemini-2.0-flash',        provider: 'Google',    emoji: '>', color: '#4285f4' },
+  { id: 'openrouter', name: 'TempAgent', model: 'llama-3.3-70b-instruct',  provider: 'OpenRouter',emoji: '>', color: '#bc8cff' },
 ];
 
 /* ── Main refresh ────────────────────────────────────────────── */
@@ -1381,7 +1381,7 @@ function renderModal(s) {
       <div class="kv-item"><div class="kv-key">Agreement</div>
         <div class="kv-val">${agreement != null ? (agreement*100).toFixed(1)+'%' : '—'}</div></div>
       <div class="kv-item"><div class="kv-key">Quorum</div>
-        <div class="kv-val ${quorumMet ? 'text-ok' : 'text-err'}">${quorumMet == null ? '—' : quorumMet ? 'Met ✓' : 'Not met ✗'}</div></div>
+        <div class="kv-val ${quorumMet ? 'text-ok' : 'text-err'}">${quorumMet == null ? '—' : quorumMet ? 'Met [ok]' : 'Not met [x]'}</div></div>
       <div class="kv-item"><div class="kv-key">Threshold</div>
         <div class="kv-val">${(threshold*100).toFixed(0)}%</div></div>
       <div class="kv-item"><div class="kv-key">Agents</div>

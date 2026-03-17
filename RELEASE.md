@@ -1,10 +1,26 @@
-# Maestro-Orchestrator v7.2.3
+# Maestro-Orchestrator v7.2.4
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
 
 ---
 
-## What's New in v7.2.3
+## What's New in v7.2.4
+
+### Boot Loading Animation
+
+Startup no longer dumps raw pip output and status vomit to the terminal. The pre-launch sequence (dependency resolution, update checks, module imports) now runs behind a **bouncing-ball loading animation** that keeps the terminal clean.
+
+- `entrypoint.py` wraps dependency install + update check behind a single animated line
+- `maestro/cli.py` shows a loader during the heavy import phase (agents, orchestrator, NCG generators)
+- `setup.py` installs missing packages quietly (pip output suppressed)
+
+### Emoji Purge
+
+All decorative emoji characters (`✓`, `⚠`, `♫`, `✔`, `✘`, `⚡`, `◈`, `◉`, `◎`) removed from source code and replaced with plain ASCII equivalents (`[ok]`, `[!!]`, `[x]`, `>`, `--`). Status glyphs in the TUI (`\u2714`, `\u2718`, `\u2726`) also replaced. Functional Unicode characters (Braille spinners, box-drawing, geometric indicators used by the Textual TUI) are unchanged.
+
+---
+
+## What was new in v7.2.3
 
 ### Dependency Health Check Fix
 
