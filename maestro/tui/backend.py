@@ -38,7 +38,12 @@ class MaestroBackend(ABC):
     """Abstract base for TUI backend connections."""
 
     @abstractmethod
-    async def orchestrate(self, prompt: str) -> AsyncIterator[TUIEvent]:
+    async def orchestrate(
+        self,
+        prompt: str,
+        deliberation_enabled: bool = True,
+        deliberation_rounds: int = 1,
+    ) -> AsyncIterator[TUIEvent]:
         """Run orchestration and yield progressive events."""
         ...
 
@@ -69,7 +74,12 @@ class DirectBackend(MaestroBackend):
         _bootstrap_paths()
         _load_env()
 
-    async def orchestrate(self, prompt: str) -> AsyncIterator[TUIEvent]:
+    async def orchestrate(
+        self,
+        prompt: str,
+        deliberation_enabled: bool = True,
+        deliberation_rounds: int = 1,
+    ) -> AsyncIterator[TUIEvent]:
         from maestro.agents.sol import Sol
         from maestro.agents.aria import Aria
         from maestro.agents.prism import Prism
@@ -90,6 +100,8 @@ class DirectBackend(MaestroBackend):
             ncg_enabled=True,
             session_logging=True,
             headless_generator=generator,
+            deliberation_enabled=deliberation_enabled,
+            deliberation_rounds=deliberation_rounds,
         ):
             parsed = _parse_sse(raw_event)
             if parsed:
@@ -120,13 +132,23 @@ class HTTPBackend(MaestroBackend):
     def __init__(self, base_url: str = "http://localhost:8000"):
         self._base_url = base_url.rstrip("/")
 
-    async def orchestrate(self, prompt: str) -> AsyncIterator[TUIEvent]:
+    async def orchestrate(
+        self,
+        prompt: str,
+        deliberation_enabled: bool = True,
+        deliberation_rounds: int = 1,
+    ) -> AsyncIterator[TUIEvent]:
         import httpx
 
         url = f"{self._base_url}/api/ask/stream"
+        payload = {
+            "prompt": prompt,
+            "deliberation_enabled": deliberation_enabled,
+            "deliberation_rounds": deliberation_rounds,
+        }
         async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
             async with client.stream(
-                "POST", url, json={"prompt": prompt},
+                "POST", url, json=payload,
             ) as response:
                 response.raise_for_status()
                 event_type = None

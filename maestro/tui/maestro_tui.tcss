@@ -98,17 +98,14 @@ Header {
     color: $primary;
 }
 
-/* ── Prompt input ─────────────────────────────────────────────── */
+/* ── Prompt hint (minimized — press P for full Prompt screen) ── */
 
-#prompt-input {
+#prompt-hint {
     dock: bottom;
-    margin: 0 0;
-    height: 3;
-    border: tall $accent;
-}
-
-#prompt-input:focus {
-    border: tall $primary;
+    height: 1;
+    background: $primary-background;
+    color: $text;
+    padding: 0 1;
 }
 
 /* ── Status bar ───────────────────────────────────────────────── */
