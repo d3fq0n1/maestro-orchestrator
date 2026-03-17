@@ -314,58 +314,59 @@ def _apply_docker_mode(branch: str, rebuild: bool) -> dict:
 
     try:
         tmp = tempfile.mkdtemp(prefix="maestro_update_")
-        clone = subprocess.run(
-            ["git", "clone", "--depth=50", "--single-branch",
-             "--branch", branch, url, tmp],
-            capture_output=True, text=True, timeout=120,
-        )
-        if clone.returncode != 0:
-            return {
-                "success": False,
-                "message": f"Clone failed: {clone.stderr.strip()}",
-                "commits_pulled": 0,
-                "rebuilt": False,
-            }
+        try:
+            clone = subprocess.run(
+                ["git", "clone", "--depth=50", "--single-branch",
+                 "--branch", branch, url, tmp],
+                capture_output=True, text=True, timeout=120,
+            )
+            if clone.returncode != 0:
+                return {
+                    "success": False,
+                    "message": f"Clone failed: {clone.stderr.strip()}",
+                    "commits_pulled": 0,
+                    "rebuilt": False,
+                }
 
-        # Read the new HEAD
-        head = subprocess.run(
-            ["git", "-C", tmp, "rev-parse", "HEAD"],
-            capture_output=True, text=True,
-        )
-        after = head.stdout.strip() if head.returncode == 0 else ""
-
-        if before and before == after:
-            shutil.rmtree(tmp, ignore_errors=True)
-            return {
-                "success": True,
-                "message": "Already up to date.",
-                "commits_pulled": 0,
-                "rebuilt": False,
-            }
-
-        # Get commit log from the clone
-        new_commits: list[str] = []
-        if before and after:
-            log = subprocess.run(
-                ["git", "-C", tmp, "log", "--oneline", f"{before}..{after}"],
+            # Read the new HEAD
+            head = subprocess.run(
+                ["git", "-C", tmp, "rev-parse", "HEAD"],
                 capture_output=True, text=True,
             )
-            if log.returncode == 0:
-                new_commits = [l for l in log.stdout.strip().splitlines() if l]
+            after = head.stdout.strip() if head.returncode == 0 else ""
 
-        # Copy updated directories into the running app, preserving
-        # user-created files like .env (which stores API keys).
-        for d in _SYNC_DIRS:
-            src = os.path.join(tmp, d)
-            dst = os.path.join(_PROJECT_ROOT, d)
-            if os.path.isdir(src):
-                _sync_directory(src, dst)
+            if before and before == after:
+                return {
+                    "success": True,
+                    "message": "Already up to date.",
+                    "commits_pulled": 0,
+                    "rebuilt": False,
+                }
 
-        # Update VERSION file so next check knows where we are
-        with open(_VERSION_FILE, "w") as f:
-            f.write(after + "\n")
+            # Get commit log from the clone
+            new_commits: list[str] = []
+            if before and after:
+                log = subprocess.run(
+                    ["git", "-C", tmp, "log", "--oneline", f"{before}..{after}"],
+                    capture_output=True, text=True,
+                )
+                if log.returncode == 0:
+                    new_commits = [l for l in log.stdout.strip().splitlines() if l]
 
-        shutil.rmtree(tmp, ignore_errors=True)
+            # Copy updated directories into the running app, preserving
+            # user-created files like .env (which stores API keys).
+            for d in _SYNC_DIRS:
+                src = os.path.join(tmp, d)
+                dst = os.path.join(_PROJECT_ROOT, d)
+                if os.path.isdir(src):
+                    _sync_directory(src, dst)
+
+            # Update VERSION file so next check knows where we are
+            with open(_VERSION_FILE, "w") as f:
+                f.write(after + "\n")
+
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
     except Exception as exc:
         return {
@@ -450,6 +451,7 @@ def _maybe_rebuild(rebuild: bool, new_commits: list) -> bool:
     build_result = subprocess.run(
         compose + ["up", "-d", "--build"],
         cwd=_PROJECT_ROOT,
+        capture_output=True,
     )
     return build_result.returncode == 0
 
@@ -625,7 +627,7 @@ class AutoUpdater:
         """Run one check-and-maybe-apply cycle."""
         self._emit("check")
         try:
-            info = await asyncio.get_event_loop().run_in_executor(
+            info = await asyncio.get_running_loop().run_in_executor(
                 None, check_for_updates,
             )
         except Exception as exc:
@@ -655,7 +657,7 @@ class AutoUpdater:
         # Auto-apply
         self._emit("applying", info)
         try:
-            result = await asyncio.get_event_loop().run_in_executor(
+            result = await asyncio.get_running_loop().run_in_executor(
                 None, apply_update,
             )
         except Exception as exc:
@@ -696,7 +698,7 @@ class AutoUpdater:
     async def trigger_check(self) -> dict:
         """Manually trigger an immediate check (non-blocking)."""
         try:
-            info = await asyncio.get_event_loop().run_in_executor(
+            info = await asyncio.get_running_loop().run_in_executor(
                 None, check_for_updates,
             )
             self._last_check = time.time()
@@ -708,7 +710,7 @@ class AutoUpdater:
     async def trigger_apply(self) -> dict:
         """Manually trigger an immediate apply (non-blocking)."""
         try:
-            result = await asyncio.get_event_loop().run_in_executor(
+            result = await asyncio.get_running_loop().run_in_executor(
                 None, apply_update,
             )
             self._last_apply = result

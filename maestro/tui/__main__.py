@@ -8,6 +8,7 @@ Usage:
 """
 
 import argparse
+import os
 import sys
 
 
@@ -34,7 +35,14 @@ def main():
 
     backend = create_backend(mode=args.mode, base_url=args.url)
     app = MaestroTUI(backend=backend)
-    app.run()
+    return_code = app.run()
+
+    # Textual holds the terminal in raw mode. app.exit() must complete and the
+    # process must fully unwind before os.execv fires, or the terminal will be
+    # corrupted. The exit code 42 is the sentinel that signals an update restart
+    # vs a normal quit.
+    if return_code == 42:
+        os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
 if __name__ == "__main__":
