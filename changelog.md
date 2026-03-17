@@ -1,5 +1,20 @@
 # Changelog
 
+## [7.2.4] - 2026-03-17
+
+### Added
+
+- **Boot loading animation** (`entrypoint.py`, `maestro/cli.py`) -- Pre-launch sequence (dependency resolution, update checks, module imports) now runs behind a bouncing-ball loading animation. Terminal stays clean instead of dumping raw pip output and status noise. The `BootLoader` class in `entrypoint.py` and a lightweight spinner thread in `maestro/cli.py` wrap all startup I/O.
+
+### Changed
+
+- **Emoji purge** -- All decorative emoji characters removed from source code and replaced with plain ASCII equivalents. Status glyphs in the TUI also replaced. Functional Unicode (Braille spinners, box-drawing, geometric TUI indicators) unchanged.
+- **Quiet package installation** -- `ensure_packages(quiet=True)` now suppresses both stdout and stderr from pip. `setup.py` calls it in quiet mode so the spinner stays uninterrupted.
+- **Documentation updated** -- `docs/ui-guide.md` references updated (emoji mapping -> agent markers). All version references bumped.
+- **Version bumped to v7.2.4** across readme, roadmap, troubleshooting, node server, plugin manager, release notes, and changelog.
+
+---
+
 ## [7.2.3] - 2026-03-16
 
 ### Fixed

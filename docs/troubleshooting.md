@@ -31,7 +31,7 @@ Tips for entering long API keys:
 
 ### Backend won't start
 
-As of v7.2.3, `setup.py` and `entrypoint.py` automatically install missing Python packages at startup. If you're still seeing missing dependencies, install them manually:
+As of v7.2.4, `setup.py` and `entrypoint.py` automatically install missing Python packages at startup. If you're still seeing missing dependencies, install them manually:
 
 ```bash
 pip install -r requirements.txt

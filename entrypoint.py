@@ -18,9 +18,12 @@ Cluster roles (NODE_ROLE env var):
     NODE_ROLE=shard        -> start as shard worker (skips dialog)
 """
 
+import itertools
 import os
 import subprocess
 import sys
+import threading
+import time
 import webbrowser
 
 
@@ -38,6 +41,81 @@ CLI_LABEL = "CLI"
 CLI_DESC = "Launch the interactive command-line interface"
 TUI_LABEL = "TUI"
 TUI_DESC = "Launch the terminal dashboard (optimized for SoC / Raspi5)"
+
+# ---------------------------------------------------------------------------
+# Boot loading animation
+# ---------------------------------------------------------------------------
+
+_BOUNCE_FRAMES = [
+    "[      o ]",
+    "[     o  ]",
+    "[    o   ]",
+    "[   o    ]",
+    "[  o     ]",
+    "[ o      ]",
+    "[o       ]",
+    "[ o      ]",
+    "[  o     ]",
+    "[   o    ]",
+    "[    o   ]",
+    "[     o  ]",
+]
+
+_BOOT_MESSAGES = [
+    "Warming up the council",
+    "Resolving dependencies",
+    "Tuning the hypervisors",
+    "Calibrating consensus",
+    "Loading agent configs",
+    "Synchronizing shards",
+    "Preparing the pipeline",
+    "Aligning quorum logic",
+]
+
+
+class BootLoader:
+    """Bouncing-ball loading animation for the pre-launch sequence.
+
+    Wraps dependency resolution, update checks, and other startup I/O
+    behind a single animated line so the terminal stays clean.
+    """
+
+    def __init__(self):
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._messages = _BOOT_MESSAGES[:]
+        self._msg_cycle = itertools.cycle(self._messages)
+        self._frames = _BOUNCE_FRAMES
+        self._frame_cycle = itertools.cycle(self._frames)
+
+    def start(self) -> "BootLoader":
+        self._thread = threading.Thread(target=self._animate, daemon=True)
+        self._thread.start()
+        return self
+
+    def stop(self, final: str = "") -> None:
+        self._stop.set()
+        if self._thread:
+            self._thread.join()
+        if final:
+            print(final)
+
+    def _animate(self) -> None:
+        msg = next(self._msg_cycle)
+        last_switch = time.monotonic()
+        while not self._stop.is_set():
+            now = time.monotonic()
+            if now - last_switch >= 2.5:
+                msg = next(self._msg_cycle)
+                last_switch = now
+            frame = next(self._frame_cycle)
+            line = f"\r  {frame}  {msg} ..."
+            sys.stdout.write(f"{line:<72}")
+            sys.stdout.flush()
+            self._stop.wait(0.07)
+        sys.stdout.write("\r" + " " * 72 + "\r")
+        sys.stdout.flush()
+
 
 # ---------------------------------------------------------------------------
 # Mode launchers
@@ -201,19 +279,25 @@ def main():
         print(f"[Maestro] Starting as cluster orchestrator: {node_id} "
               f"(coordinating {shard_count} shards)")
 
-    # Ensure required Python packages are installed before any mode launches.
-    # Inside Docker this is a no-op (packages are baked into the image), but
-    # when running the entrypoint directly on the host this catches missing deps.
+    # Wrap the pre-launch sequence (dependency resolution, update check)
+    # behind a bouncing-ball animation to keep the terminal tidy.
+    loader = BootLoader().start()
     try:
         project_root = os.path.dirname(os.path.abspath(__file__))
         sys.path.insert(0, project_root)
         sys.path.insert(0, os.path.join(project_root, "backend"))
-        from maestro.dependency_resolver import ensure_packages
-        installed = ensure_packages(quiet=True)
-        if installed:
-            print(f"[Maestro] Installed missing packages: {', '.join(installed)}")
-    except Exception:
-        pass  # Never block startup due to install failures
+        try:
+            from maestro.dependency_resolver import ensure_packages
+            ensure_packages(quiet=True)
+        except Exception:
+            pass
+        try:
+            from maestro.updater import startup_check
+            startup_check()
+        except Exception:
+            pass
+    finally:
+        loader.stop("  [ok] Pre-flight complete")
 
     # Allow environment variable to bypass the dialog entirely
     env_mode = os.environ.get("MAESTRO_MODE", "").lower()
@@ -224,13 +308,6 @@ def main():
     else:
         # No TTY (e.g., docker-compose up without -it) -> default to web
         mode = "web"
-
-    # Check for updates on startup (non-blocking, notify-only)
-    try:
-        from maestro.updater import startup_check
-        startup_check()
-    except Exception:
-        pass  # Never block startup due to update check failure
 
     if mode == "cli":
         launch_cli()

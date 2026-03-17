@@ -14,9 +14,12 @@ Usage (from entrypoint):
 """
 
 import asyncio
+import itertools
 import os
 import sys
 import textwrap
+import threading
+import time
 
 # ---------------------------------------------------------------------------
 # Path bootstrap — ensure the backend and project root are importable
@@ -29,28 +32,83 @@ for p in (_project_root, _backend_dir):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from dotenv import load_dotenv
-
-# Load .env using the same logic as orchestrator_foundry.py.
-# override=True ensures the volume-backed file wins over docker-compose env vars.
-_dotenv_path = os.environ.get("MAESTRO_ENV_FILE") or os.path.join(_backend_dir, ".env")
-load_dotenv(dotenv_path=_dotenv_path, override=True)
-
-from maestro.agents.sol import Sol
-from maestro.agents.aria import Aria
-from maestro.agents.prism import Prism
-from maestro.agents.tempagent import TempAgent
-from maestro.orchestrator import run_orchestration_async
-from maestro.ncg.generator import (
-    OpenAIHeadlessGenerator,
-    AnthropicHeadlessGenerator,
-    MockHeadlessGenerator,
-)
 
 # ---------------------------------------------------------------------------
-# Council (same roster as orchestrator_foundry.py)
+# Boot loading animation
 # ---------------------------------------------------------------------------
-COUNCIL = [Sol(), Aria(), Prism(), TempAgent()]
+
+_BOUNCE_FRAMES = [
+    "[      o ]",
+    "[     o  ]",
+    "[    o   ]",
+    "[   o    ]",
+    "[  o     ]",
+    "[ o      ]",
+    "[o       ]",
+    "[ o      ]",
+    "[  o     ]",
+    "[   o    ]",
+    "[    o   ]",
+    "[     o  ]",
+]
+
+_BOOT_MSGS = [
+    "Loading agent council",
+    "Resolving dependencies",
+    "Preparing the pipeline",
+    "Warming up the council",
+]
+
+
+def _boot_spinner(stop_event: threading.Event) -> None:
+    frames = itertools.cycle(_BOUNCE_FRAMES)
+    msgs = itertools.cycle(_BOOT_MSGS)
+    msg = next(msgs)
+    last_switch = time.monotonic()
+    while not stop_event.is_set():
+        now = time.monotonic()
+        if now - last_switch >= 2.5:
+            msg = next(msgs)
+            last_switch = now
+        frame = next(frames)
+        sys.stdout.write(f"\r  {frame}  {msg} ...{' ' * 10}")
+        sys.stdout.flush()
+        stop_event.wait(0.07)
+    sys.stdout.write("\r" + " " * 72 + "\r")
+    sys.stdout.flush()
+
+
+_stop = threading.Event()
+_loader = threading.Thread(target=_boot_spinner, args=(_stop,), daemon=True)
+_loader.start()
+
+try:
+    from dotenv import load_dotenv
+
+    # Load .env using the same logic as orchestrator_foundry.py.
+    # override=True ensures the volume-backed file wins over docker-compose env vars.
+    _dotenv_path = os.environ.get("MAESTRO_ENV_FILE") or os.path.join(_backend_dir, ".env")
+    load_dotenv(dotenv_path=_dotenv_path, override=True)
+
+    from maestro.agents.sol import Sol
+    from maestro.agents.aria import Aria
+    from maestro.agents.prism import Prism
+    from maestro.agents.tempagent import TempAgent
+    from maestro.orchestrator import run_orchestration_async
+    from maestro.ncg.generator import (
+        OpenAIHeadlessGenerator,
+        AnthropicHeadlessGenerator,
+        MockHeadlessGenerator,
+    )
+
+    # ---------------------------------------------------------------------------
+    # Council (same roster as orchestrator_foundry.py)
+    # ---------------------------------------------------------------------------
+    COUNCIL = [Sol(), Aria(), Prism(), TempAgent()]
+finally:
+    _stop.set()
+    _loader.join()
+    print("  [ok] CLI ready")
 
 
 def _select_headless_generator():

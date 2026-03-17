@@ -304,26 +304,27 @@ def ensure_packages(quiet: bool = False) -> list[str]:
     if not quiet:
         log.info("Installing missing packages: %s", ", ".join(pip_names))
 
+    devnull = subprocess.DEVNULL
     cmd = [sys.executable, "-m", "pip", "install", *pip_names]
     result = subprocess.run(
         cmd,
-        stdout=subprocess.DEVNULL if quiet else None,
-        stderr=subprocess.PIPE,
+        stdout=devnull if quiet else None,
+        stderr=subprocess.PIPE if quiet else None,
     )
 
     if result.returncode != 0:
-        stderr = result.stderr.decode(errors="replace")
+        stderr = (result.stderr or b"").decode(errors="replace")
         # Retry with --break-system-packages for PEP 668 environments
         if "externally-managed-environment" in stderr or "externally managed" in stderr.lower():
             cmd_retry = [sys.executable, "-m", "pip", "install", "--break-system-packages", *pip_names]
             result = subprocess.run(
                 cmd_retry,
-                stdout=subprocess.DEVNULL if quiet else None,
-                stderr=subprocess.PIPE,
+                stdout=devnull if quiet else None,
+                stderr=subprocess.PIPE if quiet else None,
             )
 
     if result.returncode != 0:
-        stderr = result.stderr.decode(errors="replace").strip()
+        stderr = (result.stderr or b"").decode(errors="replace").strip()
         log.warning("Failed to install packages: %s", stderr)
         return []
 
