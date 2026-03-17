@@ -1,6 +1,33 @@
-# Maestro-Orchestrator v7.2.7
+# Maestro-Orchestrator v7.2.8
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
+
+---
+
+## What's New in v7.2.8
+
+### Dedicated Prompt Screen (P key)
+
+Pressing `P` now opens a full-screen modal prompt interface instead of focusing a
+cramped bottom input bar. The new Prompt screen includes:
+
+- **Session history panel** — shows recent sessions with ID, prompt preview, and R2
+  grade. Press `1-9` to re-run a past prompt.
+- **Prompt templates** — built-in templates loadable via `F1-F5`, with `Ctrl+S` to
+  save the current prompt as a new template. Templates persist to
+  `data/prompt_templates.json`.
+- **Deliberation controls** — visual toggle switch (`T` to toggle ON/OFF) and
+  radio-button round selector (`R` to cycle 1-5). Parameters pass through the
+  backend to `run_orchestration_stream()`.
+
+The old 3-line bordered input widget is replaced with a minimal 1-line hint bar,
+reclaiming vertical space for the response viewer.
+
+### Backend deliberation parameter passthrough
+
+Both `DirectBackend` and `HTTPBackend` now accept `deliberation_enabled` and
+`deliberation_rounds` parameters in `orchestrate()`, forwarding them to the
+orchestration pipeline.
 
 ---
 

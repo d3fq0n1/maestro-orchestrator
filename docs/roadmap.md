@@ -1,6 +1,6 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v7.2.7
+**Current Version:** v7.2.8
 **Last Updated:** 2026-03-17
 **Maintainer:** defcon
 
@@ -50,6 +50,7 @@
 - **Six Bug Fixes — TUI stability & correctness (v7.2.5)** -- TUI update screen now auto-restarts the process on success (no manual restart). Fixed DOM mutation race condition in the update worker thread. Replaced all `asyncio.get_event_loop()` calls with `get_running_loop()`. Temp directory leak in `_apply_docker_mode()` fixed. Docker build output no longer corrupts the Textual terminal. Per-tick thread pool in cluster dashboard replaced with shared executor.
 - **Ambiguous Docker network fix — 4th+ cluster node spawn (v7.2.6)** -- Spawning a new cluster node into a previously-used slot no longer fails with "2 matches found based on name: network X is ambiguous". The spawn pre-flight now removes all duplicate stale networks by ID.
 - **"No API keys configured" false positive fixed; TUI version display (v7.2.7)** -- `_check_first_run()` now loads `.env` unconditionally before checking key status, fixing the false "No API keys configured" message in HTTP mode. TUI header now shows the running version (`v7.2.7 | TUI Dashboard`). `__version__` canonicalized in `maestro/__init__.py`.
+- **Dedicated Prompt Screen with deliberation controls (v7.2.8)** -- Pressing `P` now opens a full-screen modal prompt interface instead of focusing a cramped bottom input bar. Features: session history panel (press 1-9 to re-run past prompts), prompt templates (F1-F5, with Ctrl+S to save new ones), visual deliberation controls (toggle ON/OFF + radio-button round selector 1-5). Deliberation parameters pass through the backend to the orchestrator. Old 3-line input widget replaced with a minimal 1-line hint bar, reclaiming vertical space for the response viewer.
 
 ---
 

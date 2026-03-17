@@ -106,16 +106,18 @@ class PromptScreen(ModalScreen[PromptResult | None]):
     and deliberation controls.
 
     Layout (80×24 target):
-    ┌─ Prompt ────────────────────────────────────────────────────────┐
-    │  [Input: type your prompt here]                                 │
-    │                                                                 │
-    │  ┌─ History ──────────────────┐  ┌─ Templates ───────────────┐  │
-    │  │  (recent sessions)         │  │  (click to fill prompt)   │  │
-    │  │  ...                       │  │  ...                      │  │
-    │  └────────────────────────────┘  └───────────────────────────┘  │
-    │                                                                 │
-    │  Deliberation: [ON]  Rounds: [1]   │  Enter:Submit  Esc:Cancel  │
-    └─────────────────────────────────────────────────────────────────┘
+    ┌─ Maestro Prompt ─────────────────────────────────────────────────┐
+    │ [____prompt input field____________________________________]     │
+    │                                                                  │
+    │ ┌─ History ──────────────────┐  ┌─ Templates ────────────────┐   │
+    │ │ 1 c307dc21 Why is taco..  │  │ F1 General Question        │   │
+    │ │ 2 e452a2bc What's the..   │  │ F2 Code Review             │   │
+    │ └───────────────────────────┘  └─────────────────────────────┘   │
+    │                                                                  │
+    │ Deliberation  [■ ON ]   Rounds  [● 1] [○ 2] [○ 3] [○ 4] [○ 5]  │
+    │                                                                  │
+    │ Enter:Submit  Esc:Cancel  Ctrl+S:Save  T:Delib  R:Rounds        │
+    └──────────────────────────────────────────────────────────────────┘
     """
 
     BINDINGS = [
@@ -128,7 +130,7 @@ class PromptScreen(ModalScreen[PromptResult | None]):
         align: center middle;
     }
     #prompt-dialog {
-        width: 78;
+        width: 76;
         height: auto;
         max-height: 22;
         border: thick $accent;
@@ -138,21 +140,19 @@ class PromptScreen(ModalScreen[PromptResult | None]):
     #prompt-title {
         text-style: bold;
         color: $accent;
-        margin-bottom: 1;
     }
     #prompt-text-input {
         width: 100%;
-        margin-bottom: 1;
     }
     #prompt-panels {
         height: auto;
-        max-height: 10;
-        margin-bottom: 1;
+        max-height: 8;
+        margin-top: 1;
     }
     #prompt-history-panel {
         width: 1fr;
         height: auto;
-        max-height: 10;
+        max-height: 8;
         border: solid $primary;
         padding: 0 1;
         margin-right: 1;
@@ -160,7 +160,7 @@ class PromptScreen(ModalScreen[PromptResult | None]):
     #prompt-templates-panel {
         width: 1fr;
         height: auto;
-        max-height: 10;
+        max-height: 8;
         border: solid $primary;
         padding: 0 1;
     }
@@ -168,26 +168,21 @@ class PromptScreen(ModalScreen[PromptResult | None]):
         text-style: bold;
         color: $primary;
     }
-    .prompt-list-item {
+    #prompt-delib-row {
         height: 1;
-    }
-    .prompt-list-item:hover {
-        background: $primary 20%;
-    }
-    #prompt-controls {
-        height: auto;
         margin-top: 1;
     }
-    #prompt-controls-row {
+    #prompt-delib-display {
+        width: 100%;
         height: 1;
     }
-    #prompt-delib-label {
-        width: auto;
+    #prompt-hint-row {
+        height: 1;
+        margin-top: 1;
     }
-    #prompt-hints {
-        dock: right;
-        width: auto;
-        color: $text-muted;
+    #prompt-hints-display {
+        width: 100%;
+        height: 1;
     }
     """
 
@@ -208,7 +203,7 @@ class PromptScreen(ModalScreen[PromptResult | None]):
         with Vertical(id="prompt-dialog"):
             yield Label("[bold]  Maestro Prompt[/]", id="prompt-title")
             yield Input(
-                placeholder="Type your prompt and press Enter to submit...",
+                placeholder="Type your prompt and press Enter...",
                 id="prompt-text-input",
             )
             with Horizontal(id="prompt-panels"):
@@ -222,18 +217,21 @@ class PromptScreen(ModalScreen[PromptResult | None]):
                     yield Static(
                         self._render_templates(), id="prompt-templates-list"
                     )
-            with Horizontal(id="prompt-controls"):
-                with Horizontal(id="prompt-controls-row"):
-                    yield Static(self._render_delib_label(), id="prompt-delib-label")
-                    yield Static(
-                        "[dim]Enter[/]:Submit  [dim]Esc[/]:Cancel  "
-                        "[dim]Ctrl+S[/]:Save  "
-                        "[dim]1-9[/]:History  [dim]F1-F5[/]:Template",
-                        id="prompt-hints",
-                    )
+            with Horizontal(id="prompt-delib-row"):
+                yield Static(self._render_delib_controls(), id="prompt-delib-display")
+            with Horizontal(id="prompt-hint-row"):
+                yield Static(
+                    " [dim]Enter[/]:Submit  [dim]Esc[/]:Cancel  "
+                    "[dim]Ctrl+S[/]:Save  "
+                    "[dim]1-9[/]:History  [dim]F1-F5[/]:Template  "
+                    "[dim]T[/]:Delib  [dim]R[/]:Rounds",
+                    id="prompt-hints-display",
+                )
 
     def on_mount(self) -> None:
         self.query_one("#prompt-text-input", Input).focus()
+
+    # ── Rendering ─────────────────────────────────────────────────
 
     def _render_history(self) -> str:
         if not self._sessions:
@@ -241,11 +239,12 @@ class PromptScreen(ModalScreen[PromptResult | None]):
         lines = []
         for i, s in enumerate(self._sessions[:9]):
             sid = s.get("session_id", "?")[:8]
-            prompt_text = s.get("prompt", "?")[:38]
             grade = s.get("r2_grade", s.get("grade", ""))
             grade_str = f" [{self._grade_color(grade)}]{grade}[/]" if grade else ""
+            # Truncate prompt to fit in panel without wrapping
+            prompt_text = s.get("prompt", "?")[:24]
             num = i + 1
-            marker = "[bold cyan]>[/] " if i == self._selected_history_idx else "  "
+            marker = "[bold cyan]▸[/]" if i == self._selected_history_idx else " "
             lines.append(f"{marker}[dim]{num}[/] {sid} {prompt_text}{grade_str}")
         return "\n".join(lines)
 
@@ -254,23 +253,30 @@ class PromptScreen(ModalScreen[PromptResult | None]):
             return " [dim]No templates[/]"
         lines = []
         for i, t in enumerate(self._templates[:5]):
-            name = t.get("name", "?")[:30]
+            name = t.get("name", "?")[:26]
             fkey = f"F{i + 1}"
-            marker = "[bold cyan]>[/] " if i == self._selected_template_idx else "  "
+            marker = "[bold cyan]▸[/]" if i == self._selected_template_idx else " "
             lines.append(f"{marker}[dim]{fkey}[/] {name}")
         return "\n".join(lines)
 
-    def _render_delib_label(self) -> str:
+    def _render_delib_controls(self) -> str:
+        """Render deliberation toggle + radio-button round selector."""
+        # Toggle switch
         if self._deliberation_enabled:
-            return (
-                f" Deliberation: [bold green]ON[/]  "
-                f"Rounds: [bold]{self._deliberation_rounds}[/]  "
-                f"[dim]T[/]:Toggle  [dim]R[/]:Rounds  "
-            )
-        return (
-            " Deliberation: [bold red]OFF[/]  "
-            "[dim]T[/]:Toggle  "
-        )
+            toggle = "[bold green]■ ON [/]"
+        else:
+            toggle = "[bold red]□ OFF[/]"
+
+        # Round selector (radio buttons)
+        round_btns = []
+        for r in range(1, 6):
+            if r == self._deliberation_rounds and self._deliberation_enabled:
+                round_btns.append(f"[bold cyan]● {r}[/]")
+            else:
+                round_btns.append(f"[dim]○ {r}[/]")
+        rounds_str = " ".join(round_btns)
+
+        return f" Deliberation [{toggle}]   Rounds  {rounds_str}"
 
     @staticmethod
     def _grade_color(grade: str) -> str:
@@ -285,10 +291,12 @@ class PromptScreen(ModalScreen[PromptResult | None]):
             return "bold red"
         return "dim"
 
+    # ── Display updates ───────────────────────────────────────────
+
     def _update_delib_display(self) -> None:
         try:
-            self.query_one("#prompt-delib-label", Static).update(
-                self._render_delib_label()
+            self.query_one("#prompt-delib-display", Static).update(
+                self._render_delib_controls()
             )
         except Exception:
             pass
@@ -324,26 +332,32 @@ class PromptScreen(ModalScreen[PromptResult | None]):
 
     def on_key(self, event) -> None:
         key = event.key
+        inp = self.query_one("#prompt-text-input", Input)
 
-        # T — toggle deliberation
-        if key == "t" and not self.query_one("#prompt-text-input", Input).has_focus:
+        # T — toggle deliberation (works even when input focused)
+        if key == "t" and not inp.has_focus:
             self._deliberation_enabled = not self._deliberation_enabled
             self._update_delib_display()
             event.prevent_default()
             return
 
-        # R — cycle deliberation rounds
-        if key == "r" and not self.query_one("#prompt-text-input", Input).has_focus:
+        # R — cycle deliberation rounds (works even when input focused)
+        if key == "r" and not inp.has_focus:
             self._deliberation_rounds = (self._deliberation_rounds % 5) + 1
             self._update_delib_display()
             event.prevent_default()
             return
 
         # 1-9 — select history item and fill prompt
+        # When the input is focused, the digit gets typed first; detect
+        # that the value is *only* that digit (user intended to pick
+        # history, not type a number in a prompt).
         if key in "123456789":
-            inp = self.query_one("#prompt-text-input", Input)
-            if inp.has_focus and inp.value:
-                return  # Don't hijack if user is typing
+            cur = inp.value
+            just_typed = cur == key  # input was empty, digit just landed
+            has_content = bool(cur) and not just_typed
+            if has_content:
+                return  # Don't hijack when user is composing a real prompt
             idx = int(key) - 1
             if idx < len(self._sessions):
                 prompt_text = self._sessions[idx].get("prompt", "")
@@ -354,7 +368,6 @@ class PromptScreen(ModalScreen[PromptResult | None]):
                     inp.focus()
                     self._update_history_display()
                     self._update_templates_display()
-                    event.prevent_default()
             return
 
         # F1-F5 — select template and fill prompt
@@ -366,7 +379,6 @@ class PromptScreen(ModalScreen[PromptResult | None]):
                 if prompt_text:
                     self._selected_template_idx = idx
                     self._selected_history_idx = -1
-                    inp = self.query_one("#prompt-text-input", Input)
                     inp.value = prompt_text
                     inp.focus()
                     self._update_history_display()
@@ -1245,7 +1257,7 @@ class MaestroTUI(App):
     """
 
     TITLE = "Maestro Orchestrator"
-    SUB_TITLE = "v7.2.7  |  TUI Dashboard"
+    SUB_TITLE = "v7.2.8  |  TUI Dashboard"
 
     CSS_PATH = "maestro_tui.tcss"
 

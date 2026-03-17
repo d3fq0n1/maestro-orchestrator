@@ -1,5 +1,19 @@
 # Changelog
 
+## [7.2.8] - 2026-03-17
+
+### Added
+
+- **Dedicated Prompt Screen** (`maestro/tui/app.py`) — Pressing `P` now opens a full-screen modal with session history (1-9 to re-run), prompt templates (F1-F5, Ctrl+S to save), and visual deliberation controls (toggle + radio-button round selector). Replaces the cramped bottom input bar with a minimal 1-line hint, reclaiming vertical space for the response viewer.
+- **Prompt template persistence** — Templates saved to `data/prompt_templates.json` with 5 built-in defaults.
+- **Backend deliberation parameter passthrough** (`maestro/tui/backend.py`) — Both `DirectBackend` and `HTTPBackend` now accept `deliberation_enabled` and `deliberation_rounds` in `orchestrate()`, forwarding them to the orchestration pipeline.
+
+### Changed
+
+- **Version bumped to v7.2.8** — `maestro/__init__.py`, `maestro/plugins/manager.py`, `maestro/node_server.py`, `maestro/tui/app.py`, `readme.md`, `RELEASE.md`, `changelog.md`, and all docs updated.
+
+---
+
 ## [7.2.7] - 2026-03-17
 
 ### Fixed
