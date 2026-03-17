@@ -261,22 +261,22 @@ class PromptScreen(ModalScreen[PromptResult | None]):
 
     def _render_delib_controls(self) -> str:
         """Render deliberation toggle + radio-button round selector."""
-        # Toggle switch
+        # Toggle switch — escape outer brackets so Rich doesn't parse them
         if self._deliberation_enabled:
-            toggle = "[bold green]■ ON [/]"
+            toggle = "\[[bold green]■ ON[/] ]"
         else:
-            toggle = "[bold red]□ OFF[/]"
+            toggle = "\[[bold red]□ OFF[/]]"
 
         # Round selector (radio buttons)
         round_btns = []
         for r in range(1, 6):
             if r == self._deliberation_rounds and self._deliberation_enabled:
-                round_btns.append(f"[bold cyan]● {r}[/]")
+                round_btns.append(f"\[[bold cyan]● {r}[/]]")
             else:
-                round_btns.append(f"[dim]○ {r}[/]")
+                round_btns.append(f"\[[dim]○ {r}[/]]")
         rounds_str = " ".join(round_btns)
 
-        return f" Deliberation [{toggle}]   Rounds  {rounds_str}"
+        return f" Deliberation {toggle}   Rounds  {rounds_str}"
 
     @staticmethod
     def _grade_color(grade: str) -> str:
