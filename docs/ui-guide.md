@@ -152,7 +152,7 @@ Tips for entering keys:
 * **Agent Panel (top-left):** Live status indicators for each agent in the council (ready/running/done/error)
 * **Consensus Panel (top-right):** Real-time metrics -- agreement ratio, quorum status, confidence level, dissent level, R2 grade, NCG drift
 * **Response Viewer (center):** Scrollable log showing agent responses and consensus output as they stream in
-* **Cluster Dashboard:** Always-visible live monitor of running cluster instances with BTOP-style spinning health indicators, color-coded roles (cyan orchestrator, yellow shards), port/IP info, and a cluster summary line. Auto-refreshes every 5 seconds. Press `C` to force refresh or `M` to open the full management screen
+* **Cluster Dashboard:** Always-visible live monitor of running cluster instances with BTOP-style spinning health indicators, color-coded roles (blue orchestrator, orange shards), port/IP info, and a cluster summary line. Auto-refreshes every 5 seconds. Press `C` to force refresh or `M` to open the full management screen
 * **LAN Discovery Panel:** Shows local shard identity, Maestro Node formation status, and discovered LAN peers with adjacency indicators
 * **Shard Network Panel:** BTOP-style view of storage nodes with spinning green asterisk indicators for connected nodes, red indicators for offline/missing nodes, memory usage bars, and reputation scores
 * **Prompt Input:** Text input for submitting prompts (press `P` to focus)
@@ -173,6 +173,7 @@ Press these keys anywhere (except when typing in the prompt input):
 | `N` | Shard network / node details |
 | `D` | Dependency health check |
 | `H` | Session history browser (full detail viewer) |
+| `E` | Export last response to Markdown file + clipboard |
 | `I` | Run self-improvement cycle (MAGI analysis + proposals) |
 | `U` | Open update screen (auto-checks on open; `C` re-check, `A` apply, `T` toggle auto-update) |
 | `L` | Clear response log |
@@ -206,12 +207,25 @@ The TUI supports two connection modes:
 
 2. **HTTP client**: The TUI connects to a running Maestro FastAPI server via HTTP and consumes the SSE streaming endpoint for progressive updates. Best for multi-device clusters or when the server runs on a different machine.
 
-### Prompt Screen Pipeline Preview
+### Prompt Screen (Full-Screen)
 
-The Prompt screen (`P` key) includes a **Pipeline Preview** panel showing:
-- Agent roster with status indicators
-- Deliberation toggle state and round count (updates reactively)
-- Analysis pipeline stages (Dissent → NCG → Consensus → R2)
+The Prompt screen (`P` key) is a full-screen three-column layout:
+- **Left column** — Session history (1-9 to select, R2 grade badges)
+- **Center column** — Prompt input, deliberation controls (toggle + round selector), vertical pipeline preview showing all 6 stages with connection lines
+- **Right column** — Prompt templates (F1-F5, Ctrl+S to save), Agent Council roster with providers and deliberation config
+
+Keyboard: `Enter` submit, `Esc` cancel, `Tab` navigate, `Ctrl+T` toggle deliberation, `Ctrl+R` cycle rounds.
+
+### Color Theme
+
+The TUI uses a cohesive blue/green/orange color palette (Tokyo Night-inspired):
+- **Blue (#7aa2f7)** — Pipeline titles, history, structural elements, panel borders
+- **Green (#9ece6a)** — Agent done status, deliberation on, success states
+- **Orange (#ff9e64)** — Prompt input, templates, active pipeline stage, shard roles
+
+### Response Export (E key)
+
+Press `E` to export the last orchestration result as a Markdown file in `exports/`. Includes prompt, metrics, agent responses, and consensus. Automatically copies to clipboard if a clipboard tool is available (xclip, xsel, pbcopy, clip.exe).
 
 ### Deliberation Visual Feedback
 

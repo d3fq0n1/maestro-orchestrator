@@ -6,13 +6,44 @@
 
 ## What's New in v7.4.0
 
+### Full-Screen Prompt Redesign
+
+The Prompt screen (`P` key) has been completely redesigned from a cramped centered
+dialog into a full-screen three-column layout matching the main dashboard's density:
+
+- **Left column** — Session history with selection markers and R2 grade badges
+- **Center column** — Prompt input, deliberation controls (toggle + round selector),
+  and a vertical pipeline preview showing all 6 stages with connection lines
+- **Right column** — Prompt templates and an Agent Council roster showing all
+  4 agents with their providers and current deliberation config
+
+All panels use bordered sections with blue/green/orange color-coded titles matching
+the unified theme. Inline hints show keyboard shortcuts contextually.
+
+### Blue / Green / Orange Color Theme
+
+The entire TUI now uses a cohesive Tokyo Night-inspired color palette:
+
+- **Blue (#7aa2f7)** — Pipeline titles, history, structural elements
+- **Green (#9ece6a)** — Agent status (done), deliberation, success states
+- **Orange (#ff9e64)** — Prompt input, templates, active stage, role highlights
+
+Applied consistently across the main dashboard (TCSS + widgets), Prompt screen,
+status bar, cluster dashboard, shard network, and LAN discovery panels.
+
+### Export Response (E key)
+
+Press `E` to export the last orchestration result as a Markdown file in `exports/`.
+The export includes the prompt, all agent responses, consensus, and metrics
+(agreement, quorum, R2 grade, dissent, NCG drift). Also copies to clipboard
+automatically if `xclip`, `xsel`, `pbcopy`, or `clip.exe` is available.
+
 ### Boot Progress Bar Fix
 
-The setup progress bar used an asymptotic exponential curve that crawled at 1-3%
-for the entire wait and then jumped to completion. Replaced with a two-phase linear
-ramp: 0→80% over the estimated duration, then a gentle ease toward 95% if the build
-runs long. The bar now gives accurate, reassuring visual feedback throughout the
-entire boot sequence.
+The progress bar estimated time was reduced from 300s to 60s — typical Docker
+builds finish in 15-45s, so the old estimate caused the bar to crawl at 1-5%
+for the entire wait then jump to 100%. The two-phase linear ramp (0→80% over
+the estimate, then gentle ease toward 95%) now gives accurate visual feedback.
 
 ### Deliberation Visual Feedback (TUI)
 
@@ -26,18 +57,6 @@ were silently dropped. Now:
   status bar and response viewer show round progress.
 - **`deliberation_done`** — Summary logged (rounds completed, agents participated),
   or skip reason if deliberation was bypassed.
-
-### Prompt Screen Pipeline Preview
-
-The Prompt screen (`P` key) now includes a bordered **Pipeline Preview** panel
-below the deliberation controls, showing:
-
-- Agent roster (GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B)
-- Deliberation status (ON/OFF, round count) — updates reactively as you toggle
-- Analysis pipeline stages (Dissent → NCG → Consensus → R2)
-
-This makes the prompt screen visually richer and immediately communicates what
-will happen when you press Enter.
 
 ---
 

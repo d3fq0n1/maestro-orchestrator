@@ -28,10 +28,10 @@ def _sanitize_id(name: str) -> str:
 
 
 _STATUS_STYLES = {
-    "ready":    ("dim", "idle"),
-    "running":  ("bold yellow", "..."),
-    "done":     ("bold green", "ok"),
-    "error":    ("bold red", "err"),
+    "ready":    ("dim #565f89", "idle"),
+    "running":  ("bold #ff9e64", "..."),
+    "done":     ("bold #9ece6a", "ok"),
+    "error":    ("bold #f7768e", "err"),
 }
 
 
@@ -62,7 +62,7 @@ class AgentPanel(Widget):
     DEFAULT_CSS = """
     AgentPanel {
         height: auto;
-        border: solid $primary;
+        border: solid #3d59a1;
         padding: 0 1;
     }
     """
@@ -102,7 +102,7 @@ class ConsensusPanel(Widget):
     DEFAULT_CSS = """
     ConsensusPanel {
         height: auto;
-        border: solid $primary;
+        border: solid #3d59a1;
         padding: 0 1;
     }
     """
@@ -197,7 +197,7 @@ class ResponseViewer(Widget):
     DEFAULT_CSS = """
     ResponseViewer {
         height: 1fr;
-        border: solid $primary;
+        border: solid #3d59a1;
     }
     """
 
@@ -209,22 +209,22 @@ class ResponseViewer(Widget):
         return self.query_one("#response-log", RichLog)
 
     def write_stage(self, message: str) -> None:
-        self.log.write(f"[bold cyan]>> {message}[/]")
+        self.log.write(f"[bold #7aa2f7]>> {message}[/]")
 
     def write_agent(self, agent: str, text: str, is_error: bool = False) -> None:
-        style = "red" if is_error else "green"
+        style = "#f7768e" if is_error else "#9ece6a"
         self.log.write(f"\n[bold {style}][{agent}][/]")
         self.log.write(text)
 
     def write_consensus(self, text: str) -> None:
-        self.log.write(f"\n[bold magenta]== Consensus ==[/]")
+        self.log.write(f"\n[bold #ff9e64]== Consensus ==[/]")
         self.log.write(text)
 
     def write_info(self, text: str) -> None:
-        self.log.write(f"[dim]{text}[/]")
+        self.log.write(f"[dim #565f89]{text}[/]")
 
     def write_error(self, text: str) -> None:
-        self.log.write(f"[bold red]ERROR: {text}[/]")
+        self.log.write(f"[bold #f7768e]ERROR: {text}[/]")
 
     def clear_log(self) -> None:
         self.log.clear()
@@ -250,7 +250,7 @@ class ShardNetworkPanel(Widget):
     ShardNetworkPanel {
         height: auto;
         max-height: 10;
-        border: solid $primary;
+        border: solid #3d59a1;
         padding: 0 1;
     }
     """
@@ -370,7 +370,7 @@ class ShardDiscoveryPanel(Widget):
     ShardDiscoveryPanel {
         height: auto;
         max-height: 10;
-        border: solid $primary;
+        border: solid #3d59a1;
         padding: 0 1;
     }
     """
@@ -529,7 +529,7 @@ class ClusterDashboard(Widget):
         height: auto;
         max-height: 12;
         min-height: 3;
-        border: solid $primary;
+        border: solid #3d59a1;
         padding: 0 1;
     }
     """
@@ -545,7 +545,7 @@ class ClusterDashboard(Widget):
     def compose(self) -> ComposeResult:
         yield Label(" \u2502 Cluster", id="cluster-dash-title")
         yield Static(
-            " [dim]No cluster instances. Press [b]M[/b] to manage.[/]",
+            " [dim #565f89]No cluster instances.[/]  [#a9b1d6]M[/]:Manage  [#a9b1d6]+[/]:Spawn",
             id="cluster-dash-content",
         )
         yield Static("", id="cluster-dash-status")
@@ -637,21 +637,21 @@ class ClusterDashboard(Widget):
             # Health indicator with spinner for healthy nodes
             if healthy is True:
                 spinner = _SPINNER_FRAMES[self._frame]
-                health_str = f"[bold green]{spinner} ok[/]"
+                health_str = f"[bold #9ece6a]{spinner} ok[/]"
             elif healthy is False:
-                health_str = "[bold red]\u25cf down[/]"
+                health_str = "[bold #f7768e]\u25cf down[/]"
             else:
-                health_str = "[dim]\u25cb ---[/]"
+                health_str = "[dim #565f89]\u25cb ---[/]"
 
             # Role display with color
             if role == "orchestrator":
-                role_str = "[bold cyan]orchestrator[/]"
+                role_str = "[bold #7aa2f7]orchestrator[/]"
             elif role == "shard" and shard_idx is not None:
-                role_str = f"[yellow]shard [{shard_idx}][/]"
+                role_str = f"[#ff9e64]shard [{shard_idx}][/]"
             elif role == "shard":
-                role_str = "[yellow]shard[/]"
+                role_str = "[#ff9e64]shard[/]"
             else:
-                role_str = f"[dim]{role}[/]"
+                role_str = f"[dim #565f89]{role}[/]"
 
             # Truncate name to fit
             display_name = str(name)[:14]
@@ -693,8 +693,8 @@ class StatusBar(Widget):
     StatusBar {
         dock: bottom;
         height: 1;
-        background: $primary-background;
-        color: $text;
+        background: #24283b;
+        color: #a9b1d6;
     }
     """
 
@@ -711,9 +711,9 @@ class StatusBar(Widget):
 
     def set_stage(self, stage: str) -> None:
         self.query_one("#status-bar-content", Static).update(
-            f" [bold yellow]\u25b6 {stage}[/]  \u2502  "
-            "[b]?[/]:Help  [b]M[/]:Instances  [b]C[/]:Cluster  "
-            "[b]Q[/]:Quit"
+            f" [bold #ff9e64]\u25b6 {stage}[/]  [dim #3d59a1]\u2502[/]  "
+            "[#a9b1d6]?[/]:Help  [#a9b1d6]M[/]:Instances  [#a9b1d6]C[/]:Cluster  "
+            "[#a9b1d6]Q[/]:Quit"
         )
 
     def reset(self) -> None:
