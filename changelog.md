@@ -1,5 +1,21 @@
 # Changelog
 
+## [7.3.0] - 2026-03-18
+
+### Added
+
+- **Session History Browser** (`maestro/tui/app.py`) — New `SessionBrowserScreen` modal (`H` key) with session list, full detail viewer (agent responses, consensus, dissent, R2, NCG, deliberation rounds), and re-run support (`R` key).
+- **Backend session detail API** (`maestro/tui/backend.py`) — `get_session_detail(session_id)` method on `MaestroBackend`, implemented in both `DirectBackend` and `HTTPBackend`.
+- **Self-improvement now functional** (`maestro/tui/app.py`) — `I` key runs a real `SelfImprovementEngine.run_cycle()` displaying MAGI analysis, proposals, and VIR validation in the response viewer.
+
+### Changed
+
+- **Radio button styling** — Removed blocky colored indicator blocks from the deliberation round selector. Buttons now show clean text with accent highlighting.
+- **Switch styling** — Deliberation toggle uses transparent background with muted/success color states.
+- **Version bumped to v7.3.0** — `maestro/__init__.py`, `maestro/plugins/manager.py`, `maestro/node_server.py`, `maestro/tui/app.py`, `readme.md`, `RELEASE.md`, `changelog.md`, and all docs updated.
+
+---
+
 ## [7.2.8] - 2026-03-17
 
 ### Added

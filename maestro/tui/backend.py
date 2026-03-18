@@ -62,6 +62,11 @@ class MaestroBackend(ABC):
         """Return recent session summaries."""
         ...
 
+    @abstractmethod
+    async def get_session_detail(self, session_id: str) -> dict:
+        """Return full session record by ID."""
+        ...
+
     async def get_discovery_status(self) -> dict:
         """Return LAN shard discovery status. Override in subclasses."""
         return {}
@@ -124,6 +129,13 @@ class DirectBackend(MaestroBackend):
         from maestro.session import SessionLogger
         logger = SessionLogger()
         return logger.list_sessions(limit=limit)
+
+    async def get_session_detail(self, session_id: str) -> dict:
+        from maestro.session import SessionLogger
+        from dataclasses import asdict
+        logger = SessionLogger()
+        record = logger.load(session_id)
+        return asdict(record)
 
 
 class HTTPBackend(MaestroBackend):
@@ -188,6 +200,15 @@ class HTTPBackend(MaestroBackend):
             )
             resp.raise_for_status()
             return resp.json().get("sessions", [])
+
+    async def get_session_detail(self, session_id: str) -> dict:
+        import httpx
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
+            resp = await client.get(
+                f"{self._base_url}/api/sessions/{session_id}",
+            )
+            resp.raise_for_status()
+            return resp.json()
 
     async def get_discovery_status(self) -> dict:
         import httpx

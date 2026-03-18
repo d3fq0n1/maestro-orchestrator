@@ -174,6 +174,13 @@ class PromptScreen(ModalScreen[PromptResult | None]):
     }
     #delib-switch {
         width: auto;
+        background: transparent;
+    }
+    #delib-switch .switch--slider {
+        color: $text-muted;
+    }
+    #delib-switch.-on .switch--slider {
+        color: $success;
     }
     #rounds-label {
         width: auto;
@@ -191,6 +198,15 @@ class PromptScreen(ModalScreen[PromptResult | None]):
         padding: 0 1;
         min-width: 5;
         background: transparent;
+        color: $text-muted;
+    }
+    #prompt-rounds-selector RadioButton.-on {
+        color: $accent;
+        text-style: bold;
+    }
+    /* Hide the default radio button indicator (the colored block) */
+    #prompt-rounds-selector .toggle--button {
+        display: none;
     }
     #prompt-hint-row {
         height: 1;
@@ -412,6 +428,325 @@ class PromptScreen(ModalScreen[PromptResult | None]):
 
 
 # ───────────────────────────────────────────────────────────────────
+# Session Browser screen (H key) — view full session & deliberation
+# ───────────────────────────────────────────────────────────────────
+
+class SessionBrowserScreen(ModalScreen[str | None]):
+    """Full-screen modal for browsing session history.
+
+    Lists recent sessions; selecting one shows the full detail including
+    agent responses, consensus, deliberation rounds, and metrics.
+    Returned value is the session_id if the user wants to re-run the prompt,
+    or None if they just close the browser.
+    """
+
+    BINDINGS = [
+        Binding("escape", "go_back", "Back / Close", priority=True),
+        Binding("r", "rerun", "Re-run prompt", show=False),
+    ]
+
+    DEFAULT_CSS = """
+    SessionBrowserScreen {
+        align: center middle;
+    }
+    #session-browser-dialog {
+        width: 96%;
+        max-width: 110;
+        height: 90%;
+        border: thick $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+    #session-browser-title {
+        text-style: bold;
+        color: $accent;
+        margin-bottom: 1;
+    }
+    #session-list-panel {
+        height: auto;
+        max-height: 12;
+        border: solid $primary;
+        padding: 0 1;
+        margin-bottom: 1;
+    }
+    #session-detail-panel {
+        height: 1fr;
+        border: solid $primary;
+        padding: 0 1;
+    }
+    #session-detail-log {
+        scrollbar-size: 1 1;
+        padding: 0 1;
+    }
+    #session-browser-hints {
+        height: 1;
+        margin-top: 1;
+    }
+    .session-panel-title {
+        text-style: bold;
+        color: $primary;
+    }
+    """
+
+    def __init__(
+        self,
+        sessions: list[dict] | None = None,
+        backend: MaestroBackend | None = None,
+        preselect_index: int = -1,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self._sessions = sessions or []
+        self._backend = backend
+        self._selected_idx = preselect_index
+        self._detail_loaded = False
+        self._current_session_id: str | None = None
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="session-browser-dialog"):
+            yield Label("[bold]  Session History[/]", id="session-browser-title")
+            with Vertical(id="session-list-panel"):
+                yield Label(" | Sessions", classes="session-panel-title")
+                yield Static(self._render_session_list(), id="session-list-content")
+            with VerticalScroll(id="session-detail-panel"):
+                yield Label(" | Detail", classes="session-panel-title")
+                yield RichLog(
+                    highlight=True, markup=True, wrap=True,
+                    id="session-detail-log",
+                )
+            with Horizontal(id="session-browser-hints"):
+                yield Static(
+                    " [dim]1-9[/]:Select session  "
+                    "[dim]R[/]:Re-run prompt  "
+                    "[dim]Esc[/]:Back / Close",
+                )
+
+    def on_mount(self) -> None:
+        if self._selected_idx >= 0 and self._selected_idx < len(self._sessions):
+            self._load_detail(self._selected_idx)
+
+    def _render_session_list(self) -> str:
+        if not self._sessions:
+            return " [dim]No sessions recorded yet[/]"
+        lines = []
+        for i, s in enumerate(self._sessions[:9]):
+            sid = s.get("session_id", "?")[:8]
+            ts = s.get("timestamp", "")[:19]
+            prompt_text = s.get("prompt", "?")[:40]
+            agent_count = s.get("agent_count", "?")
+            ncg = s.get("ncg_enabled", False)
+            collapse = s.get("silent_collapse", False)
+            num = i + 1
+            marker = "[bold cyan]>[/]" if i == self._selected_idx else " "
+            ncg_str = ""
+            if ncg:
+                ncg_str = " [green]ncg[/]"
+            if collapse:
+                ncg_str = " [bold red]COLLAPSE[/]"
+            lines.append(
+                f"{marker}[dim]{num}[/] {sid} [dim]{ts}[/] "
+                f"{prompt_text} [dim]({agent_count} agents{ncg_str})[/]"
+            )
+        return "\n".join(lines)
+
+    def _update_list_display(self) -> None:
+        try:
+            self.query_one("#session-list-content", Static).update(
+                self._render_session_list()
+            )
+        except Exception:
+            pass
+
+    def _load_detail(self, idx: int) -> None:
+        if idx < 0 or idx >= len(self._sessions):
+            return
+        self._selected_idx = idx
+        self._update_list_display()
+        session_id = self._sessions[idx].get("session_id", "")
+        if session_id and self._backend:
+            self._current_session_id = session_id
+            self._fetch_detail(session_id)
+
+    @work(thread=False)
+    async def _fetch_detail(self, session_id: str) -> None:
+        log = self.query_one("#session-detail-log", RichLog)
+        log.clear()
+        log.write("[bold yellow]Loading session...[/]")
+        try:
+            detail = await self._backend.get_session_detail(session_id)
+            log.clear()
+            self._render_detail(detail, log)
+            self._detail_loaded = True
+        except FileNotFoundError:
+            log.clear()
+            log.write("[red]Session file not found.[/]")
+        except Exception as exc:
+            log.clear()
+            log.write(f"[red]Error loading session: {exc}[/]")
+
+    def _render_detail(self, detail: dict, log: RichLog) -> None:
+        # Header
+        sid = detail.get("session_id", "?")
+        ts = detail.get("timestamp", "?")
+        prompt = detail.get("prompt", "?")
+        agents_used = detail.get("agents_used", [])
+
+        log.write(f"[bold cyan]Session:[/] {sid}")
+        log.write(f"[bold cyan]Time:[/]    {ts}")
+        log.write(f"[bold cyan]Prompt:[/]  {prompt}")
+        log.write(f"[bold cyan]Agents:[/]  {', '.join(agents_used)}")
+        log.write("")
+
+        # Agent responses
+        responses = detail.get("agent_responses", {})
+        if responses:
+            log.write("[bold magenta]== Agent Responses ==[/]")
+            for agent_name, response_text in responses.items():
+                log.write(f"\n[bold green][{agent_name}][/]")
+                log.write(str(response_text))
+            log.write("")
+
+        # Consensus
+        consensus = detail.get("consensus", {})
+        if isinstance(consensus, dict):
+            consensus_text = consensus.get("consensus", "")
+            agreement = consensus.get("agreement_ratio")
+            quorum = consensus.get("quorum_met")
+            confidence = consensus.get("confidence", "")
+
+            if consensus_text or agreement is not None:
+                log.write("[bold magenta]== Consensus ==[/]")
+                if consensus_text:
+                    log.write(str(consensus_text))
+                if agreement is not None:
+                    pct = f"{agreement:.0%}"
+                    style = "green" if agreement >= 0.66 else "yellow" if agreement >= 0.5 else "red"
+                    q_str = "[green]MET[/]" if quorum else "[red]NOT MET[/]"
+                    log.write(
+                        f"  Agreement: [{style}]{pct}[/]  "
+                        f"Quorum: {q_str}  Confidence: {confidence}"
+                    )
+                log.write("")
+
+            # Dissent
+            dissent = consensus.get("dissent", {})
+            if dissent:
+                level = dissent.get("dissent_level", "?")
+                internal = dissent.get("internal_agreement")
+                outliers = dissent.get("outlier_agents", [])
+                style_map = {"low": "green", "moderate": "yellow", "high": "red"}
+                style = style_map.get(level, "dim")
+                log.write("[bold magenta]== Dissent ==[/]")
+                log.write(f"  Level: [{style}]{level}[/]")
+                if internal is not None:
+                    log.write(f"  Internal agreement: {internal:.2f}")
+                if outliers:
+                    log.write(f"  Outliers: {', '.join(outliers)}")
+                log.write("")
+
+            # R2
+            r2 = consensus.get("r2", {})
+            if r2:
+                grade = r2.get("grade", "?")
+                score = r2.get("confidence_score")
+                flags = r2.get("flags", [])
+                grade_styles = {
+                    "strong": "bold green", "acceptable": "green",
+                    "weak": "yellow", "suspicious": "bold red",
+                }
+                g_style = grade_styles.get(grade, "dim")
+                log.write("[bold magenta]== R2 Grade ==[/]")
+                log.write(f"  Grade: [{g_style}]{(grade or '?').upper()}[/]")
+                if score is not None:
+                    log.write(f"  Confidence: {score:.2f}")
+                if flags:
+                    log.write(f"  Flags: {', '.join(flags)}")
+                log.write("")
+
+            # Deliberation (from consensus metadata)
+            delib = consensus.get("deliberation", {})
+            if delib:
+                self._render_deliberation_section(delib, log)
+
+        # NCG benchmark
+        ncg = detail.get("ncg_benchmark", {})
+        if ncg:
+            drift = ncg.get("mean_drift")
+            collapse = ncg.get("silent_collapse", False)
+            ncg_model = ncg.get("ncg_model", "?")
+            log.write("[bold magenta]== NCG Benchmark ==[/]")
+            log.write(f"  Model: {ncg_model}")
+            if drift is not None:
+                d_style = "red" if collapse else ("yellow" if drift > 0.5 else "green")
+                log.write(f"  Mean drift: [{d_style}]{drift:.3f}[/]")
+            if collapse:
+                log.write("  [bold red]SILENT COLLAPSE DETECTED[/]")
+            log.write("")
+
+        # Metadata
+        metadata = detail.get("metadata", {})
+        if metadata:
+            log.write("[bold magenta]== Metadata ==[/]")
+            for k, v in metadata.items():
+                log.write(f"  {k}: {v}")
+            log.write("")
+
+    def _render_deliberation_section(self, delib: dict, log: RichLog) -> None:
+        rounds_req = delib.get("rounds_requested", 0)
+        rounds_done = delib.get("rounds_completed", 0)
+        skipped = delib.get("skipped", False)
+        skip_reason = delib.get("skip_reason", "")
+        participants = delib.get("agents_participated", [])
+        history = delib.get("history", [])
+
+        log.write("[bold magenta]== Deliberation ==[/]")
+        if skipped:
+            log.write(f"  [dim]Skipped: {skip_reason}[/]")
+            log.write("")
+            return
+
+        log.write(
+            f"  Rounds: {rounds_done}/{rounds_req}  "
+            f"Participants: {', '.join(participants) if participants else '?'}"
+        )
+
+        # Show each round's responses
+        for rnd in history:
+            rnum = rnd.get("round_number", "?")
+            responses = rnd.get("responses", {})
+            label = "Initial" if rnum == 0 else f"Round {rnum}"
+            log.write(f"\n  [bold cyan]--- {label} ---[/]")
+            for agent_name, text in responses.items():
+                log.write(f"  [bold green][{agent_name}][/]")
+                # Truncate very long responses in round view
+                display_text = str(text)
+                if len(display_text) > 500:
+                    display_text = display_text[:500] + "..."
+                log.write(f"  {display_text}")
+        log.write("")
+
+    def on_key(self, event) -> None:
+        key = event.key
+        if key in "123456789":
+            idx = int(key) - 1
+            if idx < len(self._sessions):
+                self._load_detail(idx)
+            return
+
+    def action_go_back(self) -> None:
+        """Go back to list or close."""
+        self.dismiss(None)
+
+    def action_rerun(self) -> None:
+        """Dismiss with the current session's prompt for re-run."""
+        if self._selected_idx >= 0 and self._selected_idx < len(self._sessions):
+            sid = self._sessions[self._selected_idx].get("session_id", "")
+            self.dismiss(sid)
+        else:
+            self.dismiss(None)
+
+
+# ───────────────────────────────────────────────────────────────────
 # Help screen (? key)
 # ───────────────────────────────────────────────────────────────────
 
@@ -448,7 +783,8 @@ class HelpScreen(ModalScreen[None]):
                 "  [b]C[/]           Refresh cluster dashboard now\n"
                 "  [b]N[/]           Shard network / node details\n"
                 "  [b]D[/]           Dependency health check\n"
-                "  [b]H[/]           Recent session history\n"
+                "  [b]H[/]           Session history browser\n"
+                "  [b]I[/]           Run self-improvement cycle\n"
                 "  [b]U[/]           Check for updates\n"
                 "  [b]L[/]           Clear response log\n"
                 "  [b]Q[/] / [b]Ctrl+C[/]  Quit\n"
@@ -1269,7 +1605,7 @@ class MaestroTUI(App):
     """
 
     TITLE = "Maestro Orchestrator"
-    SUB_TITLE = "v7.2.8  |  TUI Dashboard"
+    SUB_TITLE = "v7.3.0  |  TUI Dashboard"
 
     CSS_PATH = "maestro_tui.tcss"
 
@@ -1570,12 +1906,52 @@ class MaestroTUI(App):
     def action_show_update(self) -> None:
         self.push_screen(UpdateScreen())
 
+    @work(thread=True)
     def action_run_improve(self) -> None:
+        """Run a self-improvement cycle and display results."""
         viewer = self.query_one("#response-viewer", ResponseViewer)
-        viewer.write_info(
-            "Self-improvement via TUI is planned for a future release. "
-            "Use the CLI (/improve) or the Web UI for now."
-        )
+        viewer.write_stage("Self-Improvement Cycle")
+        viewer.write_info("  Running MAGI analysis + R2 signal collection...")
+        try:
+            from maestro.self_improve import SelfImprovementEngine
+            engine = SelfImprovementEngine()
+            cycle = engine.run_cycle()
+
+            viewer.write_info(f"  Cycle ID: {cycle.cycle_id}")
+            viewer.write_info(f"  Sessions analyzed: {cycle.sessions_analyzed}")
+
+            # MAGI report
+            if cycle.magi_report:
+                magi = cycle.magi_report
+                patterns = getattr(magi, "patterns", [])
+                viewer.write_info(
+                    f"  MAGI patterns: {len(patterns)}"
+                )
+
+            # Proposals
+            proposals = cycle.proposals or []
+            viewer.write_info(f"  Proposals generated: {len(proposals)}")
+            for p in proposals[:5]:
+                target = getattr(p, "target", "?")
+                desc = getattr(p, "description", "?")[:60]
+                viewer.write_info(f"    - {target}: {desc}")
+
+            # VIR validation
+            if cycle.vir_report:
+                vir = cycle.vir_report
+                passed = getattr(vir, "passed", None)
+                if passed is True:
+                    viewer.write_info("  VIR validation: [green]PASSED[/]")
+                elif passed is False:
+                    viewer.write_info("  VIR validation: [red]FAILED[/]")
+                else:
+                    viewer.write_info("  VIR validation: [dim]skipped[/]")
+
+            status = cycle.status or "complete"
+            viewer.write_info(f"  Status: {status}")
+            viewer.write_stage("Self-Improvement Complete")
+        except Exception as exc:
+            viewer.write_error(f"Self-improvement failed: {exc}")
 
     def action_clear_log(self) -> None:
         viewer = self.query_one("#response-viewer", ResponseViewer)
@@ -1678,20 +2054,51 @@ class MaestroTUI(App):
 
     @work(thread=False)
     async def _show_history(self) -> None:
-        viewer = self.query_one("#response-viewer", ResponseViewer)
         try:
-            sessions = await self._backend.get_session_history(limit=10)
-            if not sessions:
-                viewer.write_info("No sessions recorded yet.")
-                return
-            viewer.write_stage("Recent Sessions")
-            for s in sessions:
-                sid = s.get("session_id", "?")[:12]
-                prompt_text = s.get("prompt", "?")[:50]
-                grade = s.get("r2_grade", s.get("grade", "?"))
-                viewer.write_info(f"  {sid}  {grade:<12} {prompt_text}")
+            sessions = await self._backend.get_session_history(limit=20)
+        except Exception:
+            sessions = []
+        if not sessions:
+            viewer = self.query_one("#response-viewer", ResponseViewer)
+            viewer.write_info("No sessions recorded yet.")
+            return
+        self.push_screen(
+            SessionBrowserScreen(
+                sessions=sessions,
+                backend=self._backend,
+            ),
+            callback=self._on_session_browser_result,
+        )
+
+    def _on_session_browser_result(self, session_id: str | None) -> None:
+        """Callback from SessionBrowserScreen — re-run a prompt if requested."""
+        if not session_id:
+            return
+        self._rerun_from_session(session_id)
+
+    @work(thread=False)
+    async def _rerun_from_session(self, session_id: str) -> None:
+        """Load a session and re-run its prompt via the PromptScreen."""
+        try:
+            detail = await self._backend.get_session_detail(session_id)
+            prompt = detail.get("prompt", "")
+            if prompt:
+                sessions = await self._backend.get_session_history(limit=10)
+                screen = PromptScreen(sessions=sessions)
+                # Pre-fill the prompt after mount
+                def _prefill(result: PromptResult | None) -> None:
+                    self._on_prompt_result(result)
+                self.push_screen(screen, callback=_prefill)
+                # Set the input value after screen is composed
+                await asyncio.sleep(0.1)
+                try:
+                    inp = screen.query_one("#prompt-text-input", Input)
+                    inp.value = prompt
+                except Exception:
+                    pass
         except Exception as exc:
-            viewer.write_error(f"Could not load history: {exc}")
+            viewer = self.query_one("#response-viewer", ResponseViewer)
+            viewer.write_error(f"Could not load session: {exc}")
 
     # ── Cluster dashboard refresh ─────────────────────────────────
 

@@ -2,7 +2,7 @@
 
 # This file marks the directory as a Python package.
 
-__version__ = "7.2.8"
+__version__ = "7.3.0"
 
 from maestro.plugins.manager import ModManager
 

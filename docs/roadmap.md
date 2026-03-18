@@ -1,7 +1,7 @@
 # Maestro-Orchestrator Roadmap
 
-**Current Version:** v7.2.8
-**Last Updated:** 2026-03-17
+**Current Version:** v7.3.0
+**Last Updated:** 2026-03-18
 **Maintainer:** defcon
 
 ---
@@ -51,6 +51,7 @@
 - **Ambiguous Docker network fix — 4th+ cluster node spawn (v7.2.6)** -- Spawning a new cluster node into a previously-used slot no longer fails with "2 matches found based on name: network X is ambiguous". The spawn pre-flight now removes all duplicate stale networks by ID.
 - **"No API keys configured" false positive fixed; TUI version display (v7.2.7)** -- `_check_first_run()` now loads `.env` unconditionally before checking key status, fixing the false "No API keys configured" message in HTTP mode. TUI header now shows the running version (`v7.2.7 | TUI Dashboard`). `__version__` canonicalized in `maestro/__init__.py`.
 - **Dedicated Prompt Screen with deliberation controls (v7.2.8)** -- Pressing `P` now opens a full-screen modal prompt interface instead of focusing a cramped bottom input bar. Features: session history panel (press 1-9 to re-run past prompts), prompt templates (F1-F5, with Ctrl+S to save new ones), visual deliberation controls (toggle ON/OFF + radio-button round selector 1-5). Deliberation parameters pass through the backend to the orchestrator. Old 3-line input widget replaced with a minimal 1-line hint bar, reclaiming vertical space for the response viewer.
+- **Session History Browser & UI polish (v7.3.0)** -- New full-screen Session Browser (`H` key) with scrollable detail view showing agent responses, consensus, dissent, R2 grade, NCG benchmark, and deliberation round history. Self-improvement (`I` key) now functional — runs MAGI analysis, generates proposals, and validates via VIR. Radio button and switch styling cleaned up (removed blocky indicators). Backend `get_session_detail()` API added to both DirectBackend and HTTPBackend.
 
 ---
 
