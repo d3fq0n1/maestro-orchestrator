@@ -1,21 +1,25 @@
 /*
  * Maestro TUI — Textual CSS
  *
+ * Color theme: blue (#7aa2f7) / green (#9ece6a) / orange (#ff9e64)
+ * Background: Tokyo Night (#1a1b26 / #24283b)
+ *
  * Optimized for 80x24 minimum terminal on Raspberry Pi 5.
  * Scales responsively to larger terminals.
- * Polished for video-demo aesthetics.
  */
 
 /* ── Global ───────────────────────────────────────────────────── */
 
 Screen {
     layout: vertical;
-    background: $background;
+    background: #1a1b26;
 }
 
 Header {
     dock: top;
     height: 1;
+    background: #24283b;
+    color: #7aa2f7;
 }
 
 /* ── Top row: agent panel + consensus panel ───────────────────── */
@@ -34,7 +38,7 @@ Header {
 
 #agent-panel-title {
     text-style: bold;
-    color: $primary;
+    color: #7aa2f7;
 }
 
 #consensus-panel {
@@ -44,7 +48,7 @@ Header {
 
 #consensus-panel-title {
     text-style: bold;
-    color: $primary;
+    color: #7aa2f7;
 }
 
 /* ── Response viewer (main content area) ──────────────────────── */
@@ -69,7 +73,7 @@ Header {
 
 #cluster-dash-title {
     text-style: bold;
-    color: $primary;
+    color: #9ece6a;
 }
 
 /* ── LAN Discovery panel ─────────────────────────────────────── */
@@ -82,7 +86,7 @@ Header {
 
 #discovery-panel-title {
     text-style: bold;
-    color: $primary;
+    color: #ff9e64;
 }
 
 /* ── Shard network panel ──────────────────────────────────────── */
@@ -95,7 +99,7 @@ Header {
 
 #shard-panel-title {
     text-style: bold;
-    color: $primary;
+    color: #ff9e64;
 }
 
 /* ── Prompt hint (minimized — press P for full Prompt screen) ── */
@@ -103,8 +107,8 @@ Header {
 #prompt-hint {
     dock: bottom;
     height: 1;
-    background: $primary-background;
-    color: $text;
+    background: #24283b;
+    color: #a9b1d6;
     padding: 0 1;
 }
 
@@ -113,6 +117,7 @@ Header {
 StatusBar {
     dock: bottom;
     height: 1;
-    background: $primary-background;
+    background: #24283b;
+    color: #a9b1d6;
     padding: 0 1;
 }

@@ -441,10 +441,10 @@ def build_and_start(compose: list[str], verbose: bool = False) -> None:
             sys.exit(1)
         return
 
-    # estimated_seconds drives the progress bar curve.  On a Raspberry Pi a
-    # first build can easily take 5-10 minutes; 300 s keeps the bar moving at
-    # a reassuring pace without stalling early.
-    spinner = Spinner(SETUP_MESSAGES, estimated_seconds=300).start()
+    # estimated_seconds drives the progress bar curve.  Typical cached Docker
+    # builds finish in 15-45 s; first builds on a Pi can take a few minutes.
+    # 60 s keeps the bar moving visibly — phase 2 (slow ease) covers overruns.
+    spinner = Spinner(SETUP_MESSAGES, estimated_seconds=60).start()
     logfile = os.path.join(PROJECT_ROOT, ".setup-build.log")
     try:
         with open(logfile, "w") as log:

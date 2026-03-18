@@ -102,13 +102,11 @@ class PromptResult:
 # ───────────────────────────────────────────────────────────────────
 
 class PromptScreen(ModalScreen[PromptResult | None]):
-    """Full-screen modal for composing prompts with history, templates,
-    and deliberation controls.
+    """Full-screen prompt composition with history, templates, pipeline
+    preview, and deliberation controls.
 
-    Layout fills available space with a responsive two-column design.
-    Deliberation controls are real focusable widgets — use Tab to
-    navigate between input, toggle, and round selector; Space/Enter
-    to interact.
+    Fills the entire terminal — three-column layout matching the main
+    dashboard's density and blue/green/orange color theme.
     """
 
     BINDINGS = [
@@ -120,71 +118,102 @@ class PromptScreen(ModalScreen[PromptResult | None]):
 
     DEFAULT_CSS = """
     PromptScreen {
-        align: center middle;
+        layout: vertical;
+        background: #1a1b26;
     }
-    #prompt-dialog {
-        width: 90%;
-        max-width: 100;
-        height: auto;
-        max-height: 90%;
-        border: thick $accent;
-        background: $surface;
-        padding: 1 2;
-    }
-    #prompt-title {
+
+    /* ── Header bar ─────────────────────────────────────────────── */
+    #prompt-header {
+        dock: top;
+        height: 1;
+        background: #24283b;
+        color: #7aa2f7;
         text-style: bold;
-        color: $accent;
-        margin-bottom: 1;
+        padding: 0 1;
+    }
+
+    /* ── Status bar (bottom) ────────────────────────────────────── */
+    #prompt-status-bar {
+        dock: bottom;
+        height: 1;
+        background: #24283b;
+        color: #a9b1d6;
+        padding: 0 1;
+    }
+
+    /* ── Main three-column layout ───────────────────────────────── */
+    #prompt-columns {
+        height: 1fr;
+    }
+
+    /* Left column: History */
+    #prompt-left-col {
+        width: 1fr;
+        min-width: 30;
+        border: solid #3d59a1;
+        padding: 0 1;
+    }
+    #prompt-history-title {
+        text-style: bold;
+        color: #7aa2f7;
+    }
+    #prompt-history-list {
+        height: 1fr;
+    }
+
+    /* Center column: Input + Deliberation + Pipeline */
+    #prompt-center-col {
+        width: 2fr;
+        min-width: 44;
+    }
+
+    #prompt-input-panel {
+        height: auto;
+        border: solid #ff9e64;
+        padding: 0 1;
+    }
+    #prompt-input-title {
+        text-style: bold;
+        color: #ff9e64;
     }
     #prompt-text-input {
         width: 100%;
-        margin-bottom: 1;
+        margin: 0;
     }
-    #prompt-panels {
+
+    #prompt-delib-panel {
         height: auto;
-        max-height: 12;
-    }
-    #prompt-history-panel {
-        width: 1fr;
-        height: auto;
-        max-height: 12;
-        border: solid $primary;
+        border: solid #9ece6a;
         padding: 0 1;
-        margin-right: 1;
+        margin-top: 1;
     }
-    #prompt-templates-panel {
-        width: 1fr;
-        height: auto;
-        max-height: 12;
-        border: solid $primary;
-        padding: 0 1;
-    }
-    .prompt-panel-title {
+    #prompt-delib-title {
         text-style: bold;
-        color: $primary;
+        color: #9ece6a;
     }
     #prompt-delib-row {
         height: auto;
-        margin-top: 1;
         align-vertical: middle;
     }
     #delib-label {
         width: auto;
         padding: 0 1;
+        color: #a9b1d6;
     }
     #delib-switch {
         width: auto;
         background: transparent;
     }
     #delib-switch .switch--slider {
-        color: $text-muted;
+        color: #565f89;
     }
     #delib-switch.-on .switch--slider {
-        color: $success;
+        color: #9ece6a;
     }
     #rounds-label {
         width: auto;
         padding: 0 1 0 2;
+        color: #a9b1d6;
     }
     #prompt-rounds-selector {
         width: auto;
@@ -198,33 +227,52 @@ class PromptScreen(ModalScreen[PromptResult | None]):
         padding: 0 1;
         min-width: 5;
         background: transparent;
-        color: $text-muted;
+        color: #565f89;
     }
     #prompt-rounds-selector RadioButton.-on {
-        color: $accent;
+        color: #ff9e64;
         text-style: bold;
     }
-    /* Hide the default radio button indicator (the colored block) */
     #prompt-rounds-selector .toggle--button {
         display: none;
     }
-    #prompt-pipeline-preview {
-        height: auto;
-        border: solid $primary;
+
+    #prompt-pipeline-panel {
+        height: 1fr;
+        border: solid #3d59a1;
         padding: 0 1;
         margin-top: 1;
     }
-    .prompt-preview-title {
+    #prompt-pipeline-title {
         text-style: bold;
-        color: $primary;
+        color: #7aa2f7;
     }
-    #prompt-hint-row {
-        height: 1;
+
+    /* Right column: Templates + Agent Roster */
+    #prompt-right-col {
+        width: 1fr;
+        min-width: 30;
+    }
+
+    #prompt-templates-panel {
+        height: auto;
+        border: solid #ff9e64;
+        padding: 0 1;
+    }
+    #prompt-templates-title {
+        text-style: bold;
+        color: #ff9e64;
+    }
+
+    #prompt-agents-panel {
+        height: 1fr;
+        border: solid #9ece6a;
+        padding: 0 1;
         margin-top: 1;
     }
-    #prompt-hints-display {
-        width: 100%;
-        height: 1;
+    #prompt-agents-title {
+        text-style: bold;
+        color: #9ece6a;
     }
     """
 
@@ -242,47 +290,99 @@ class PromptScreen(ModalScreen[PromptResult | None]):
         self._selected_template_idx: int = -1
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="prompt-dialog"):
-            yield Label("[bold]  Maestro Prompt[/]", id="prompt-title")
-            yield Input(
-                placeholder="Type your prompt and press Enter...",
-                id="prompt-text-input",
-            )
-            with Horizontal(id="prompt-panels"):
-                with Vertical(id="prompt-history-panel"):
-                    yield Label(" │ History", classes="prompt-panel-title")
-                    yield Static(
-                        self._render_history(), id="prompt-history-list"
+        # ── Top bar ────────────────────────────────────────────────
+        yield Static(
+            "[bold #7aa2f7]Maestro Prompt[/]  "
+            "[dim #565f89]|[/]  "
+            "[#a9b1d6]Compose and submit queries to the agent council[/]",
+            id="prompt-header",
+        )
+
+        # ── Three-column layout ────────────────────────────────────
+        with Horizontal(id="prompt-columns"):
+            # LEFT — History
+            with Vertical(id="prompt-left-col"):
+                yield Label(
+                    " [#7aa2f7]|[/] [bold #7aa2f7]History[/]"
+                    "  [dim #565f89](1-9 to select)[/]",
+                    id="prompt-history-title",
+                )
+                yield Static(self._render_history(), id="prompt-history-list")
+
+            # CENTER — Input + Deliberation + Pipeline
+            with Vertical(id="prompt-center-col"):
+                with Vertical(id="prompt-input-panel"):
+                    yield Label(
+                        " [#ff9e64]|[/] [bold #ff9e64]Prompt[/]"
+                        "  [dim #565f89](Enter to submit)[/]",
+                        id="prompt-input-title",
                     )
+                    yield Input(
+                        placeholder="Type your prompt and press Enter...",
+                        id="prompt-text-input",
+                    )
+
+                with Vertical(id="prompt-delib-panel"):
+                    yield Label(
+                        " [#9ece6a]|[/] [bold #9ece6a]Deliberation[/]"
+                        "  [dim #565f89](Ctrl+T toggle, Ctrl+R rounds)[/]",
+                        id="prompt-delib-title",
+                    )
+                    with Horizontal(id="prompt-delib-row"):
+                        yield Label("Enable", id="delib-label")
+                        yield Switch(value=True, id="delib-switch")
+                        yield Label("Rounds", id="rounds-label")
+                        yield RadioSet(
+                            RadioButton("1", value=True),
+                            RadioButton("2"),
+                            RadioButton("3"),
+                            RadioButton("4"),
+                            RadioButton("5"),
+                            id="prompt-rounds-selector",
+                        )
+
+                with Vertical(id="prompt-pipeline-panel"):
+                    yield Label(
+                        " [#7aa2f7]|[/] [bold #7aa2f7]Pipeline Preview[/]",
+                        id="prompt-pipeline-title",
+                    )
+                    yield Static(
+                        self._render_pipeline_preview(),
+                        id="prompt-pipeline-content",
+                    )
+
+            # RIGHT — Templates + Agent Roster
+            with Vertical(id="prompt-right-col"):
                 with Vertical(id="prompt-templates-panel"):
-                    yield Label(" │ Templates", classes="prompt-panel-title")
+                    yield Label(
+                        " [#ff9e64]|[/] [bold #ff9e64]Templates[/]"
+                        "  [dim #565f89](F1-F5)[/]",
+                        id="prompt-templates-title",
+                    )
                     yield Static(
                         self._render_templates(), id="prompt-templates-list"
                     )
-            with Horizontal(id="prompt-delib-row"):
-                yield Label("Deliberation", id="delib-label")
-                yield Switch(value=True, id="delib-switch")
-                yield Label("Rounds", id="rounds-label")
-                yield RadioSet(
-                    RadioButton("1", value=True),
-                    RadioButton("2"),
-                    RadioButton("3"),
-                    RadioButton("4"),
-                    RadioButton("5"),
-                    id="prompt-rounds-selector",
-                )
-            with Vertical(id="prompt-pipeline-preview"):
-                yield Label(" │ Pipeline Preview", classes="prompt-preview-title")
-                yield Static(self._render_pipeline_preview(), id="prompt-pipeline-content")
-            with Horizontal(id="prompt-hint-row"):
-                yield Static(
-                    " [dim]Enter[/]:Submit  [dim]Esc[/]:Cancel  "
-                    "[dim]Tab[/]:Navigate  "
-                    "[dim]Ctrl+S[/]:Save  "
-                    "[dim]1-9[/]:History  [dim]F1-F5[/]:Template  "
-                    "[dim]Ctrl+T[/]:Delib  [dim]Ctrl+R[/]:Rounds",
-                    id="prompt-hints-display",
-                )
+
+                with Vertical(id="prompt-agents-panel"):
+                    yield Label(
+                        " [#9ece6a]|[/] [bold #9ece6a]Agent Council[/]",
+                        id="prompt-agents-title",
+                    )
+                    yield Static(
+                        self._render_agent_roster(), id="prompt-agents-list"
+                    )
+
+        # ── Bottom status bar ──────────────────────────────────────
+        yield Static(
+            " [bold #ff9e64]Enter[/]:Submit  "
+            "[bold #7aa2f7]Esc[/]:Cancel  "
+            "[bold #9ece6a]Tab[/]:Navigate  "
+            "[dim #565f89]|[/]  "
+            "[#a9b1d6]Ctrl+S[/]:Save template  "
+            "[#a9b1d6]1-9[/]:History  "
+            "[#a9b1d6]F1-F5[/]:Template",
+            id="prompt-status-bar",
+        )
 
     def on_mount(self) -> None:
         self.query_one("#prompt-text-input", Input).focus()
@@ -291,53 +391,94 @@ class PromptScreen(ModalScreen[PromptResult | None]):
 
     def _render_history(self) -> str:
         if not self._sessions:
-            return " [dim]No sessions yet[/]"
+            return "  [dim #565f89]No sessions yet[/]"
         lines = []
         for i, s in enumerate(self._sessions[:9]):
             sid = s.get("session_id", "?")[:8]
             grade = s.get("r2_grade", s.get("grade", ""))
             grade_str = f" [{self._grade_color(grade)}]{grade}[/]" if grade else ""
-            # Truncate prompt to fit in panel without wrapping
-            prompt_text = s.get("prompt", "?")[:30]
+            prompt_text = s.get("prompt", "?")[:28]
             num = i + 1
-            marker = "[bold cyan]▸[/]" if i == self._selected_history_idx else " "
-            lines.append(f"{marker}[dim]{num}[/] {sid} {prompt_text}{grade_str}")
+            if i == self._selected_history_idx:
+                marker = "[bold #ff9e64]>[/]"
+                lines.append(f"  {marker} [bold #7aa2f7]{num}[/] [#a9b1d6]{sid}[/] {prompt_text}{grade_str}")
+            else:
+                lines.append(f"    [#3d59a1]{num}[/] [dim #565f89]{sid}[/] [#a9b1d6]{prompt_text}[/]{grade_str}")
         return "\n".join(lines)
 
     def _render_templates(self) -> str:
         if not self._templates:
-            return " [dim]No templates[/]"
+            return "  [dim #565f89]No templates[/]\n  [dim #565f89]Ctrl+S to save current prompt[/]"
         lines = []
         for i, t in enumerate(self._templates[:5]):
-            name = t.get("name", "?")[:32]
+            name = t.get("name", "?")[:28]
             fkey = f"F{i + 1}"
-            marker = "[bold cyan]▸[/]" if i == self._selected_template_idx else " "
-            lines.append(f"{marker}[dim]{fkey}[/] {name}")
+            if i == self._selected_template_idx:
+                marker = "[bold #ff9e64]>[/]"
+                lines.append(f"  {marker} [bold #ff9e64]{fkey}[/] [#a9b1d6]{name}[/]")
+            else:
+                lines.append(f"    [#3d59a1]{fkey}[/] [#a9b1d6]{name}[/]")
+        return "\n".join(lines)
+
+    def _render_agent_roster(self) -> str:
+        """Render the agent council roster with status indicators."""
+        agents = [
+            ("GPT-4o", "OpenAI"),
+            ("Claude Sonnet 4.6", "Anthropic"),
+            ("Gemini 2.5 Flash", "Google"),
+            ("Llama 3.3 70B", "OpenRouter"),
+        ]
+        lines = []
+        for name, provider in agents:
+            lines.append(f"  [bold #9ece6a]●[/] [#a9b1d6]{name}[/]  [dim #565f89]{provider}[/]")
+        lines.append("")
+        lines.append(f"  [dim #565f89]Council size:[/] [bold #7aa2f7]{len(agents)}[/] agents")
+        delib = (
+            f"[bold #9ece6a]ON[/] [dim #565f89]({self._deliberation_rounds}r)[/]"
+            if self._deliberation_enabled
+            else "[dim #ff9e64]OFF[/]"
+        )
+        lines.append(f"  [dim #565f89]Deliberation:[/] {delib}")
         return "\n".join(lines)
 
     def _render_pipeline_preview(self) -> str:
-        """Render a compact pipeline summary showing what will run on submit."""
-        agents = ["GPT-4o", "Claude Sonnet 4.6", "Gemini 2.5 Flash", "Llama 3.3 70B"]
-        agent_str = " ".join(f"[bold green]●[/]{a}" for a in agents)
-
+        """Render the pipeline stages that will execute on submit."""
         delib_str = (
-            f"[bold green]ON[/] ({self._deliberation_rounds} round"
+            f"[bold #9ece6a]ON[/] ({self._deliberation_rounds} round"
             f"{'s' if self._deliberation_rounds > 1 else ''})"
             if self._deliberation_enabled
-            else "[dim]OFF[/]"
+            else "[dim #ff9e64]OFF[/]"
         )
 
-        stages = [
-            f"  [bold cyan]1[/] Agents    {agent_str}",
-            f"  [bold cyan]2[/] Deliberation  {delib_str}",
-            "  [bold cyan]3[/] Dissent → NCG → Consensus → R2",
+        lines = [
+            "",
+            f"  [bold #ff9e64]1[/] [#a9b1d6]Collect initial responses[/]  [dim #565f89](parallel)[/]",
+            f"  [dim #3d59a1]|[/]",
+            f"  [bold #ff9e64]2[/] [#a9b1d6]Deliberation[/]  {delib_str}",
+            f"  [dim #3d59a1]|[/]",
+            f"  [bold #ff9e64]3[/] [#a9b1d6]Dissent analysis[/]  [dim #565f89](semantic distance)[/]",
+            f"  [dim #3d59a1]|[/]",
+            f"  [bold #ff9e64]4[/] [#a9b1d6]NCG benchmark[/]  [dim #565f89](drift detection)[/]",
+            f"  [dim #3d59a1]|[/]",
+            f"  [bold #ff9e64]5[/] [#a9b1d6]Semantic consensus[/]  [dim #565f89](quorum @ 66%)[/]",
+            f"  [dim #3d59a1]|[/]",
+            f"  [bold #ff9e64]6[/] [#a9b1d6]R2 scoring[/]  [dim #565f89](session grade)[/]",
+            "",
         ]
-        return "\n".join(stages)
+        return "\n".join(lines)
 
     def _update_pipeline_preview(self) -> None:
         try:
             self.query_one("#prompt-pipeline-content", Static).update(
                 self._render_pipeline_preview()
+            )
+        except Exception:
+            pass
+
+    def _update_agent_roster(self) -> None:
+        try:
+            self.query_one("#prompt-agents-list", Static).update(
+                self._render_agent_roster()
             )
         except Exception:
             pass
@@ -379,11 +520,13 @@ class PromptScreen(ModalScreen[PromptResult | None]):
     def _on_delib_switch(self, event: Switch.Changed) -> None:
         self._deliberation_enabled = event.value
         self._update_pipeline_preview()
+        self._update_agent_roster()
 
     @on(RadioSet.Changed, "#prompt-rounds-selector")
     def _on_rounds_changed(self, event: RadioSet.Changed) -> None:
         self._deliberation_rounds = event.index + 1
         self._update_pipeline_preview()
+        self._update_agent_roster()
 
     # ── Key handlers ──────────────────────────────────────────────
 
@@ -826,6 +969,7 @@ class HelpScreen(ModalScreen[None]):
                 "  [b]N[/]           Shard network / node details\n"
                 "  [b]D[/]           Dependency health check\n"
                 "  [b]H[/]           Session history browser\n"
+                "  [b]E[/]           Export last response (.md + clipboard)\n"
                 "  [b]I[/]           Run self-improvement cycle\n"
                 "  [b]U[/]           Check for updates\n"
                 "  [b]L[/]           Clear response log\n"
@@ -1667,6 +1811,7 @@ class MaestroTUI(App):
         Binding("c", "refresh_cluster", "Cluster", show=False, priority=True),
         Binding("i", "run_improve", "Improve", show=False, priority=True),
         Binding("u", "show_update", "Update", show=False, priority=True),
+        Binding("e", "export_response", "Export", show=False, priority=True),
         Binding("l", "clear_log", "Clear", show=False, priority=True),
         Binding("p", "focus_prompt", "Prompt", show=False, priority=True),
         Binding("q", "quit", "Quit", show=False, priority=True),
@@ -1691,6 +1836,12 @@ class MaestroTUI(App):
         self._busy = False
         self._discovery_engine = None
         self._first_run_checked = False
+        # Track last orchestration for export (E key)
+        self._last_prompt: str = ""
+        self._last_agents: dict[str, str] = {}  # agent_name → response
+        self._last_consensus: str = ""
+        self._last_session_id: str = ""
+        self._last_metrics: dict = {}
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -1702,8 +1853,11 @@ class MaestroTUI(App):
         yield ShardDiscoveryPanel(id="discovery-panel")
         yield ShardNetworkPanel(id="shard-panel")
         yield Static(
-            " [b]P[/]:Prompt  [b]H[/]:History  [b]?[/]:Help  "
-            "[b]Q[/]:Quit",
+            " [bold #ff9e64]P[/]:Prompt  "
+            "[bold #7aa2f7]H[/]:History  "
+            "[bold #9ece6a]E[/]:Export  "
+            "[#a9b1d6]?[/]:Help  "
+            "[#a9b1d6]Q[/]:Quit",
             id="prompt-hint",
         )
         yield StatusBar()
@@ -1777,7 +1931,12 @@ class MaestroTUI(App):
         shard_panel = self.query_one("#shard-panel", ShardNetworkPanel)
         status_bar = self.query_one(StatusBar)
 
-        # Reset UI
+        # Reset UI and export tracking
+        self._last_prompt = prompt
+        self._last_agents = {}
+        self._last_consensus = ""
+        self._last_session_id = ""
+        self._last_metrics = {}
         agent_panel.set_all_running()
         consensus_panel.reset()
         delib_info = ""
@@ -1821,6 +1980,7 @@ class MaestroTUI(App):
             is_error = event.data.get("is_error", False)
             agent_panel.set_agent_status(agent, "error" if is_error else "done")
             viewer.write_agent(agent, text, is_error=is_error)
+            self._last_agents[agent] = text
             done_count = event.data.get("agents_done", 0)
             total = event.data.get("agents_total", 0)
             if total:
@@ -1869,21 +2029,29 @@ class MaestroTUI(App):
 
         elif event.kind == "dissent":
             consensus_panel.update_dissent(event.data)
+            self._last_metrics["dissent_level"] = event.data.get("dissent_level")
 
         elif event.kind == "ncg":
             consensus_panel.update_ncg(event.data)
+            self._last_metrics["ncg_drift"] = event.data.get("mean_drift")
 
         elif event.kind == "consensus":
             consensus_panel.update_consensus(event.data)
             consensus_text = event.data.get("consensus", "")
             if consensus_text:
                 viewer.write_consensus(consensus_text)
+            self._last_consensus = consensus_text
+            self._last_metrics["agreement_ratio"] = event.data.get("agreement_ratio")
+            self._last_metrics["quorum_met"] = event.data.get("quorum_met")
 
         elif event.kind == "r2":
             consensus_panel.update_r2(event.data)
+            self._last_metrics["r2_grade"] = event.data.get("grade")
+            self._last_metrics["r2_score"] = event.data.get("confidence_score")
 
         elif event.kind == "done":
             session_id = event.data.get("session_id", "")
+            self._last_session_id = session_id
             if session_id:
                 viewer.write_info(f"Session: {session_id}")
             viewer.write_stage("Done")
@@ -2036,6 +2204,93 @@ class MaestroTUI(App):
     def action_clear_log(self) -> None:
         viewer = self.query_one("#response-viewer", ResponseViewer)
         viewer.clear_log()
+
+    def action_export_response(self) -> None:
+        """Export the last orchestration result to a .md file and clipboard."""
+        viewer = self.query_one("#response-viewer", ResponseViewer)
+        if not self._last_prompt and not self._last_agents:
+            viewer.write_info("Nothing to export — run a prompt first.")
+            return
+
+        # Build markdown
+        lines = [f"# Maestro Orchestration — {self._last_session_id or 'session'}", ""]
+        lines.append(f"**Prompt:** {self._last_prompt}")
+        lines.append("")
+
+        # Metrics
+        m = self._last_metrics
+        if m:
+            lines.append("## Metrics")
+            lines.append("")
+            if m.get("agreement_ratio") is not None:
+                lines.append(f"- **Agreement:** {m['agreement_ratio']:.0%}")
+            if m.get("quorum_met") is not None:
+                lines.append(f"- **Quorum:** {'MET' if m['quorum_met'] else 'NOT MET'}")
+            if m.get("r2_grade"):
+                score = m.get("r2_score")
+                score_str = f" ({score:.2f})" if score is not None else ""
+                lines.append(f"- **R2 Grade:** {m['r2_grade'].upper()}{score_str}")
+            if m.get("dissent_level"):
+                lines.append(f"- **Dissent:** {m['dissent_level']}")
+            if m.get("ncg_drift") is not None:
+                lines.append(f"- **NCG Drift:** {m['ncg_drift']:.3f}")
+            lines.append("")
+
+        # Agent responses
+        if self._last_agents:
+            lines.append("## Agent Responses")
+            lines.append("")
+            for agent, text in self._last_agents.items():
+                lines.append(f"### {agent}")
+                lines.append("")
+                lines.append(text)
+                lines.append("")
+
+        # Consensus
+        if self._last_consensus:
+            lines.append("## Consensus")
+            lines.append("")
+            lines.append(self._last_consensus)
+            lines.append("")
+
+        md_content = "\n".join(lines)
+
+        # Write to file
+        import shutil
+        export_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "exports")
+        os.makedirs(export_dir, exist_ok=True)
+        sid = self._last_session_id[:8] if self._last_session_id else "latest"
+        export_path = os.path.join(export_dir, f"maestro-{sid}.md")
+        try:
+            with open(export_path, "w") as f:
+                f.write(md_content)
+            abs_path = os.path.abspath(export_path)
+            viewer.write_stage(f"Exported to {abs_path}")
+        except Exception as exc:
+            viewer.write_error(f"Export failed: {exc}")
+            return
+
+        # Try clipboard copy (best-effort)
+        copied = False
+        for clip_cmd in [["xclip", "-selection", "clipboard"],
+                         ["xsel", "--clipboard", "--input"],
+                         ["pbcopy"],
+                         ["clip.exe"]]:
+            if shutil.which(clip_cmd[0]):
+                try:
+                    import subprocess
+                    subprocess.run(
+                        clip_cmd, input=md_content.encode(),
+                        timeout=5, check=True,
+                    )
+                    copied = True
+                    break
+                except Exception:
+                    continue
+        if copied:
+            viewer.write_info("Also copied to clipboard.")
+        else:
+            viewer.write_info("Clipboard not available — file saved.")
 
     def action_show_history_key(self) -> None:
         self._show_history()

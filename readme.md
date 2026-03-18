@@ -59,7 +59,7 @@ The system orchestrates multiple AI agents under a structured pipeline of model 
 - **React/Vite Frontend** -- Analysis dashboard: R2 grade, quorum bar, dissent, NCG drift, session browser
 - **Cluster-Aware Instance Spawning** -- Press `+` in the TUI to spawn cluster members. First instance becomes orchestrator; subsequent instances auto-register as shard workers via shared Redis. Persistent instance registry tracks roles, names, ports, and container IPs across restarts
 - **Live Cluster Dashboard** -- Always-visible TUI widget with health indicators, color-coded roles (orchestrator/shard), port/IP info. Auto-refreshes every 5s; press `C` to force-refresh
-- **TUI Dashboard** -- Textual-based terminal UI optimized for SoC devices (Raspberry Pi 5). Keypress navigation, API key setup wizard, shard network monitor, LAN discovery panel, cluster dashboard, instance manager. Direct import and HTTP client modes
+- **TUI Dashboard** -- Textual-based terminal UI optimized for SoC devices (Raspberry Pi 5). Full-screen prompt composer, blue/green/orange color theme, response export (`E` key, .md + clipboard), keypress navigation, API key setup wizard, shard network monitor, LAN discovery panel, cluster dashboard, instance manager. Direct import and HTTP client modes
 - **Interactive Mode Selector** -- Arrow-key selector on startup; choose TUI, CLI, or Web-UI without memorizing commands
 - **Unified Startup Wrapper** -- Single Docker entrypoint; select Web-UI, CLI, or TUI at launch
 - **Interactive CLI** -- Full orchestration pipeline in the terminal (agent responses, consensus, dissent, NCG, R2)
