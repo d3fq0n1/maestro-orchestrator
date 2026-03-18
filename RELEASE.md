@@ -1,6 +1,46 @@
-# Maestro-Orchestrator v7.2.8
+# Maestro-Orchestrator v7.3.0
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
+
+---
+
+## What's New in v7.3.0
+
+### Session History Browser (H key)
+
+Pressing `H` now opens a full-screen **Session Browser** modal instead of dumping
+a summary to the response log. The browser includes:
+
+- **Session list panel** — shows up to 9 recent sessions with ID, timestamp, prompt
+  preview, agent count, and NCG status. Press `1-9` to select and load a session.
+- **Full detail view** — scrollable RichLog showing complete session content:
+  agent responses, consensus output, agreement/quorum metrics, dissent analysis,
+  R2 grade with flags, NCG benchmark with drift values, and full deliberation
+  round-by-round history showing how each agent's position evolved.
+- **Re-run support** — press `R` to re-open the selected session's prompt in the
+  Prompt screen for re-orchestration.
+
+### Improved Prompt Screen controls
+
+- **Radio buttons** — removed the blocky colored indicator blocks from the
+  deliberation round selector. Round buttons now display as clean text labels
+  with accent color highlighting for the selected option.
+- **Switch styling** — deliberation toggle switch uses transparent background
+  with muted/success color states instead of default block styling.
+
+### Self-Improvement now functional (I key)
+
+The `I` key binding now runs a real self-improvement cycle using the
+`SelfImprovementEngine`, displaying MAGI analysis results, generated proposals,
+and VIR validation status in the response viewer. Previously this was a
+placeholder message.
+
+### Backend session detail API
+
+- `MaestroBackend.get_session_detail(session_id)` — new abstract method for
+  loading full session records by ID.
+- Implemented in both `DirectBackend` (loads from disk via `SessionLogger`) and
+  `HTTPBackend` (fetches from `/api/sessions/{id}`).
 
 ---
 

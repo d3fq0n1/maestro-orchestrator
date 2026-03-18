@@ -172,7 +172,8 @@ Press these keys anywhere (except when typing in the prompt input):
 | `C` | Refresh cluster dashboard |
 | `N` | Shard network / node details |
 | `D` | Dependency health check |
-| `H` | Recent session history |
+| `H` | Session history browser (full detail viewer) |
+| `I` | Run self-improvement cycle (MAGI analysis + proposals) |
 | `U` | Open update screen (auto-checks on open; `C` re-check, `A` apply, `T` toggle auto-update) |
 | `L` | Clear response log |
 | `P` | Focus the prompt input |
