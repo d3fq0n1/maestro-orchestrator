@@ -1319,6 +1319,11 @@ class MaestroTUI(App):
         yield StatusBar()
 
     def on_mount(self) -> None:
+        # Load .env synchronously BEFORE any workers start so that all
+        # subsequent os.environ reads (dep-check, first-run, etc.) see keys.
+        from maestro.tui.backend import _load_env
+        _load_env()
+
         # Don't auto-focus the prompt — let single-key navigation work
         self._refresh_nodes()
         self._startup_dep_check()
@@ -1335,11 +1340,6 @@ class MaestroTUI(App):
         if self._first_run_checked:
             return
         self._first_run_checked = True
-
-        # Ensure .env is loaded regardless of backend mode (HTTP mode skips
-        # DirectBackend.__init__ which normally calls _load_env).
-        from maestro.tui.backend import _load_env
-        _load_env()
 
         from maestro.keyring import list_keys
         keys = list_keys()

@@ -156,11 +156,13 @@ def check_system_tools() -> list[CheckResult]:
 
 def check_api_keys() -> list[CheckResult]:
     """Check that API keys are configured in the environment."""
+    from maestro.keyring import _PLACEHOLDER_VALUES
+
     results: list[CheckResult] = []
 
     for env_var, provider, purpose in _API_KEYS:
         value = os.environ.get(env_var, "").strip()
-        if value:
+        if value and value not in _PLACEHOLDER_VALUES:
             masked = value[:4] + "..." + value[-4:] if len(value) > 10 else "***"
             results.append(CheckResult(
                 name=env_var,
@@ -179,7 +181,7 @@ def check_api_keys() -> list[CheckResult]:
 
     for env_var, provider, purpose in _OPTIONAL_API_KEYS:
         value = os.environ.get(env_var, "").strip()
-        if value:
+        if value and value not in _PLACEHOLDER_VALUES:
             masked = value[:4] + "..." + value[-4:] if len(value) > 10 else "***"
             results.append(CheckResult(
                 name=env_var,
