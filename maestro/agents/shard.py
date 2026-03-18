@@ -1,13 +1,14 @@
 """
-Shard Agent — Routes inference through the proof-of-storage network.
+Shard Agent — Routes inference through the distributed weight host network.
 
 Unlike Aria/Sol/Prism which call centralized APIs, the ShardAgent constructs
-an inference pipeline across storage nodes, passes activation tensors between
-them, and returns the final response as a string — same interface as every
-other agent.
+an inference pipeline across persistent weight hosts, passes activation tensors
+between them, and returns the final response as a string — same interface as
+every other agent.
 
-The orchestrator doesn't know or care that the inference happened across
-a distributed network. It just sees another agent response.
+Queries travel to weights, not weights to queries. The orchestrator doesn't
+know or care that the inference happened across a distributed network. It
+just sees another agent response.
 """
 
 import asyncio
@@ -19,21 +20,21 @@ from typing import Optional
 import httpx
 
 from maestro.agents.base import Agent
-from maestro.shard_registry import StorageNodeRegistry, StorageNode
+from maestro.shard_registry import WeightHostRegistry, WeightHost
 from maestro.storage_proof import StorageProofEngine
 
 
 class ShardAgent(Agent):
     """
-    Agent that runs inference across distributed proof-of-storage nodes.
+    Agent that runs inference across distributed persistent weight hosts.
 
     Implements the same async fetch(prompt) -> str interface as all other agents.
     Internally:
-      1. Queries the StorageNodeRegistry for a pipeline covering all layers
+      1. Queries the WeightHostRegistry for a pipeline covering all layers
       2. Tokenizes the prompt locally
-      3. Sends input embeddings to the first pipeline node
-      4. Each node runs its shard's layers and passes activations to the next
-      5. Final node produces logits, which are decoded locally
+      3. Sends input embeddings to the first pipeline host
+      4. Each host runs its shard's layers and passes activations to the next
+      5. Final host produces logits, which are decoded locally
       6. Returns the decoded text as a string
 
     Error handling follows the same contract as other agents: typed error
@@ -46,7 +47,7 @@ class ShardAgent(Agent):
     def __init__(
         self,
         model_id: str = "meta-llama/llama-3.3-70b-instruct",
-        registry: StorageNodeRegistry = None,
+        registry: WeightHostRegistry = None,
         proof_engine: StorageProofEngine = None,
         timeout_per_hop: float = 30.0,
         min_reputation: float = 0.5,
@@ -66,12 +67,12 @@ class ShardAgent(Agent):
         """
         try:
             if not self.registry:
-                return f"[{self.name}] No storage registry configured"
+                return f"[{self.name}] No weight host registry configured"
 
-            # Build the inference pipeline
-            pipeline = self.registry.build_inference_pipeline(self.model_id)
+            # Route query to persistent weight hosts
+            pipeline = self.registry.route_query(self.model_id)
             if not pipeline:
-                return f"[{self.name}] No storage nodes available for {self.model_id}"
+                return f"[{self.name}] No weight hosts available for {self.model_id}"
 
             # Filter by reputation
             if self.proof_engine:
@@ -92,7 +93,7 @@ class ShardAgent(Agent):
         except Exception as e:
             return f"[{self.name}] Failed: {type(e).__name__}: {e}"
 
-    async def _execute_pipeline(self, prompt: str, pipeline: list[StorageNode]) -> str:
+    async def _execute_pipeline(self, prompt: str, pipeline: list[WeightHost]) -> str:
         """
         Execute the forward pass across pipeline nodes.
         """
@@ -149,7 +150,7 @@ class ShardAgent(Agent):
 
     async def _forward_to_node(
         self,
-        node: StorageNode,
+        node: WeightHost,
         activation_payload: dict,
     ) -> dict:
         """
@@ -164,7 +165,7 @@ class ShardAgent(Agent):
 
     async def _failover(
         self,
-        failed_node: StorageNode,
+        failed_node: WeightHost,
         activation_payload: dict,
     ) -> dict:
         """

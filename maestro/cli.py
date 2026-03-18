@@ -513,17 +513,17 @@ def _run_update():
 # ---------------------------------------------------------------------------
 
 def _show_nodes(args: str = ""):
-    """List or manage storage nodes."""
-    from maestro.shard_registry import StorageNodeRegistry, StorageNode
+    """List or manage weight hosts."""
+    from maestro.shard_registry import WeightHostRegistry, WeightHost
 
     parts = args.split() if args else []
-    registry = StorageNodeRegistry()
+    registry = WeightHostRegistry()
 
     if not parts or parts[0] == "list":
         nodes = registry.list_nodes()
         print()
         print(SEPARATOR)
-        print("  Storage Nodes")
+        print("  Weight Hosts")
         print(SEPARATOR)
         if not nodes:
             print("  No storage nodes registered.")

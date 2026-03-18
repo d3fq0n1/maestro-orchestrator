@@ -1,8 +1,8 @@
 """
-API routes for the storage network and proof-of-storage system.
+API routes for the weight host network and proof-of-storage system.
 
 Covers two concerns:
-  1. Network management — nodes, reputation, pipelines, challenges
+  1. Network management — weight hosts, reputation, pipelines, challenges
   2. Shard management — download, index, verify local weight shards
 """
 
@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from maestro.shard_registry import StorageNodeRegistry, StorageNode
+from maestro.shard_registry import WeightHostRegistry, WeightHost
 from maestro.storage_proof import StorageProofEngine
 from maestro.shard_manager import ShardManager
 from maestro.lan_discovery import ShardDiscoveryEngine
@@ -20,7 +20,7 @@ from maestro.lan_discovery import ShardDiscoveryEngine
 router = APIRouter(prefix="/api/storage", tags=["storage"])
 
 # Shared instances (created on first use)
-_registry: Optional[StorageNodeRegistry] = None
+_registry: Optional[WeightHostRegistry] = None
 _proof_engine: Optional[StorageProofEngine] = None
 _shard_manager: Optional[ShardManager] = None
 _discovery_engine: Optional[ShardDiscoveryEngine] = None
@@ -29,10 +29,10 @@ _discovery_engine: Optional[ShardDiscoveryEngine] = None
 _active_downloads: dict[str, dict] = {}
 
 
-def _get_registry() -> StorageNodeRegistry:
+def _get_registry() -> WeightHostRegistry:
     global _registry
     if _registry is None:
-        _registry = StorageNodeRegistry()
+        _registry = WeightHostRegistry()
     return _registry
 
 
@@ -93,7 +93,7 @@ class GenerateConfigRequest(BaseModel):
 @router.post("/nodes/register")
 async def register_node(reg: NodeRegistration):
     registry = _get_registry()
-    node = StorageNode(
+    node = WeightHost(
         node_id=reg.node_id,
         host=reg.host,
         port=reg.port,

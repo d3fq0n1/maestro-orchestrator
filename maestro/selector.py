@@ -186,7 +186,7 @@ def _move_to_top(n: int) -> None:
 
 def interactive_select(
     options: list[Option] | None = None,
-    title: str = "Maestro-Orchestrator  \u2014  Select Mode",
+    title: str = "Maestro: Orchestrating Persistent AI Infrastructure",
 ) -> str:
     """
     Show a fancy interactive selector and return the chosen option key.
