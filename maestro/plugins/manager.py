@@ -42,7 +42,7 @@ from maestro.plugins.base import (
 )
 
 
-_MAESTRO_VERSION = "7.2.8"
+_MAESTRO_VERSION = "7.3.0"
 
 # Valid hook points in the orchestration pipeline
 HOOK_POINTS = (
@@ -124,10 +124,10 @@ class ModManager:
     # ------------------------------------------------------------------
 
     def _get_registry_callback(self):
-        """Return the StorageNodeRegistry if available."""
+        """Return the WeightHostRegistry if available."""
         try:
-            from maestro.shard_registry import StorageNodeRegistry
-            return StorageNodeRegistry()
+            from maestro.shard_registry import WeightHostRegistry
+            return WeightHostRegistry()
         except Exception:
             return None
 
