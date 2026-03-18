@@ -27,7 +27,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Header, Footer, Input, Static, Label, RichLog
+from textual.widgets import Header, Footer, Input, Static, Label, RichLog, Switch, RadioButton, RadioSet
 
 from maestro.tui.backend import MaestroBackend, TUIEvent, create_backend
 from maestro.tui.widgets import (
@@ -105,24 +105,17 @@ class PromptScreen(ModalScreen[PromptResult | None]):
     """Full-screen modal for composing prompts with history, templates,
     and deliberation controls.
 
-    Layout (80×24 target):
-    ┌─ Maestro Prompt ─────────────────────────────────────────────────┐
-    │ [____prompt input field____________________________________]     │
-    │                                                                  │
-    │ ┌─ History ──────────────────┐  ┌─ Templates ────────────────┐   │
-    │ │ 1 c307dc21 Why is taco..  │  │ F1 General Question        │   │
-    │ │ 2 e452a2bc What's the..   │  │ F2 Code Review             │   │
-    │ └───────────────────────────┘  └─────────────────────────────┘   │
-    │                                                                  │
-    │ Deliberation  [■ ON ]   Rounds  [● 1] [○ 2] [○ 3] [○ 4] [○ 5]  │
-    │                                                                  │
-    │ Enter:Submit  Esc:Cancel  Ctrl+S:Save  T:Delib  R:Rounds        │
-    └──────────────────────────────────────────────────────────────────┘
+    Layout fills available space with a responsive two-column design.
+    Deliberation controls are real focusable widgets — use Tab to
+    navigate between input, toggle, and round selector; Space/Enter
+    to interact.
     """
 
     BINDINGS = [
         Binding("escape", "dismiss", "Cancel", priority=True),
         Binding("ctrl+s", "save_template", "Save Template", show=False),
+        Binding("ctrl+t", "toggle_deliberation", "Toggle Deliberation", show=False, priority=True),
+        Binding("ctrl+r", "cycle_rounds", "Cycle Rounds", show=False, priority=True),
     ]
 
     DEFAULT_CSS = """
@@ -130,9 +123,10 @@ class PromptScreen(ModalScreen[PromptResult | None]):
         align: center middle;
     }
     #prompt-dialog {
-        width: 76;
+        width: 90%;
+        max-width: 100;
         height: auto;
-        max-height: 22;
+        max-height: 90%;
         border: thick $accent;
         background: $surface;
         padding: 1 2;
@@ -140,19 +134,20 @@ class PromptScreen(ModalScreen[PromptResult | None]):
     #prompt-title {
         text-style: bold;
         color: $accent;
+        margin-bottom: 1;
     }
     #prompt-text-input {
         width: 100%;
+        margin-bottom: 1;
     }
     #prompt-panels {
         height: auto;
-        max-height: 8;
-        margin-top: 1;
+        max-height: 12;
     }
     #prompt-history-panel {
         width: 1fr;
         height: auto;
-        max-height: 8;
+        max-height: 12;
         border: solid $primary;
         padding: 0 1;
         margin-right: 1;
@@ -160,7 +155,7 @@ class PromptScreen(ModalScreen[PromptResult | None]):
     #prompt-templates-panel {
         width: 1fr;
         height: auto;
-        max-height: 8;
+        max-height: 12;
         border: solid $primary;
         padding: 0 1;
     }
@@ -169,12 +164,33 @@ class PromptScreen(ModalScreen[PromptResult | None]):
         color: $primary;
     }
     #prompt-delib-row {
-        height: 1;
+        height: auto;
         margin-top: 1;
+        align-vertical: middle;
     }
-    #prompt-delib-display {
-        width: 100%;
+    #delib-label {
+        width: auto;
+        padding: 0 1;
+    }
+    #delib-switch {
+        width: auto;
+    }
+    #rounds-label {
+        width: auto;
+        padding: 0 1 0 2;
+    }
+    #prompt-rounds-selector {
+        width: auto;
+        height: auto;
+        layout: horizontal;
+        padding: 0 1;
+    }
+    #prompt-rounds-selector RadioButton {
+        width: auto;
         height: 1;
+        padding: 0 1;
+        min-width: 5;
+        background: transparent;
     }
     #prompt-hint-row {
         height: 1;
@@ -218,13 +234,24 @@ class PromptScreen(ModalScreen[PromptResult | None]):
                         self._render_templates(), id="prompt-templates-list"
                     )
             with Horizontal(id="prompt-delib-row"):
-                yield Static(self._render_delib_controls(), id="prompt-delib-display")
+                yield Label("Deliberation", id="delib-label")
+                yield Switch(value=True, id="delib-switch")
+                yield Label("Rounds", id="rounds-label")
+                yield RadioSet(
+                    RadioButton("1", value=True),
+                    RadioButton("2"),
+                    RadioButton("3"),
+                    RadioButton("4"),
+                    RadioButton("5"),
+                    id="prompt-rounds-selector",
+                )
             with Horizontal(id="prompt-hint-row"):
                 yield Static(
                     " [dim]Enter[/]:Submit  [dim]Esc[/]:Cancel  "
+                    "[dim]Tab[/]:Navigate  "
                     "[dim]Ctrl+S[/]:Save  "
                     "[dim]1-9[/]:History  [dim]F1-F5[/]:Template  "
-                    "[dim]T[/]:Delib  [dim]R[/]:Rounds",
+                    "[dim]Ctrl+T[/]:Delib  [dim]Ctrl+R[/]:Rounds",
                     id="prompt-hints-display",
                 )
 
@@ -242,7 +269,7 @@ class PromptScreen(ModalScreen[PromptResult | None]):
             grade = s.get("r2_grade", s.get("grade", ""))
             grade_str = f" [{self._grade_color(grade)}]{grade}[/]" if grade else ""
             # Truncate prompt to fit in panel without wrapping
-            prompt_text = s.get("prompt", "?")[:24]
+            prompt_text = s.get("prompt", "?")[:30]
             num = i + 1
             marker = "[bold cyan]▸[/]" if i == self._selected_history_idx else " "
             lines.append(f"{marker}[dim]{num}[/] {sid} {prompt_text}{grade_str}")
@@ -253,30 +280,11 @@ class PromptScreen(ModalScreen[PromptResult | None]):
             return " [dim]No templates[/]"
         lines = []
         for i, t in enumerate(self._templates[:5]):
-            name = t.get("name", "?")[:26]
+            name = t.get("name", "?")[:32]
             fkey = f"F{i + 1}"
             marker = "[bold cyan]▸[/]" if i == self._selected_template_idx else " "
             lines.append(f"{marker}[dim]{fkey}[/] {name}")
         return "\n".join(lines)
-
-    def _render_delib_controls(self) -> str:
-        """Render deliberation toggle + radio-button round selector."""
-        # Toggle switch — escape outer brackets so Rich doesn't parse them
-        if self._deliberation_enabled:
-            toggle = "\[[bold green]■ ON[/] ]"
-        else:
-            toggle = "\[[bold red]□ OFF[/]]"
-
-        # Round selector (radio buttons)
-        round_btns = []
-        for r in range(1, 6):
-            if r == self._deliberation_rounds and self._deliberation_enabled:
-                round_btns.append(f"\[[bold cyan]● {r}[/]]")
-            else:
-                round_btns.append(f"\[[dim]○ {r}[/]]")
-        rounds_str = " ".join(round_btns)
-
-        return f" Deliberation {toggle}   Rounds  {rounds_str}"
 
     @staticmethod
     def _grade_color(grade: str) -> str:
@@ -292,14 +300,6 @@ class PromptScreen(ModalScreen[PromptResult | None]):
         return "dim"
 
     # ── Display updates ───────────────────────────────────────────
-
-    def _update_delib_display(self) -> None:
-        try:
-            self.query_one("#prompt-delib-display", Static).update(
-                self._render_delib_controls()
-            )
-        except Exception:
-            pass
 
     def _update_history_display(self) -> None:
         try:
@@ -317,6 +317,16 @@ class PromptScreen(ModalScreen[PromptResult | None]):
         except Exception:
             pass
 
+    # ── Widget event handlers ─────────────────────────────────────
+
+    @on(Switch.Changed, "#delib-switch")
+    def _on_delib_switch(self, event: Switch.Changed) -> None:
+        self._deliberation_enabled = event.value
+
+    @on(RadioSet.Changed, "#prompt-rounds-selector")
+    def _on_rounds_changed(self, event: RadioSet.Changed) -> None:
+        self._deliberation_rounds = event.index + 1
+
     # ── Key handlers ──────────────────────────────────────────────
 
     @on(Input.Submitted, "#prompt-text-input")
@@ -333,20 +343,6 @@ class PromptScreen(ModalScreen[PromptResult | None]):
     def on_key(self, event) -> None:
         key = event.key
         inp = self.query_one("#prompt-text-input", Input)
-
-        # T — toggle deliberation (works even when input focused)
-        if key == "t" and not inp.has_focus:
-            self._deliberation_enabled = not self._deliberation_enabled
-            self._update_delib_display()
-            event.prevent_default()
-            return
-
-        # R — cycle deliberation rounds (works even when input focused)
-        if key == "r" and not inp.has_focus:
-            self._deliberation_rounds = (self._deliberation_rounds % 5) + 1
-            self._update_delib_display()
-            event.prevent_default()
-            return
 
         # 1-9 — select history item and fill prompt
         # When the input is focused, the digit gets typed first; detect
@@ -385,6 +381,20 @@ class PromptScreen(ModalScreen[PromptResult | None]):
                     self._update_templates_display()
                     event.prevent_default()
             return
+
+    def action_toggle_deliberation(self) -> None:
+        """Toggle deliberation on/off (Ctrl+T — works from any focus)."""
+        switch = self.query_one("#delib-switch", Switch)
+        switch.toggle()
+
+    def action_cycle_rounds(self) -> None:
+        """Cycle deliberation rounds 1→2→...→5→1 (Ctrl+R — works from any focus)."""
+        radio_set = self.query_one("#prompt-rounds-selector", RadioSet)
+        next_idx = (self._deliberation_rounds % 5)
+        # Press the next radio button
+        buttons = list(radio_set.query(RadioButton))
+        if next_idx < len(buttons):
+            buttons[next_idx].value = True
 
     def action_save_template(self) -> None:
         """Save the current prompt text as a template."""
@@ -448,7 +458,9 @@ class HelpScreen(ModalScreen[None]):
                 "  Full-screen prompt interface with history, templates,\n"
                 "  and deliberation controls. Type prompt → [b]Enter[/] to submit.\n"
                 "  [b]1-9[/]: Re-run from history  [b]F1-F5[/]: Load template\n"
-                "  [b]T[/]: Toggle deliberation  [b]R[/]: Cycle rounds  [b]Ctrl+S[/]: Save template\n"
+                "  [b]Tab[/]: Navigate controls  [b]Space[/]: Toggle/select\n"
+                "  [b]Ctrl+T[/]: Toggle deliberation  [b]Ctrl+R[/]: Cycle rounds\n"
+                "  [b]Ctrl+S[/]: Save template\n"
             )
             yield Static(
                 "[bold]Tips[/]\n"
