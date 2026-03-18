@@ -1303,7 +1303,7 @@ class KeyStatusScreen(ModalScreen[None]):
 
     def action_open_setup(self) -> None:
         self.dismiss()
-        self.app.push_screen(KeySetupWizard())
+        self.app.push_screen(KeySetupWizard(), callback=self.app._on_setup_wizard_closed)
 
 
 # ───────────────────────────────────────────────────────────────────
@@ -1900,7 +1900,51 @@ class MaestroTUI(App):
             self.app.call_from_thread(self._open_setup_wizard)
 
     def _open_setup_wizard(self) -> None:
-        self.push_screen(KeySetupWizard())
+        self.push_screen(KeySetupWizard(), callback=self._on_setup_wizard_closed)
+
+    def _on_setup_wizard_closed(self, _result=None) -> None:
+        """Re-check key status after the setup wizard closes."""
+        self._refresh_key_status()
+
+    @work(thread=True)
+    def _refresh_key_status(self) -> None:
+        """Re-check keys and dep health, update the response viewer."""
+        from maestro.keyring import list_keys
+
+        keys = list_keys()
+        configured = [k for k in keys if k.configured]
+        viewer = self.query_one("#response-viewer", ResponseViewer)
+
+        if configured:
+            names = ", ".join(k.label for k in configured)
+            self.app.call_from_thread(
+                viewer.write_info,
+                f"[bold green]ok {len(configured)} API key(s) configured:[/] {names}"
+            )
+        else:
+            self.app.call_from_thread(
+                viewer.write_info,
+                "[yellow]No API keys were saved. Press [b]S[/] to try again.[/]"
+            )
+
+        # Re-run dep check so the error/warning count updates
+        report = resolve_all()
+        if report.healthy:
+            self.app.call_from_thread(
+                viewer.write_info,
+                "[green]All dependency checks passed.[/]"
+            )
+        else:
+            errors = report.errors
+            warnings = report.warnings
+            total = len(errors) + len(warnings)
+            self.app.call_from_thread(
+                viewer.write_info,
+                f"[yellow]!! {total} issue(s) remaining[/]  "
+                f"([red]{len(errors)} error(s)[/], "
+                f"[yellow]{len(warnings)} warning(s)[/])  \u2014  "
+                f"Press [b]D[/] for full report."
+            )
 
     # ── Prompt result handling ─────────────────────────────────────
 
@@ -2065,7 +2109,7 @@ class MaestroTUI(App):
         self.push_screen(HelpScreen())
 
     def action_show_setup(self) -> None:
-        self.push_screen(KeySetupWizard())
+        self.push_screen(KeySetupWizard(), callback=self._on_setup_wizard_closed)
 
     @work(thread=False)
     async def action_focus_prompt(self) -> None:
