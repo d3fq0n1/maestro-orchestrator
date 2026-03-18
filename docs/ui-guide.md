@@ -206,6 +206,22 @@ The TUI supports two connection modes:
 
 2. **HTTP client**: The TUI connects to a running Maestro FastAPI server via HTTP and consumes the SSE streaming endpoint for progressive updates. Best for multi-device clusters or when the server runs on a different machine.
 
+### Prompt Screen Pipeline Preview
+
+The Prompt screen (`P` key) includes a **Pipeline Preview** panel showing:
+- Agent roster with status indicators
+- Deliberation toggle state and round count (updates reactively)
+- Analysis pipeline stages (Dissent → NCG → Consensus → R2)
+
+### Deliberation Visual Feedback
+
+During multi-round deliberation the TUI shows real-time progress:
+- Agent indicators reset to "running" (spinning) at deliberation start
+- Status bar shows current round (e.g. "Deliberation: round 1/3")
+- Response viewer logs each round completion with agent count
+- Agent indicators flip to "done" as each round completes
+- Summary message on deliberation completion (rounds, participants)
+
 ### Behavior Flow
 
 ```text
@@ -213,6 +229,8 @@ User types prompt -> Enter -> Agent panel shows "running"
 -> SSE events stream in (direct import or HTTP)
 -> Agent indicators flip to "done" as each responds
 -> Response viewer shows agent text progressively
+-> Deliberation: agents reset to "running", rounds shown in status bar
+-> Each deliberation round completes with visual feedback
 -> Consensus panel updates with agreement/quorum/R2/dissent/NCG
 -> Consensus text appears in response viewer
 -> Status bar shows "Done"
