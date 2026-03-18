@@ -1,4 +1,4 @@
-# Deliberation Engine — Maestro-Orchestrator v0.7.1
+# Deliberation Engine — Maestro-Orchestrator v7.4.0
 
 The Deliberation Engine upgrades the default parallel-collect pattern into an
 actual multi-round debate. After all agents return their initial answers, each

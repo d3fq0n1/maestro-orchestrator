@@ -1,7 +1,7 @@
 
 # Maestro: Orchestrating Persistent AI Infrastructure
 
-![Version](https://img.shields.io/badge/version-v7.3.0-blue)
+![Version](https://img.shields.io/badge/version-v7.4.0-blue)
 ![License](https://img.shields.io/badge/license-Custom%20Open%20Use-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-green)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)

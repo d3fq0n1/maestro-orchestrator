@@ -135,16 +135,29 @@ class Spinner:
     # -- internal ------------------------------------------------------------
 
     def _current_progress(self) -> float:
-        """Return the current progress fraction (0.0 – 1.0)."""
+        """Return the current progress fraction (0.0 – 1.0).
+
+        Uses a two-phase curve that feels linear for most of the wait:
+          Phase 1 (0 → estimated_seconds): linear ramp to 80 %.
+          Phase 2 (beyond estimate):       slow approach to 95 %.
+
+        This avoids the old asymptotic curve that crawled at 1-3 % for
+        the entire wait and then jumped to completion.
+        """
         with self._lock:
             if self._manual_progress is not None:
                 return self._manual_progress
         if self._estimated_seconds <= 0:
             return 0.0
         elapsed = time.monotonic() - self._start_time
-        # Asymptotic curve: approaches 1.0 but never quite reaches it.
-        # At t == estimated_seconds the bar is at ~63 %; at 2× it's ~86 %.
-        return 1.0 - math.exp(-elapsed / self._estimated_seconds)
+        ratio = elapsed / self._estimated_seconds
+        if ratio <= 1.0:
+            # Linear ramp: 0 % → 80 % over the estimated duration
+            return 0.80 * ratio
+        else:
+            # Beyond estimated time: ease toward 95 %
+            extra = ratio - 1.0
+            return 0.80 + 0.15 * (1.0 - math.exp(-extra * 2))
 
     @staticmethod
     def _render_bar(progress: float, width: int) -> str:

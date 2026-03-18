@@ -1,6 +1,43 @@
-# Maestro-Orchestrator v7.3.0
+# Maestro-Orchestrator v7.4.0
 
 **Multi-Agent AI Orchestration with Synthetic Consensus, Deliberation, and Dissent**
+
+---
+
+## What's New in v7.4.0
+
+### Boot Progress Bar Fix
+
+The setup progress bar used an asymptotic exponential curve that crawled at 1-3%
+for the entire wait and then jumped to completion. Replaced with a two-phase linear
+ramp: 0→80% over the estimated duration, then a gentle ease toward 95% if the build
+runs long. The bar now gives accurate, reassuring visual feedback throughout the
+entire boot sequence.
+
+### Deliberation Visual Feedback (TUI)
+
+The TUI previously showed zero visual activity during multi-round deliberation —
+the `deliberation_start`, `deliberation_round`, and `deliberation_done` SSE events
+were silently dropped. Now:
+
+- **`deliberation_start`** — Status bar shows "Deliberation: round 1/N", agent
+  indicators reset to running (spinning), response viewer logs the start.
+- **`deliberation_round`** — Each completed round flips agent indicators to "done",
+  status bar and response viewer show round progress.
+- **`deliberation_done`** — Summary logged (rounds completed, agents participated),
+  or skip reason if deliberation was bypassed.
+
+### Prompt Screen Pipeline Preview
+
+The Prompt screen (`P` key) now includes a bordered **Pipeline Preview** panel
+below the deliberation controls, showing:
+
+- Agent roster (GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B)
+- Deliberation status (ON/OFF, round count) — updates reactively as you toggle
+- Analysis pipeline stages (Dissent → NCG → Consensus → R2)
+
+This makes the prompt screen visually richer and immediately communicates what
+will happen when you press Enter.
 
 ---
 

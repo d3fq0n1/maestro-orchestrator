@@ -208,6 +208,16 @@ class PromptScreen(ModalScreen[PromptResult | None]):
     #prompt-rounds-selector .toggle--button {
         display: none;
     }
+    #prompt-pipeline-preview {
+        height: auto;
+        border: solid $primary;
+        padding: 0 1;
+        margin-top: 1;
+    }
+    .prompt-preview-title {
+        text-style: bold;
+        color: $primary;
+    }
     #prompt-hint-row {
         height: 1;
         margin-top: 1;
@@ -261,6 +271,9 @@ class PromptScreen(ModalScreen[PromptResult | None]):
                     RadioButton("5"),
                     id="prompt-rounds-selector",
                 )
+            with Vertical(id="prompt-pipeline-preview"):
+                yield Label(" │ Pipeline Preview", classes="prompt-preview-title")
+                yield Static(self._render_pipeline_preview(), id="prompt-pipeline-content")
             with Horizontal(id="prompt-hint-row"):
                 yield Static(
                     " [dim]Enter[/]:Submit  [dim]Esc[/]:Cancel  "
@@ -302,6 +315,33 @@ class PromptScreen(ModalScreen[PromptResult | None]):
             lines.append(f"{marker}[dim]{fkey}[/] {name}")
         return "\n".join(lines)
 
+    def _render_pipeline_preview(self) -> str:
+        """Render a compact pipeline summary showing what will run on submit."""
+        agents = ["GPT-4o", "Claude Sonnet 4.6", "Gemini 2.5 Flash", "Llama 3.3 70B"]
+        agent_str = " ".join(f"[bold green]●[/]{a}" for a in agents)
+
+        delib_str = (
+            f"[bold green]ON[/] ({self._deliberation_rounds} round"
+            f"{'s' if self._deliberation_rounds > 1 else ''})"
+            if self._deliberation_enabled
+            else "[dim]OFF[/]"
+        )
+
+        stages = [
+            f"  [bold cyan]1[/] Agents    {agent_str}",
+            f"  [bold cyan]2[/] Deliberation  {delib_str}",
+            "  [bold cyan]3[/] Dissent → NCG → Consensus → R2",
+        ]
+        return "\n".join(stages)
+
+    def _update_pipeline_preview(self) -> None:
+        try:
+            self.query_one("#prompt-pipeline-content", Static).update(
+                self._render_pipeline_preview()
+            )
+        except Exception:
+            pass
+
     @staticmethod
     def _grade_color(grade: str) -> str:
         grade_l = (grade or "").lower()
@@ -338,10 +378,12 @@ class PromptScreen(ModalScreen[PromptResult | None]):
     @on(Switch.Changed, "#delib-switch")
     def _on_delib_switch(self, event: Switch.Changed) -> None:
         self._deliberation_enabled = event.value
+        self._update_pipeline_preview()
 
     @on(RadioSet.Changed, "#prompt-rounds-selector")
     def _on_rounds_changed(self, event: RadioSet.Changed) -> None:
         self._deliberation_rounds = event.index + 1
+        self._update_pipeline_preview()
 
     # ── Key handlers ──────────────────────────────────────────────
 
@@ -1605,7 +1647,7 @@ class MaestroTUI(App):
     """
 
     TITLE = "Maestro: Orchestrating Persistent AI Infrastructure"
-    SUB_TITLE = "v7.3.0  |  TUI Dashboard"
+    SUB_TITLE = "v7.4.0  |  TUI Dashboard"
 
     CSS_PATH = "maestro_tui.tcss"
 
@@ -1786,6 +1828,44 @@ class MaestroTUI(App):
 
         elif event.kind == "agents_done":
             pass  # All agents have been handled individually
+
+        elif event.kind == "deliberation_start":
+            rounds = event.data.get("rounds_requested", 1)
+            agents_list = event.data.get("agents", [])
+            viewer.write_stage(
+                f"Deliberation starting — {rounds} round(s), "
+                f"{len(agents_list)} agent(s)"
+            )
+            status_bar.set_stage(f"Deliberation: round 1/{rounds}")
+            # Reset agents to running for deliberation
+            agent_panel.set_all_running()
+
+        elif event.kind == "deliberation_round":
+            round_num = event.data.get("round_number", "?")
+            responses = event.data.get("responses", {})
+            # Mark each agent that responded in this round as done
+            for agent_name in responses:
+                agent_panel.set_agent_status(agent_name, "done")
+            viewer.write_stage(
+                f"Deliberation round {round_num} complete — "
+                f"{len(responses)} agent(s) refined"
+            )
+            status_bar.set_stage(f"Deliberation: round {round_num} done")
+
+        elif event.kind == "deliberation_done":
+            rounds_done = event.data.get("rounds_completed", 0)
+            skipped = event.data.get("skipped", False)
+            if skipped:
+                reason = event.data.get("skip_reason", "")
+                viewer.write_info(
+                    f"[dim]Deliberation skipped: {reason}[/]"
+                )
+            else:
+                participants = event.data.get("agents_participated", [])
+                viewer.write_stage(
+                    f"Deliberation complete — {rounds_done} round(s), "
+                    f"{len(participants)} agent(s) participated"
+                )
 
         elif event.kind == "dissent":
             consensus_panel.update_dissent(event.data)

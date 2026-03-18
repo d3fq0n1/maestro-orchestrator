@@ -1,5 +1,5 @@
 """
-Deliberation Engine — Maestro-Orchestrator v7.3.0
+Deliberation Engine — Maestro-Orchestrator v7.4.0
 
 After collecting initial responses from all agents, the deliberation engine
 feeds each agent's response back into the pool so every agent can read what
