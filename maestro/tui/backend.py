@@ -219,33 +219,20 @@ def _bootstrap_paths():
 
 
 def _load_env():
-    """Load .env using the same candidate-path logic as keyring._default_env_path.
+    """Load .env using keyring._default_env_path to guarantee path consistency.
 
-    Tries paths in priority order and stops at the first existing file so that
-    keys saved by the setup wizard (which also uses _default_env_path) are
-    always found on the next TUI launch — regardless of whether the user is
-    running from the project root, inside Docker, or with MAESTRO_ENV_FILE set.
-
-    Previously this function only tried ``backend/.env``.  If the wizard saved
-    keys to ``project_root/.env`` (the fallback when ``backend/.env`` didn't
-    exist), they would not be loaded on restart, causing the TUI to report
-    "No API keys configured" even though keys were present on disk.
+    Delegates to ``keyring._default_env_path()`` so that the .env file found
+    here is *always* the same file that ``set_key()`` writes to.  Previous
+    versions duplicated the candidate-path logic and omitted ``Path.cwd()``
+    from the list, which meant keys saved by the setup wizard to ``cwd/.env``
+    were not loaded on the next TUI launch.
     """
     from dotenv import load_dotenv
-    here = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(os.path.dirname(here))
-    backend_dir = os.path.join(project_root, "backend")
+    from maestro.keyring import _default_env_path
 
-    env_file_var = os.environ.get("MAESTRO_ENV_FILE", "").strip()
-    candidates = [
-        env_file_var if env_file_var else None,
-        os.path.join(backend_dir, ".env"),
-        os.path.join(project_root, ".env"),
-    ]
-    for path in candidates:
-        if path and os.path.isfile(path):
-            load_dotenv(dotenv_path=path, override=True)
-            return
+    env_path = _default_env_path()
+    if env_path.is_file():
+        load_dotenv(dotenv_path=str(env_path), override=True)
 
 
 def _select_headless_generator():
