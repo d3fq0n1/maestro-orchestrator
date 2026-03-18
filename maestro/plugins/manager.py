@@ -124,10 +124,10 @@ class ModManager:
     # ------------------------------------------------------------------
 
     def _get_registry_callback(self):
-        """Return the StorageNodeRegistry if available."""
+        """Return the WeightHostRegistry if available."""
         try:
-            from maestro.shard_registry import StorageNodeRegistry
-            return StorageNodeRegistry()
+            from maestro.shard_registry import WeightHostRegistry
+            return WeightHostRegistry()
         except Exception:
             return None
 

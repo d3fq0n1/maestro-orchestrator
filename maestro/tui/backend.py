@@ -113,9 +113,9 @@ class DirectBackend(MaestroBackend):
                 yield parsed
 
     async def list_nodes(self) -> list[dict]:
-        from maestro.shard_registry import StorageNodeRegistry
+        from maestro.shard_registry import WeightHostRegistry
         from dataclasses import asdict
-        registry = StorageNodeRegistry()
+        registry = WeightHostRegistry()
         return [asdict(n) for n in registry.list_nodes()]
 
     async def list_keys(self) -> list[dict]:

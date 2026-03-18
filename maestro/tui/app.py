@@ -1604,7 +1604,7 @@ class MaestroTUI(App):
     reference.  Press ``S`` on first run to configure API keys.
     """
 
-    TITLE = "Maestro Orchestrator"
+    TITLE = "Maestro: Orchestrating Persistent AI Infrastructure"
     SUB_TITLE = "v7.3.0  |  TUI Dashboard"
 
     CSS_PATH = "maestro_tui.tcss"

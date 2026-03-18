@@ -96,7 +96,7 @@ async def ask(prompt: Prompt):
         return {"error": "Prompt cannot be empty or whitespace-only."}
 
     print(
-        f"[Maestro-Orchestrator] Prompt received: {user_prompt} "
+        f"[Maestro] Prompt received: {user_prompt} "
         f"(deliberation={'on' if prompt.deliberation_enabled else 'off'}, "
         f"rounds={prompt.deliberation_rounds})"
     )
@@ -140,7 +140,7 @@ async def ask_stream(prompt: Prompt):
         return {"error": "Prompt cannot be empty or whitespace-only."}
 
     print(
-        f"[Maestro-Orchestrator] Stream prompt received: {user_prompt} "
+        f"[Maestro] Stream prompt received: {user_prompt} "
         f"(deliberation={'on' if prompt.deliberation_enabled else 'off'}, "
         f"rounds={prompt.deliberation_rounds})"
     )
@@ -172,7 +172,7 @@ else:
     async def fallback_root():
         return {
             "status": "api-only",
-            "message": "Maestro-Orchestrator is running but the UI build is missing. "
+            "message": "Maestro is running but the UI build is missing. "
                        "Rebuild the Docker image to restore the frontend, or use the API directly.",
             "health": "/api/health",
             "ask": "/api/ask",

@@ -1,14 +1,18 @@
 
-# Maestro-Orchestrator
+# Maestro: Orchestrating Persistent AI Infrastructure
 
 ![Version](https://img.shields.io/badge/version-v7.3.0-blue)
 ![License](https://img.shields.io/badge/license-Custom%20Open%20Use-orange)
 ![Python](https://img.shields.io/badge/python-3.10%2B-green)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)
 
-**Status:** Stable, containerized, live orchestration system
+**Route queries to weights, not weights to queries.**
 
-Maestro-Orchestrator is a lightweight, container-ready orchestration engine that unifies multiple AI agents under a structured system of model deliberation, synthetic consensus, and dissent. It routes prompts through a council of large language models — each agent reads its peers' responses and refines its reply before consensus analysis runs — then synthesizes output with quorum logic.
+Maestro is a control plane for distributed weight hosts. It treats persistent model weights as fixed infrastructure and routes inference queries to where those weights already reside — on commodity hardware, edge devices, or cloud endpoints. This inverts the standard paradigm where every query triggers weight loading, and makes democratized inference across heterogeneous hardware a mechanical reality rather than an aspiration.
+
+The system orchestrates multiple AI agents under a structured pipeline of model deliberation, semantic consensus, and dissent analysis. Each weight host declares a capability manifest — domain affinity, warmth state, hardware class — and the orchestrator uses locality-aware routing to match queries to the best-positioned host. Warm hosts with matching domain affinity are preferred. Cold hosts are fallbacks. Weights stay where they are. Queries travel.
+
+**Status:** Stable, containerized, live orchestration system
 
 ---
 
@@ -18,6 +22,7 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - [Prerequisites](#prerequisites)
 - [Setup](#setup)
 - [Agent Council](#agent-council)
+- [Weight Host Network](#weight-host-network)
 - [Consensus Model](#consensus-model)
 - [API Reference](#api-reference)
 - [Documentation](#documentation)
@@ -30,6 +35,7 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 
 ## Features
 
+- **Persistent Weight Host Architecture** -- WeightHost registry with capability manifests (domain affinity, warmth, hardware class) and locality-aware routing
 - **FastAPI Backend** -- Live orchestration via `/api/ask`
 - **Multi-Agent Council** -- GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B
 - **Model Deliberation** -- Each agent reads peers' answers and refines its response before analysis. Configurable rounds (1–5), non-fatal, exposed via API (`deliberation_enabled`, `deliberation_rounds`)
@@ -46,7 +52,7 @@ Maestro-Orchestrator is a lightweight, container-ready orchestration engine that
 - **Rollback System** -- Append-only ledger; single-call rollback per injection or per cycle
 - **API Key Management** -- In-app configuration, validation, secure `.env` persistence
 - **Session History** -- Persistent JSON logging of every orchestration session
-- **Proof-of-Storage Network** -- Distributed inference with cryptographic challenge-response (PoRep, PoRes, PoI) and reputation-based routing
+- **Distributed Weight Host Network** -- Persistent weight hosts with cryptographic challenge-response (PoRep, PoRes, PoI) and reputation-based locality-aware routing
 - **ShardAgent** -- Distributed inference agent with the same `fetch(prompt) -> str` interface as centralized agents
 - **Modular Plugin Architecture (Mod Manager)** -- Full lifecycle (discover/validate/load/enable/disable/reload) with 8 pipeline hook points and event bus
 - **Weight State Snapshots** -- Save, restore, diff, and delete system configuration snapshots
@@ -140,7 +146,7 @@ Frontend dev server: `http://localhost:5173`
 | **Claude Sonnet 4.6** | Anthropic  | `claude-sonnet-4-6`              | Contextual analysis                      |
 | **Gemini 2.5 Flash** | Google   | `models/gemini-2.5-flash`            | Pattern-focused, low latency             |
 | **Llama 3.3 70B** | OpenRouter | `meta-llama/llama-3.3-70b-instruct`  | Diversity anchor (open-weight model)     |
-| **ShardNet**       | Distributed| `distributed`                         | Proof-of-storage distributed inference   |
+| **ShardNet**       | Distributed| `distributed`                         | Persistent weight host distributed inference |
 
 Agent implementations live in `maestro/agents/`. Each agent extends `maestro/agents/base.py` and implements an async `fetch(prompt) -> str` interface.
 
@@ -151,6 +157,28 @@ ANTHROPIC_API_KEY=...
 GOOGLE_API_KEY=...
 OPENROUTER_API_KEY=...
 ```
+
+---
+
+## Weight Host Network
+
+Each node in the distributed inference mesh is a **WeightHost** — a machine that holds model weight shards persistently and declares a capability manifest at registration:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `domain_affinity` | `list[str]` | Query types this host handles well |
+| `warm` | `bool` | Whether the host has been recently active |
+| `hardware_class` | `enum` | `cloud_api`, `local_gpu`, `edge_node`, `unknown` |
+| `last_active` | `timestamp` | When the host last served an inference request |
+
+The orchestrator computes a `weight_locality_score` for each host and routes accordingly:
+
+1. Warm host with matching domain affinity (score: 1.0)
+2. Warm host, any affinity (score: 0.75)
+3. Cold host with matching domain affinity (score: 0.5)
+4. Cold host, any affinity (score: 0.25)
+
+This score participates as a named factor in every pipeline construction and host selection decision, alongside reputation and latency.
 
 ---
 
@@ -240,7 +268,7 @@ See [`docs/ncg.md`](./docs/ncg.md) for the full technical specification.
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/api/self-improve` | Status and recent cycles |
-| `POST` | `/api/self-improve/cycle` | Full cycle (MAGI → Propose → Validate → Inject) |
+| `POST` | `/api/self-improve/cycle` | Full cycle (MAGI -> Propose -> Validate -> Inject) |
 | `POST` | `/api/self-improve/analyze` | Analysis + introspection without VIR validation |
 | `GET` | `/api/self-improve/cycle/{id}` | Load cycle record |
 | `GET` | `/api/self-improve/introspect` | MAGI analysis with optimization proposals |
@@ -252,19 +280,19 @@ See [`docs/ncg.md`](./docs/ncg.md) for the full technical specification.
 | `GET` | `/api/self-improve/injections` | Active injections |
 | `GET` | `/api/self-improve/rollbacks` | Rollback history |
 
-### Storage Network
+### Weight Host Network
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/storage/nodes/register` | Register a node |
-| `DELETE` | `/api/storage/nodes/{node_id}` | Unregister a node |
-| `GET` | `/api/storage/nodes` | List nodes with status and reputation |
-| `GET` | `/api/storage/nodes/{node_id}` | Node detail with reputation breakdown |
+| `POST` | `/api/storage/nodes/register` | Register a weight host |
+| `DELETE` | `/api/storage/nodes/{node_id}` | Unregister a weight host |
+| `GET` | `/api/storage/nodes` | List hosts with status and reputation |
+| `GET` | `/api/storage/nodes/{node_id}` | Host detail with reputation breakdown |
 | `POST` | `/api/storage/challenge/{node_id}` | Trigger proof-of-storage challenge |
 | `GET` | `/api/storage/pipeline/{model_id}` | Inference pipeline for a model |
 | `GET` | `/api/storage/redundancy/{model_id}` | Layer redundancy map |
-| `GET` | `/api/storage/reputation` | All node reputations |
-| `GET` | `/api/storage/network/topology` | Full network state (nodes, coverage, gaps, pipelines) |
+| `GET` | `/api/storage/reputation` | All host reputations |
+| `GET` | `/api/storage/network/topology` | Full network state (hosts, coverage, gaps, pipelines) |
 | `GET` | `/api/storage/shards/models` | List models with local shards |
 | `GET` | `/api/storage/shards/status/{model_id}` | Shard status (coverage, files, size) |
 | `POST` | `/api/storage/shards/download` | Download shards from HuggingFace (background) |
@@ -316,24 +344,25 @@ See [`docs/ncg.md`](./docs/ncg.md) for the full technical specification.
 
 ## Documentation
 
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md) -- Architectural thesis and design philosophy
 - [`PROJECT_EXPLAINED.md`](./PROJECT_EXPLAINED.md) -- Plain-language project overview for non-technical readers
 - [`CLUSTERING.md`](./CLUSTERING.md) -- Multi-node cluster setup and architecture
-- [`architecture.md`](./docs/architecture.md) -- System architecture and data flow
-- [`agents.md`](./docs/agents.md) -- Agent layer and adding new agents
-- [`deliberation.md`](./docs/deliberation.md) -- Deliberation engine
-- [`ncg.md`](./docs/ncg.md) -- Novel Content Generation and drift detection
-- [`r2-engine.md`](./docs/r2-engine.md) -- Rapid Recursion & Reinforcement Engine
-- [`magi.md`](./docs/magi.md) -- Meta-Agent Governance and Insight
-- [`self-improvement-pipeline.md`](./docs/self-improvement-pipeline.md) -- Self-improvement pipeline
-- [`storage-network.md`](./docs/storage-network.md) -- Proof-of-storage distributed inference
-- [`mod-manager.md`](./docs/mod-manager.md) -- Modular plugin architecture
-- [`quorum_logic.md`](./docs/quorum_logic.md) -- Semantic quorum consensus
-- [`deployment.md`](./docs/deployment.md) -- Setup & deployment guide
-- [`troubleshooting.md`](./docs/troubleshooting.md) -- Troubleshooting
-- [`ui-guide.md`](./docs/ui-guide.md) -- UI guide
-- [`logging.md`](./docs/logging.md) -- Session logging and persistence
-- [`vision.md`](./docs/vision.md) -- Project vision and design philosophy
-- [`maestro-whitepaper.md`](./docs/maestro-whitepaper.md) -- Technical whitepaper
+- [`docs/architecture.md`](./docs/architecture.md) -- Detailed system architecture and data flow
+- [`docs/agents.md`](./docs/agents.md) -- Agent layer and adding new agents
+- [`docs/deliberation.md`](./docs/deliberation.md) -- Deliberation engine
+- [`docs/ncg.md`](./docs/ncg.md) -- Novel Content Generation and drift detection
+- [`docs/r2-engine.md`](./docs/r2-engine.md) -- Rapid Recursion & Reinforcement Engine
+- [`docs/magi.md`](./docs/magi.md) -- Meta-Agent Governance and Insight
+- [`docs/self-improvement-pipeline.md`](./docs/self-improvement-pipeline.md) -- Self-improvement pipeline
+- [`docs/storage-network.md`](./docs/storage-network.md) -- Distributed weight host inference
+- [`docs/mod-manager.md`](./docs/mod-manager.md) -- Modular plugin architecture
+- [`docs/quorum_logic.md`](./docs/quorum_logic.md) -- Semantic quorum consensus
+- [`docs/deployment.md`](./docs/deployment.md) -- Setup & deployment guide
+- [`docs/troubleshooting.md`](./docs/troubleshooting.md) -- Troubleshooting
+- [`docs/ui-guide.md`](./docs/ui-guide.md) -- UI guide
+- [`docs/logging.md`](./docs/logging.md) -- Session logging and persistence
+- [`docs/vision.md`](./docs/vision.md) -- Project vision and design philosophy
+- [`docs/maestro-whitepaper.md`](./docs/maestro-whitepaper.md) -- Technical whitepaper
 
 ---
 
