@@ -1,92 +1,120 @@
 # Maestro-Orchestrator Roadmap
 
 **Current Version:** v7.4.0
-**Last Updated:** 2026-03-18
+**Last Updated:** 2026-03-19
 **Maintainer:** defcon
 
 ---
 
-## Completed Milestones
+## North Star
 
-- **Core Orchestration Logic** -- Functional quorum-based multi-agent orchestration
-- **FastAPI Backend** -- Exposes `/api/ask` endpoint for live prompt orchestration
-- **React Web UI** -- Full analysis display: R2 grades, quorum bar, dissent, NCG, session history
-- **Full Containerization** -- Docker support for one-step deployment of backend + frontend
-- **Interactive CLI** -- Full orchestration pipeline in the terminal (`maestro/cli.py`)
-- **License Split** -- Custom open-use license and commercial terms clarified
-- **NCG Module** -- Novel Content Generation with headless generators, drift detection, and silent collapse prevention
-- **Session History Logging** -- Persistent JSON-based session records with unified data layer for cross-session analysis
-- **Module Isolation** -- Agent logic refactored into swappable, testable components with shared async interface
-- **Dissent Analysis** -- Pairwise semantic distance, outlier detection, cross-session trend analysis, internal_agreement score feeding NCG silent collapse detection
-- **R2 Engine** -- Rapid Recursion & Reinforcement: session scoring, consensus ledger indexing, structured improvement signal generation for MAGI, cross-session trend analysis
-- **Unified Pipeline** -- Web API runs the full analysis pipeline (dissent, NCG, R2, session logging) on every request; orchestrator foundry is a thin wrapper over the core engine
-- **Semantic Quorum** -- Agreement determined by semantic similarity clustering (pairwise distance threshold) rather than exact string matching; numeric agreement_ratio with 66% supermajority
-- **MAGI Module** -- Meta-Agent Governance and Insight: reads R2 ledger and session history, detects cross-session patterns (persistent outliers, confidence trends, collapse frequency), produces structured recommendations
-- **Headless Generator Selection** -- Automatically selects the best available headless generator (OpenAI with logprobs, Anthropic, or mock fallback) based on API key availability
-- **Self-Improvement Pipeline** -- Complete rapid recursion loop: MAGI analysis → code introspection (AST, signal-to-code mapping, token-level analysis) → optimization proposals (threshold tuning, agent config, prompt optimization, architecture refactoring) → MAGI_VIR sandboxed validation → promote/reject cycle
-- **MAGI_VIR (Virtual Instance Runtime)** -- Isolated sandbox for testing optimization proposals with ephemeral data directories, benchmark suite, and side-by-side comparison reporting
-- **Code Introspection Engine** -- Three-tier analysis: static source (AST parsing, complexity metrics), runtime signal mapping (R2 signals → code locations), and token-level behavior analysis
-- **Compute Node Registry** -- JSON-based registry for distributed MAGI_VIR validation across multiple Maestro nodes
-- **Self-Improvement API** -- REST endpoints for triggering cycles, reviewing proposals, and managing compute nodes (`/api/self-improve/*`)
-- **Self-Improvement CLI Commands** -- `/improve`, `/introspect`, `/cycles` commands in the interactive CLI
-- **MAGI Automation Layer** -- Opt-in auto-apply for validated low-risk proposals via `MAESTRO_AUTO_INJECT=true`; category whitelist, bounds enforcement, rate limiting, post-injection smoke test with automatic rollback
-- **Model Updates (v0.4)** -- All four council agents updated to current-generation models (gpt-4o, claude-sonnet-4-6, gemini-2.5-flash, llama-3.3-70b-instruct); NCG headless generators updated (gpt-4o-mini, claude-haiku-4-5-20251001)
-- **Comprehensive Error Handling (v0.4)** -- All agents, orchestrator, API endpoints, and session/R2 persistence wrapped with typed exception handlers; no silent failures anywhere in the pipeline
-- **Auto-Updater (v0.5)** -- Built-in update system that checks the remote repo for new commits and pulls changes in-place; available via `/update` CLI command, `make update`, and optional startup notification (`MAESTRO_AUTO_UPDATE=1`); stashes local changes before pulling, supports Docker rebuild
-- **Proof-of-Storage Distributed Inference (v0.6)** -- Full storage network layer: shard registry with topology-aware pipeline construction, cryptographic challenge-response verification (PoRep, PoRes, PoI), reputation scoring integrated with R2, automatic eviction, ShardAgent with failover, standalone node server
-- **Modular Plugin Architecture (v0.6)** -- Mod Manager with full plugin lifecycle (discover/validate/load/enable/disable/unload/reload), 8 pipeline hook points, event bus, PluginContext with controlled access to internals, hook ownership tracking for clean deactivation
-- **Weight State Snapshots (v0.6)** -- Save/restore/diff system configurations (plugins, agents, thresholds, runtime config); snapshot CRUD via REST API and CLI
-- **Remote Compute Node Validation (v0.6)** -- Full MAGI_VIR validation on remote Maestro nodes via the compute node registry and storage network infrastructure
-- **Storage Network Dashboard (v0.6.3)** -- Network topology visualization with mirror completeness tracking, visual shard map grid (nodes x layer blocks), neighbor node display, pipeline hop visualization, redundancy indicators, gap detection, and coverage bars. Accessible via Storage button in the Web-UI header.
-- **Windows Setup Fix (v0.6.3.1)** -- `setup.py` now works correctly when Python is installed via winget or the Microsoft Store: UTF-8 output encoding forced at startup (fixes `UnicodeEncodeError` crash-on-launch), and working directory pinned to the project root (fixes "no configuration file provided" Docker Compose error when run from a non-root path).
-- **TUI Dashboard (v0.7.0)** -- Textual-based terminal dashboard optimized for SoC devices. Mainframe-style single-keypress navigation, first-run API key setup wizard, BTOP-style shard network monitor with animated indicators, LAN shard discovery panel. Full orchestration pipeline with live agent status, consensus/quorum/R2/dissent/NCG metrics, scrollable response viewer. Dual backend modes: direct import (in-process) and HTTP client (multi-device clusters).
-- **Model Deliberation (v0.7.1)** -- After initial response collection, each agent reads its peers' responses and produces a refined reply before any analysis runs. Configurable rounds (default 1), default on, non-fatal. All downstream analysis (dissent, NCG, quorum) operates on deliberated positions. Full API exposure (`deliberation_enabled`, `deliberation_rounds`) with SSE events for the streaming endpoint. See [`deliberation.md`](./deliberation.md).
-- **Interactive Mode Selector (v0.7.2)** -- Arrow-key terminal selector replaces static command suggestions after Docker setup and in the startup wrapper. TUI crash fix (`ShardNetworkPanel._nodes` collision with Textual internals).
-- **Web UI LAN Discovery & Agent Name Fix (v7.1.4)** -- Storage Network panel gains a LAN Discovery tab showing discovered peers, adjacency state, and Maestro Node formation status. TUI Pipeline panel now displays correct model names (GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B) instead of deprecated codenames. Documentation updated for consistency.
-- **Automatic Background Updater (v7.1.5)** -- Background auto-updater that polls git for new commits at a configurable interval (10s–3600s) and optionally auto-applies updates. SSE stream endpoint for real-time notifications. WebUI live banner and auto-update controls. TUI background loop with event-driven notifications and toggle. FastAPI lifespan integration. New env vars: `MAESTRO_UPDATE_INTERVAL`, `MAESTRO_AUTO_APPLY_UPDATES`.
-- **TUI Node Detail Crash Fix (v7.1.6)** -- Fixed `NodeDetailScreen._nodes` collision with Textual internals (same class of bug as the v0.7.2 `ShardNetworkPanel` fix). Pressing `N` for node details no longer crashes the TUI.
-- **Cluster-Aware Instance Spawning (v7.2.0)** -- TUI Instance manager (`+` key) now spawns fully functional shard/node cluster members with auto-assigned names, IPs, and shard indices. First instance = orchestrator, subsequent = shard workers. Shared Docker network and Redis for inter-node communication. Persistent instance registry. Thread-safe TUI updates. 23 new tests.
-- **Boot Loading Animation (v7.2.4)** -- Pre-launch sequence wrapped behind a bouncing-ball animation. Dependency installation runs quietly. All decorative emoji purged from codebase and replaced with ASCII equivalents.
-- **Six Bug Fixes — TUI stability & correctness (v7.2.5)** -- TUI update screen now auto-restarts the process on success (no manual restart). Fixed DOM mutation race condition in the update worker thread. Replaced all `asyncio.get_event_loop()` calls with `get_running_loop()`. Temp directory leak in `_apply_docker_mode()` fixed. Docker build output no longer corrupts the Textual terminal. Per-tick thread pool in cluster dashboard replaced with shared executor.
-- **Ambiguous Docker network fix — 4th+ cluster node spawn (v7.2.6)** -- Spawning a new cluster node into a previously-used slot no longer fails with "2 matches found based on name: network X is ambiguous". The spawn pre-flight now removes all duplicate stale networks by ID.
-- **"No API keys configured" false positive fixed; TUI version display (v7.2.7)** -- `_check_first_run()` now loads `.env` unconditionally before checking key status, fixing the false "No API keys configured" message in HTTP mode. TUI header now shows the running version (`v7.2.7 | TUI Dashboard`). `__version__` canonicalized in `maestro/__init__.py`.
-- **Dedicated Prompt Screen with deliberation controls (v7.2.8)** -- Pressing `P` now opens a full-screen modal prompt interface instead of focusing a cramped bottom input bar. Features: session history panel (press 1-9 to re-run past prompts), prompt templates (F1-F5, with Ctrl+S to save new ones), visual deliberation controls (toggle ON/OFF + radio-button round selector 1-5). Deliberation parameters pass through the backend to the orchestrator. Old 3-line input widget replaced with a minimal 1-line hint bar, reclaiming vertical space for the response viewer.
-- **Session History Browser & UI polish (v7.3.0)** -- New full-screen Session Browser (`H` key) with scrollable detail view showing agent responses, consensus, dissent, R2 grade, NCG benchmark, and deliberation round history. Self-improvement (`I` key) now functional — runs MAGI analysis, generates proposals, and validates via VIR. Radio button and switch styling cleaned up (removed blocky indicators). Backend `get_session_detail()` API added to both DirectBackend and HTTPBackend.
-- **Full-screen Prompt redesign, unified color theme, export, progress bar fix (v7.4.0)** -- Prompt screen (`P` key) completely redesigned: full-screen three-column layout (history | input+deliberation+pipeline | templates+agents) replacing the cramped centered dialog. Unified blue/green/orange (Tokyo Night) color theme applied across the entire TUI — main dashboard, Prompt screen, widgets, status bar, cluster dashboard, shard panels. New response export (`E` key) saves the last orchestration as a Markdown file in `exports/` with automatic clipboard copy. Boot progress bar estimate reduced from 300s to 60s and curve replaced with linear ramp for accurate visual feedback. TUI now handles `deliberation_start`, `deliberation_round`, and `deliberation_done` SSE events with agent status cycling, round-by-round stage updates, and response viewer messages.
+**Distributed Perpetual Weight Orchestration** — a network of persistent AI weight hosts
+coordinated by a sovereign control plane, capable of epistemic consensus, dissent analysis,
+and self-improvement without centralized inference dependency.
+
+The thesis: **route queries to persistent weights, not weights to queries.** Every phase
+of this roadmap advances toward a world where inference is a distributed resource held by
+many, not a monopoly service rented from few.
+
+The canonical articulation of this thesis lives in [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 
 ---
 
-## Active Development (v0.8 Goals)
+## Phase 1: Foundation (Complete)
 
-- **Interactive Sessions** -- Similar to Deliberation mode, the human agent can actively participate in deliberations alongside AI agents, injecting their own responses and steering the multi-round debate in real time
-- **Token-Level NCG Analysis** -- Bridge from conversational metadata to logprob-level drift measurement across all providers (OpenAI logprobs integration built, pending for Anthropic/Google)
-- **NCG Feedback Loops** -- Reshape prompts based on drift signals before they reach conversational agents
-- **Reinforcement Loop** -- Feed consensus outcomes into fine-tuning or snapshot logs
-- **Plugin Marketplace** -- Curated plugin registry with versioning, dependency resolution, and one-click install
-- **ESP32 SoC Support** -- Lightweight node agent for ESP32 microcontrollers (planned)
+*Build the epistemic core — multi-agent consensus with quality measurement.*
+
+- [x] **Core Orchestration** — Quorum-based multi-agent orchestration with parallel agent queries, semantic similarity clustering, 66% supermajority consensus
+- [x] **Agent Council** — Four council agents (GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Flash, Llama 3.3 70B) with shared async interface and swappable module isolation
+- [x] **Deliberation Engine** — Multi-round peer-aware refinement before analysis; configurable rounds (1-5), non-fatal, all downstream analysis operates on deliberated positions
+- [x] **Dissent Analysis** — Pairwise semantic distance, outlier detection, internal agreement scoring, cross-session trend analysis
+- [x] **NCG Module** — Novel Content Generation with headless baseline, drift detection, silent collapse prevention, compression alerts
+- [x] **R2 Engine** — Session scoring (strong/acceptable/weak/suspicious), consensus ledger indexing, structured improvement signal generation
+- [x] **MAGI Module** — Cross-session pattern analysis, confidence trends, collapse frequency tracking, structured recommendations
+- [x] **Self-Improvement Pipeline** — MAGI analysis -> code introspection (AST, signal-to-code) -> optimization proposals -> MAGI_VIR sandboxed validation -> promote/reject -> optional injection with InjectionGuard, rollback, and smoke testing
+- [x] **Session History** — Persistent JSON-based session and ledger records with unified data layer
+- [x] **FastAPI Backend** — Full analysis pipeline on every request; SSE streaming; REST API for sessions, MAGI, storage, self-improvement, plugins, keys
+- [x] **React Web UI** — R2 grades, quorum bar, dissent visualization, NCG drift, session browser, storage network topology, LAN discovery
+- [x] **TUI Dashboard** — Textual-based terminal UI optimized for SoC devices; mainframe-style navigation, shard network monitor, LAN discovery, cluster instance management
+- [x] **Interactive CLI** — Full orchestration pipeline in the terminal with self-improvement commands
+- [x] **Docker Containerization** — One-step deployment of backend + frontend; multi-service compose with orchestrator + shard workers + Redis + Postgres
+- [x] **Auto-Updater** — Background polling with configurable intervals, SSE notifications, auto-apply option, Docker rebuild support
+
+*Detailed version history: v0.1 through v7.4.0 — see git log for granular changelog.*
 
 ---
 
-## Planned Milestones
+## Phase 2: Distributed Runtime (In Progress)
 
-- **Decentralized Consensus Layer** -- Future module allowing cross-host quorum
-- **Public Demo Endpoint** -- Limited-use hosted version with transparent logging
-- **Contributor Onboarding** -- Expand `CONTRIBUTING.md` with examples and task tags
-- **Multilingual Agent Support** -- Introduce language specialization agents
-- **Cross-Session NCG Baselines** -- Track what "normal" headless output looks like over time to detect gradual model drift
-- **Local Model Support** -- Agent wrappers for llamacpp, Ollama, and other local inference
+*Make the weight persistence thesis mechanically real across multiple hosts.*
+
+- [x] **WeightHost Abstraction** — `WeightHost` dataclass with capability manifests (domain affinity, warmth state, hardware class), replacing generic "storage node" terminology throughout the codebase
+- [x] **Weight Locality Routing** — `weight_locality_score()` function computing routing preference (0.25-1.0) based on warmth and domain affinity; load-bearing in pipeline construction
+- [x] **WeightHostRegistry** — Topology-aware registry with pipeline construction, redundancy maps, heartbeat tracking, reputation integration, shard-level capability declarations
+- [x] **Proof-of-Storage** — Cryptographic challenge-response verification (PoRep, PoRes, PoI); reputation scoring integrated with R2; automatic eviction below 0.3 reputation
+- [x] **ShardAgent** — Distributed inference agent with failover; standalone node server for weight host participation
+- [x] **Cluster Instance Spawning** — TUI-driven cluster formation with auto-assigned names/IPs/shard indices, shared Docker network and Redis
+- [x] **LAN Peer Discovery** — Automatic discovery of adjacent Maestro nodes on the local network
+- [x] **Plugin Architecture** — Modular plugin lifecycle with 8 pipeline hook points, event bus, PluginContext, hook ownership tracking
+- [ ] **Interactive Sessions** — Human agent participates in deliberations alongside AI agents in real time
+- [ ] **Token-Level NCG** — Logprob-level drift measurement across all providers (OpenAI built, pending Anthropic/Google)
+- [ ] **NCG Feedback Loops** — Reshape prompts based on drift signals before they reach conversational agents
+- [ ] **WeightHost Clustering** — Multi-orchestrator coordination: multiple Maestro instances sharing a WeightHost mesh with consensus on routing decisions
+- [ ] **Docker Compose Sharding** — Configuration-driven shard topology: define model layer assignments per container in compose config rather than manual registration
+- [ ] **Plugin Marketplace** — Curated plugin registry with versioning, dependency resolution, one-click install
+- [ ] **Local Model Support** — Agent wrappers for llamacpp, Ollama, and other local inference runtimes as first-class WeightHosts
+- [ ] **ESP32 SoC Support** — Lightweight node agent for microcontrollers as edge WeightHosts
+
+---
+
+## Phase 3: Orchestra (Planned)
+
+*Make the distributed weight thesis visible and verifiable to the outside world.*
+
+Orchestra is a live, public-facing dashboard and leaderboard that visualizes AI model
+performance across the Maestro distributed network in real time. It is both a developer
+monitoring tool and a public proof of concept for the weight persistence model.
+
+See [`ORCHESTRA.md`](../ORCHESTRA.md) for the full feature specification.
+
+- [ ] **Orchestra Service** — Lightweight FastAPI sidecar collecting WeightHost metrics, consensus data, and routing decisions into a SQLite time-series store
+- [ ] **Live Leaderboard** — WeightHosts ranked by accuracy, consensus rate, dissent quality, latency, uptime, and weight persistence; filterable by hardware class
+- [ ] **Real-Time Dashboard** — WebSocket-driven live view of network health, R2 grades, MAGI analysis, and active weight host count
+- [ ] **Routing Feed** — Anonymized live stream of query routing decisions showing pipeline composition, locality scores, and multi-hop inference paths
+- [ ] **Per-Host Detail Views** — Time-series charts of individual WeightHost metrics: latency, throughput, reputation, warmth duration
+- [ ] **Thesis Visualization** — Dedicated UI elements making weight persistence tangible: cold start counts, warmth duration, query-to-weight routing paths, edge vs cloud comparison
+- [ ] **Public Deployment** — Static export for GitHub Pages / Cloudflare Pages with rate-limited public API; SEO metadata
+- [ ] **Orchestra API** — New endpoints on Maestro Core: `/api/orchestra/hosts`, `/api/orchestra/leaderboard`, `/api/orchestra/feed`, `/api/orchestra/ws`
+
+---
+
+## Phase 4: Perpetual Network (Future)
+
+*Persistent weight hosts operating as autonomous infrastructure, self-improving
+through continuous epistemic measurement.*
+
+- [ ] **Persistent WeightHosts** — Hosts that maintain warm weights across reboots via checkpoint-resume; weight state survives process lifecycle
+- [ ] **Proof-of-Storage Inference** — Extend PoI challenges to continuous background verification; hosts prove ongoing inference capability, not just data possession
+- [ ] **Cross-Session NCG Baselines** — Track "normal" headless output profiles over time to detect gradual model drift and RLHF pressure shifts
+- [ ] **Autonomous Self-Improvement (MAGI_VIR)** — Graduate from opt-in injection to autonomous threshold tuning within validated safety bounds; MAGI proposes, validates, and applies low-risk optimizations without human intervention
+- [ ] **Decentralized Consensus Layer** — Cross-host quorum: WeightHosts participate directly in epistemic consensus, not just as inference backends
+- [ ] **Multilingual Agent Specialization** — Language-specialized agents as WeightHosts with domain affinity for specific language families
+- [ ] **Reinforcement Loop** — Feed consensus outcomes and R2 quality data into fine-tuning pipelines; the network improves the models it hosts
+- [ ] **Public Demo Endpoint** — Limited-use hosted Maestro instance with transparent logging, backed by Orchestra dashboard
+- [ ] **Contributor Onboarding** — Expand `CONTRIBUTING.md` with architecture walkthrough, task tags, and first-contribution guides
+
+---
+
+## Guiding Principles
+
+- **Preserve dissent** — the 66% supermajority ensures 33% dissent is always recorded and visible
+- **Prevent stagnation** — continuous measurement (R2, MAGI, NCG) catches degradation before it compounds
+- **Embrace disagreement as structure** — outlier detection is not suppression; it is classification
+- **Always show your work** — every orchestration session produces a legible epistemic record
+- **Weights are infrastructure** — treat model weights as persistent resources, not ephemeral allocations
 
 ---
 
 ## Community & Contributions
 
 Contributors who align with the principles of transparency and structured dissent are welcome. See `CONTRIBUTING.md` for details, or follow project essays at [substack.com/@defqon1](https://substack.com/@defqon1).
-
----
-
-## Guiding Principles
-
-- Preserve dissent
-- Prevent stagnation
-- Embrace disagreement as structure
-- Always show your work
