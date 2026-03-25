@@ -57,6 +57,10 @@ The Maestro orchestration layer includes:
 - **Critic Injection:** Human or AI-based critics analyze outputs for logical consistency, ethical risk, and epistemic robustness.
 - **Refinement Pathways:** Dissenting responses are used to seed alternative hypotheses and future test prompts.
 
+### Protosynthetic Intelligence
+
+Protosynthetic intelligence describes a system that maintains a persistent internal model of its own generative decisions, can be queried about its reasoning across arbitrarily deep context, and uses that self-model to inform future output. It is distinct from AGI and makes no claim of sentience. It represents the architectural step between reactive token prediction and genuine synthesis — a system that does not merely generate, but remembers why it chose. The WeightHost/WeightNode substrate makes this property possible by maintaining persistent in-state context across a distributed inference layer in ways that stateless API calls fundamentally cannot.
+
 ---
 
 ## The 66% Rule: Why Consensus is Not the Goal
