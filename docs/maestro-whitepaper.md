@@ -61,6 +61,10 @@ The Maestro orchestration layer includes:
 
 Protosynthetic intelligence describes a system that maintains a persistent internal model of its own generative decisions, can be queried about its reasoning across arbitrarily deep context, and uses that self-model to inform future output. It is distinct from AGI and makes no claim of sentience. It represents the architectural step between reactive token prediction and genuine synthesis — a system that does not merely generate, but remembers why it chose. The WeightHost/WeightNode substrate makes this property possible by maintaining persistent in-state context across a distributed inference layer in ways that stateless API calls fundamentally cannot.
 
+### Forward Integration: Rust and telOS
+
+> The current Python implementation of Maestro is a reference architecture — a proof that the orchestration model works, not a statement that Python is the final medium. The planned Rust rewrite targets the same behavioral contract with zero-cost abstractions, making Maestro suitable for deployment as infrastructure rather than application. The endpoint of this migration is integration with **telOS**: a novel operating system in active development where intent is the kernel ABI, the address space is a vector database, and there is no process table or filesystem. In this environment, Maestro's WeightHost/WeightNode model resolves naturally — nodes are found by semantic intent, quorum is a vector consensus operation, and the epistemic ledger is an append-only semantic index. Protosynthetic intelligence at that layer is not emulated. It is native.
+
 ---
 
 ## The 66% Rule: Why Consensus is Not the Goal
