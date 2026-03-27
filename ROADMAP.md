@@ -105,6 +105,47 @@ through continuous epistemic measurement.*
 
 ---
 
+## Phase 5: Plugin Architecture & Mod Manager
+
+*Extensible orchestration with hot-swappable modules.*
+
+- [ ] **Mod Manager** — Loading/unloading Maestro modules like video game mods
+- [ ] **Weight State Snapshots** — Save and restore snapshots for testing configuration deltas
+- [ ] **Hook Points in Hot Path** — Pre-routing, post-response, pre-consensus, post-consensus
+
+---
+
+## Phase 6: Proof-of-Storage Distributed Inference
+
+*Inference as a verifiable distributed resource.*
+
+- [ ] **ComputeNodeRegistry** — Topology-aware registry for compute nodes
+- [ ] **Shard Agent Routing** — Routing inference across storage nodes
+- [ ] **R2 Integration for Node Reputation** — Reputation scoring based on R2 quality data
+- [ ] **Activation Passing** — Activation passing between pipeline stages
+
+---
+
+## Phase 7: Local Model Support
+
+*Local hardware as first-class inference infrastructure.*
+
+- [ ] **Local WeightNodes as Shard Hosts** — Local machines hosting model shards
+- [ ] **Ollama/llama.cpp Integration** — Local inference runtimes as agent backends
+- [ ] **Proof-of-Storage as Unifying Principle** — Shared design principle for decentralized and local inference
+
+---
+
+## Phase 8: Rust Rewrite (Reference Parity)
+
+*Port the canonical Python implementation to Rust with identical behavior.*
+
+- [ ] **Port Core Systems** — Orchestrator, aggregator, NCG, R2, InjectionGuard, MAGI ported to Rust
+- [ ] **Tokio Async Runtime** — Replace FastAPI's ASGI layer with native Tokio async
+- [ ] **Python Reference Maintenance** — Python layer maintained as reference until behavioral parity verified
+
+---
+
 ## Phase: Rust Migration & telOS Substrate
 
 The long-term architectural trajectory of Maestro is a full rewrite in Rust, targeting eventual integration with **telOS** — a novel operating system being developed in parallel where *intent is the kernel ABI*. telOS has no process table, no traditional filesystem, and uses a vector database as its canonical address space. Maestro's WeightHost/WeightNode federation model maps directly onto this substrate: WeightHosts become first-class citizens of the telOS address space, resolved by semantic intent rather than PID or path.
@@ -116,6 +157,17 @@ The Rust migration is not a cosmetic port. It is a prerequisite for:
 - FFI-safe interface boundaries for telOS integration
 
 Migration strategy: the Python orchestration layer remains canonical until Rust reaches parity. Target parity milestone is defined as: quorum logic, NCG drift detection, R2 epistemic ledger, InjectionGuard, and MAGI meta-analysis all functional in Rust with identical behavior verified against the Python reference implementation.
+
+---
+
+## Phase 9: telOS Substrate Integration
+
+*Maestro as a native telOS process.*
+
+- [ ] **WeightHost/WeightNode as telOS Vector-Addressed Nodes** — Hosts resolved by capability signature in the telOS address space
+- [ ] **Quorum as Semantic Consensus over Vector Space** — Consensus operations over the vector substrate rather than HTTP network votes
+- [ ] **Epistemic Ledger as Append-Only Vector Index** — R2 ledger mapped to a time-weighted vector index
+- [ ] **Conductor / Protosynthetic Intelligence as Native telOS Process** — The Conductor pipeline running as a first-class telOS citizen
 
 ---
 
