@@ -1,0 +1,15 @@
+[package]
+name = "maestros-embed"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "MaestrOS embedding layer: natural-language-to-intent vector transform. v0 uses nomic-embed-text-v1.5 via Candle."
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+maestros-core = { path = "../maestros-core" }

@@ -1,0 +1,16 @@
+[package]
+name = "maestrosd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "maestrosd — the MaestrOS daemon binary. Thin main() that boots maestros-host."
+
+[[bin]]
+name = "maestrosd"
+path = "src/main.rs"
+
+[dependencies]
+maestros-host = { path = "../maestros-host" }

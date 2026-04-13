@@ -1,0 +1,16 @@
+[package]
+name = "maestros-mesh"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "MaestrOS mesh transport: QUIC (Quinn) + SWIM gossip (foca). Nodes exchange capability manifests and route intents."
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+maestros-core = { path = "../maestros-core" }
+maestros-proto = { path = "../maestros-proto" }

@@ -1,0 +1,19 @@
+[package]
+name = "maestros-proto"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "MaestrOS wire format: typed intent envelopes, capability manifests, gossip messages. no_std."
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+std = []
+
+[dependencies]
+maestros-core = { path = "../maestros-core" }

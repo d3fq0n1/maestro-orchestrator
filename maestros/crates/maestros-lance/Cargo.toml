@@ -1,0 +1,15 @@
+[package]
+name = "maestros-lance"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "MaestrOS address space and epistemic ledger, backed by LanceDB. The vector index IS the canonical address space."
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+maestros-core = { path = "../maestros-core" }

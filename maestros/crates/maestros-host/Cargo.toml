@@ -1,0 +1,21 @@
+[package]
+name = "maestros-host"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "MaestrOS userspace host runtime (Path A). Tokio-based. Boots maestrosd as a systemd unit on Linux. Replaceable by a bare-metal host crate when Path B/C is reached."
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+maestros-core = { path = "../maestros-core" }
+maestros-proto = { path = "../maestros-proto" }
+maestros-proof = { path = "../maestros-proof" }
+maestros-embed = { path = "../maestros-embed" }
+maestros-lance = { path = "../maestros-lance" }
+maestros-mesh = { path = "../maestros-mesh" }
+maestros-quorum = { path = "../maestros-quorum" }
