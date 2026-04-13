@@ -1,0 +1,16 @@
+[package]
+name = "maestros-quorum"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "MaestrOS semantic consensus: Maestro's dissent, NCG drift, R2 scoring, and MAGI logic ported to Rust."
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+maestros-core = { path = "../maestros-core" }
+maestros-embed = { path = "../maestros-embed" }

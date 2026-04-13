@@ -1,0 +1,19 @@
+[package]
+name = "maestros-proof"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "MaestrOS capability proofs: PoRep, PoRes, PoI (ported from maestro/storage_proof.py), ed25519-signed manifests."
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+std = []
+
+[dependencies]
+maestros-core = { path = "../maestros-core" }

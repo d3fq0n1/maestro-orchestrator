@@ -1,0 +1,49 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/maestros-core",
+    "crates/maestros-proto",
+    "crates/maestros-proof",
+    "crates/maestros-embed",
+    "crates/maestros-lance",
+    "crates/maestros-mesh",
+    "crates/maestros-quorum",
+    "crates/maestros-host",
+    "crates/maestrosd",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.75"
+license = "Apache-2.0"
+repository = "https://github.com/d3fq0n1/maestro-orchestrator"
+authors = ["Blake <blake@maestros>"]
+
+[workspace.dependencies]
+# Intentionally minimal. Real deps are wired in when each crate
+# starts carrying logic. The shape below records intent only.
+
+# --- no_std-compatible core ---
+# cborium / ciborium, prost, heapless, zeroize, ed25519-dalek (no_std feature)
+
+# --- std-only layers ---
+# tokio = { version = "1", features = ["full"] }
+# quinn = "0.11"
+# foca = "0.17"
+# lancedb = "0.10"
+# candle-core = "0.7"
+# candle-transformers = "0.7"
+# tracing = "0.1"
+# tracing-subscriber = "0.3"
+# anyhow = "1"
+# thiserror = "1"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"
+
+[profile.dev]
+opt-level = 1

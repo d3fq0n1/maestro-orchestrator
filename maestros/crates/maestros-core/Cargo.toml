@@ -1,0 +1,18 @@
+[package]
+name = "maestros-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "MaestrOS core primitives: Intent, Capability, AddressSpace, Scheduler traits. no_std + alloc."
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+std = []
+
+[dependencies]

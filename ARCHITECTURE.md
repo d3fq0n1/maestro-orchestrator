@@ -114,17 +114,19 @@ The rapid recursion loop (MAGI analysis -> code introspection -> optimization pr
 
 Retained as-is.
 
-## Long-Term Substrate: telOS
+## Long-Term Substrate: MaestrOS
 
-Maestro's WeightHost/WeightNode abstraction was designed independently but is architecturally convergent with telOS. In telOS, the vector database *is* the address space — there is no process table, no file hierarchy, no PID namespace. Resources are located by semantic proximity to intent vectors, not by path or numeric identifier.
+> **Naming note:** this substrate was referred to as *telOS* in earlier drafts of this document. As of April 2026 it is named **MaestrOS** (plural of Maestro + OS). The substrate is being developed in-tree under [`maestros/`](./maestros/); see [`maestros/DESIGN.md`](./maestros/DESIGN.md) for the authoritative v0.0.1 design record.
+
+Maestro's WeightHost/WeightNode abstraction was designed independently but is architecturally convergent with MaestrOS. In MaestrOS, the vector database *is* the address space — there is no process table, no file hierarchy, no PID namespace. Resources are located by semantic proximity to intent vectors, not by path or numeric identifier.
 
 Under this model:
-- A **WeightHost** becomes a vector-addressed node in the telOS address space, located by its capability signature
+- A **WeightHost** becomes a vector-addressed node in the MaestrOS address space, located by its capability signature
 - A **WeightNode** is a resolved inference endpoint, reachable via intent query rather than TCP socket
 - The quorum layer becomes a semantic consensus operation over the vector substrate, not a network vote over HTTP
 - The R2 epistemic ledger maps naturally to an append-only vector index with time-weighted decay
 
-This is not vaporware architectural speculation. It is the intended end state of the infrastructure Blake is currently building, and every design decision in Maestro should be evaluated against whether it survives the Python→Rust→telOS transition with minimal refactor cost.
+This is not vaporware architectural speculation. It is the intended end state of the infrastructure Blake is currently building, and every design decision in Maestro should be evaluated against whether it survives the Python → Rust → MaestrOS transition with minimal refactor cost. The v0.0.1 Rust workspace skeleton (nine crates, `no_std`-seamed core) is already in the repository under [`maestros/`](./maestros/).
 
 ---
 

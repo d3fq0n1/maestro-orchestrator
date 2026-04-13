@@ -146,28 +146,32 @@ through continuous epistemic measurement.*
 
 ---
 
-## Phase: Rust Migration & telOS Substrate
+## Phase: Rust Migration & MaestrOS Substrate
 
-The long-term architectural trajectory of Maestro is a full rewrite in Rust, targeting eventual integration with **telOS** — a novel operating system being developed in parallel where *intent is the kernel ABI*. telOS has no process table, no traditional filesystem, and uses a vector database as its canonical address space. Maestro's WeightHost/WeightNode federation model maps directly onto this substrate: WeightHosts become first-class citizens of the telOS address space, resolved by semantic intent rather than PID or path.
+> **Naming note:** this substrate was referred to as *telOS* in earlier roadmap drafts. As of April 2026 it is named **MaestrOS** (plural of Maestro + OS). The v0.0.1 workspace skeleton is already in-tree under [`maestros/`](./maestros/); see [`maestros/DESIGN.md`](./maestros/DESIGN.md) for the authoritative design record.
+
+The long-term architectural trajectory of Maestro is a full rewrite in Rust, targeting eventual integration with **MaestrOS** — a novel operating-system substrate being developed in parallel where *intent is the kernel ABI*. MaestrOS has no process table, no traditional filesystem, and uses a vector database as its canonical address space. Maestro's WeightHost/WeightNode federation model maps directly onto this substrate: WeightHosts become first-class citizens of the MaestrOS address space, resolved by semantic intent rather than PID or path.
 
 The Rust migration is not a cosmetic port. It is a prerequisite for:
 - Zero-cost orchestration at ring-adjacent latency
 - Memory safety without a GC, enabling Maestro to run as infrastructure rather than application
 - Native async with Tokio, replacing FastAPI's ASGI layer
-- FFI-safe interface boundaries for telOS integration
+- FFI-safe interface boundaries for MaestrOS integration
+- A `no_std`-seamed core so a future bare-metal host can replace the userspace runtime without rewriting the substrate
 
 Migration strategy: the Python orchestration layer remains canonical until Rust reaches parity. Target parity milestone is defined as: quorum logic, NCG drift detection, R2 epistemic ledger, InjectionGuard, and MAGI meta-analysis all functional in Rust with identical behavior verified against the Python reference implementation.
 
 ---
 
-## Phase 9: telOS Substrate Integration
+## Phase 9: MaestrOS Substrate Integration
 
-*Maestro as a native telOS process.*
+*Maestro as a native MaestrOS process.*
 
-- [ ] **WeightHost/WeightNode as telOS Vector-Addressed Nodes** — Hosts resolved by capability signature in the telOS address space
+- [ ] **WeightHost/WeightNode as MaestrOS Vector-Addressed Nodes** — Hosts resolved by capability signature in the MaestrOS address space
 - [ ] **Quorum as Semantic Consensus over Vector Space** — Consensus operations over the vector substrate rather than HTTP network votes
-- [ ] **Epistemic Ledger as Append-Only Vector Index** — R2 ledger mapped to a time-weighted vector index
-- [ ] **Conductor / Protosynthetic Intelligence as Native telOS Process** — The Conductor pipeline running as a first-class telOS citizen
+- [ ] **Epistemic Ledger as Append-Only Vector Index** — R2 ledger mapped to a time-weighted vector index (LanceDB-backed)
+- [ ] **Conductor / Protosynthetic Intelligence as Native MaestrOS Process** — The Conductor pipeline running as a first-class MaestrOS citizen
+- [ ] **v0 Reference Mesh** — Two-node heterogeneous mesh on Raspberry Pi 5 (8 GB) + Jetson Orin Nano Super demonstrating intent-addressed routing across unlike hardware
 
 ---
 

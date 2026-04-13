@@ -1,0 +1,7 @@
+target/
+Cargo.lock.bak
+models/*.safetensors
+models/*.gguf
+models/*.bin
+*.swp
+.DS_Store
