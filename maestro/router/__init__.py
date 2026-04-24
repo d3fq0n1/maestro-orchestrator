@@ -1,0 +1,35 @@
+"""
+Context Router — composes per-agent context bundles from the three tiers.
+
+See docs/architecture/router-distance.md.
+
+The Router runs inside the existing ``pre_orchestration`` hook
+(see context-tiers.md §Per-agent pre-fetch hook). It assembles a
+trust-annotated bundle per agent, writes an R2 pre-admit entry,
+gates through AdmissionGuard, and attaches a rendered preamble the
+orchestrator prepends to the prompt string before ``agent.fetch()``.
+
+This package is a scaffold. Nothing is wired into the runtime.
+"""
+
+from maestro.router.distance import (
+    AdmissionCriterion,
+    AdmittedClaim,
+    BundleRequest,
+    ContextBundle,
+    ContextRouter,
+    DistanceMetric,
+    DistanceWeights,
+    Tier,
+)
+
+__all__ = [
+    "AdmissionCriterion",
+    "AdmittedClaim",
+    "BundleRequest",
+    "ContextBundle",
+    "ContextRouter",
+    "DistanceMetric",
+    "DistanceWeights",
+    "Tier",
+]
