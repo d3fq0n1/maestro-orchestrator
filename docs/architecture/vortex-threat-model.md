@@ -679,5 +679,180 @@ the orchestrator host, many attacks are available.
 
 ---
 
-*(End of chunk 3 — trust-annotation and preamble tampering. Next:
-AdmissionGuard and InjectionGuard extensions.)*
+## Guard Extensions
+
+This section specifies the guard-layer changes the threat model
+requires. Under the architecture in
+[`context-tiers.md`](./context-tiers.md) §Admission guard module,
+context admission is gated by a new `maestro/admission.py`
+(`AdmissionGuard`) that composes with but does not modify
+`maestro/injection_guard.py`. Most extensions land on
+`AdmissionGuard`; a narrow set lands on `InjectionGuard` because
+some write paths the new subsystem introduces (runtime-config
+updates to admission policy, external-key import bounds) are code-
+adjacent and reuse `InjectionGuard`'s existing safety primitives.
+
+### AdmissionGuard extensions (new module)
+
+The new `AdmissionGuard` enforces, at minimum, the following checks
+— each derived directly from one or more threats above. The module
+composes the primitives from `InjectionGuard` (opt-in gate, bounds
+registry, rate-limit window) without subclassing or modifying them.
+
+- **Per-session admission rate limit.** Analogous to
+  `InjectionGuard.check_rate_limit`
+  (`maestro/injection_guard.py:125–132`). Bounds sustained ingest
+  pressure into the admission path. Addresses W-1, C-1.
+- **Per-source admission cap on the rejected partition.** Enforces
+  the 5% partition share from T-6 by tracking per-source item
+  counts per session. Addresses T-6.
+- **Per-tier `τ` bounds and distance-weight sum constraint.** On
+  every session start, verify `τ ∈ [0, 1.5]` per tier and
+  `Σ w_i = 1.0 ± 0.01`. Refuse the session with a clear error if
+  out of bounds. Addresses T-5.
+- **Preamble size cap enforcement.** Compute rendered preamble
+  size before dispatch; truncate or reject per the T-7 policy.
+  Addresses T-7.
+- **User-prompt sanitization invariants.** Verify that the
+  outbound prompt contains exactly one authoritative
+  `<context-bundle>` at the start and no other bundle markers
+  elsewhere. This is a cheap post-render check and covers any
+  future escape-escape mistake. Addresses T-1.
+- **Phantom provenance check.** Post-hoc, every `id` cited in
+  the Weight's response must resolve to the pre-admit ledger for
+  that session. Mismatches raise `phantom_provenance`
+  (severity `critical`). Addresses T-3.
+- **Preamble-echo check.** Post-hoc, the Weight's response must
+  echo the `session_id`/`agent` compound. Mismatches raise
+  `preamble_echo_missing`. Addresses T-2.
+- **Contradictory-admitted-Cartridge detection.** The optional
+  post-assembly heuristic from
+  [`distance-dissent.md`](./distance-dissent.md) §Counter-
+  Cartridges, logged to `threat_flags`. Addresses C-5 adjacencies.
+- **`trusted.json` in-memory hash check.** A background routine
+  re-hashes the loaded trust list against the on-disk file every
+  N minutes; divergence enters read-only mode. Addresses C-3.
+- **Opt-in gate.** The whole subsystem is opt-in via
+  `MAESTRO_CONTEXT_TIERS` (environment) and a `GuardConfig`
+  field, mirroring the `MAESTRO_AUTO_INJECT` convention at
+  `maestro/injection_guard.py:68–75`. When disabled, the
+  orchestrator runs exactly as it does today.
+- **Smoke test.** After a canonization anchor or a `τ`-tuning
+  config change, a short admission smoke test (analogous to
+  `InjectionGuard.smoke_test`) runs three canned queries and
+  verifies their pre-admit records look reasonable: non-empty
+  admission for queries with canonical domain tags, zero
+  phantom-provenance flags, stable preamble size. Failure rolls
+  back the triggering change.
+
+### InjectionGuard extensions (existing module)
+
+Most threats do not touch `InjectionGuard`; it remains focused on
+code mutation. Two narrow extensions are warranted because they
+concern writes the tier system performs against
+`data/runtime_config.json` and equivalent overlays that
+`InjectionGuard` already governs:
+
+- **Bounds registry entries** for the new admission-related
+  numeric fields: `tau.{cartridge, whirlpool, weight_prior}` in
+  `[0, 1.5]`, `distance_weights.{w_e, w_g, w_c, w_x}` in
+  `[0, 1]` with enforced sum-to-1.0, `k_tail` in `[0, 8]`,
+  `conformity_floor` in `[0, 1]`, `forced_rotation.session_window_N`
+  in `[1, 200]`. Addresses T-5.
+- **Category whitelist addition** for `admission_policy` as an
+  injectable category (`_DEFAULT_INJECTABLE` in
+  `maestro/injection_guard.py:30`). Without this, MAGI cannot
+  propose admission-tuning changes through the existing
+  self-improvement pipeline. This is the *only* category added;
+  the block list (`_DEFAULT_BLOCKED`) is unchanged. Addresses T-5.
+
+No changes to rate limits, smoke tests, or opt-in gates inside
+`InjectionGuard`. The new `AdmissionGuard` owns all context-specific
+machinery.
+
+### Existing modules untouched
+
+- `maestro/keyring.py` — API keys for Weights. Unchanged. The
+  Librarian key store is a new directory.
+- `maestro/applicator.py` — code-injection applicator. Unchanged.
+- `maestro/rollback.py` — rollback ledger. Unchanged. Cartridge
+  revocation is not a rollback; it has its own permanent record.
+- `maestro/lan_discovery.py` — LAN peer discovery. Gains a new
+  service advertisement type (`librarian`) but the discovery
+  protocol is unchanged.
+
+---
+
+## Threat Register Summary
+
+Severity classification uses R2's existing taxonomy
+(`maestro/r2.py:53–61`): `info`, `warning`, `critical`.
+
+| Id | Threat | Adversary class | Severity | Signal |
+|---|---|---|---|---|
+| W-1 | Corroboration flooding | A1 | warning | `rapid_promotion_suspect` |
+| W-2 | Decay poisoning | A1 | warning | `ingest_burst` |
+| W-3 | Source-identity spoofing | A1 | warning | `publisher_drift` |
+| W-4 | Domain-tag squatting | A1 | warning | namespace refusal (hard) |
+| W-5 | Adversarial decay collapse | A1 | warning | `domain_monoculture` |
+| C-1 | Nomination flooding | A1, A3 | warning | review-queue backpressure |
+| C-2 | Scribe compromise | A4 | critical | `scribe_anomaly`, `federation_verdict_disagreement` |
+| C-3 | Trust-list tampering | A3 | critical | `trust_list_tampered` |
+| C-4 | Content-hash collision abuse | theoretical | critical | `federation_body_mismatch` |
+| C-5 | Supersession misdirection | A4 | warning | `supersession_shape_anomaly`, `supersession_altered_outcome` |
+| C-6 | Revocation abuse | A4 | critical | `revocation_without_successor` |
+| C-7 | Federation replay | A2 | info | throttled |
+| C-8 | External pre-signed import | external authority compromise | warning | `external_import_anomaly` |
+| T-1 | Preamble injection via prompt | A1 | warning | sanitization (hard) |
+| T-2 | Preamble tampering in transit | A3 + network | warning | `preamble_echo_missing` |
+| T-3 | Trust-field forgery | A1 via T-1 / A3 | critical | `phantom_provenance` |
+| T-4 | Provenance spoofing | A1 | warning | ingest-time resolution |
+| T-5 | Distance-metric manipulation | A3 | warning | `admission_config_shift` |
+| T-6 | Long-shot tail shaping | A1 | info | `tail_oversample_source` |
+| T-7 | Preamble size inflation (DoS) | A1 | warning | `preamble_truncated` |
+| T-8 | Dissenter fingerprinting | A3 | info | config-flagged (optional) |
+
+All signals listed above extend the existing
+`ImprovementSignal.signal_type` enumeration
+(`maestro/r2.py:53–61`) and are surfaced through MAGI just like the
+current signals.
+
+---
+
+## Open Questions (deferred)
+
+- **Certificate pinning for Weight transports.** Hardening item;
+  tracked outside this document.
+- **Hardware-backed Scribe keys.** Policy permits HSM-backed
+  signing; the mechanism is out of scope here and is the subject
+  of separate deployment guidance.
+- **Cross-instance revocation propagation latency bounds.** A
+  practical question about federation cycle intervals and trusted-
+  peer counts; to be determined from operator data once the
+  system is deployed.
+- **NLI-based contradiction detection.** A stronger
+  contradiction detector across admitted Cartridges would replace
+  the co-tag / no-supersession heuristic (see
+  [`distance-dissent.md`](./distance-dissent.md)). Out of scope
+  until pre-admit data makes the requirement concrete.
+- **Federated trust-bundle signed format.** Moving `trusted.json`
+  updates onto a signed-bundle channel, rather than the out-of-
+  band mechanism assumed here, is a natural follow-up but is
+  explicitly deferred.
+
+---
+
+## See Also
+
+- [`context-tiers.md`](./context-tiers.md) — Three-tier overview
+- [`librarian.md`](./librarian.md) — Canonicalization pipeline
+- [`whirlpool.md`](./whirlpool.md) — Whirlpool ingest and decay
+- [`router-distance.md`](./router-distance.md) — Admission function
+  and preamble format
+- [`distance-dissent.md`](./distance-dissent.md) — Forced rotation
+  interaction with the threat model (contradiction detection, T-8)
+- [`../r2-engine.md`](../r2-engine.md) — `ImprovementSignal` taxonomy
+  extended by the threat signals listed above
+- [`../magi.md`](../magi.md) — MAGI role as non-signing reviewer
+  and threat-signal consumer
+- [`../architecture.md`](../architecture.md) — System overview
