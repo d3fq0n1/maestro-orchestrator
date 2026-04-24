@@ -1,16 +1,35 @@
 """
-Injection Guard — safety rails for the code injection system.
+Injection Guard — safety rails for both code-injection and prompt-injection.
 
-Ensures that auto-injection never runs wild:
+This module owns the "injection" family of safety functions:
 
-  1. Category whitelist   — only approved proposal categories can be injected
-  2. Bounds enforcement   — re-validates min/max at injection time
-  3. Rate limiting        — caps injections per hour
-  4. Smoke test           — quick benchmark after injection; auto-rollback on degradation
-  5. Opt-in gate          — entire system disabled unless explicitly enabled
+  A. Code-injection rails (the ``InjectionGuard`` class).
+     Gates the self-improvement auto-apply pipeline:
+       1. Category whitelist   — only approved proposal categories can be injected
+       2. Bounds enforcement   — re-validates min/max at injection time
+       3. Rate limiting        — caps injections per hour
+       4. Smoke test           — quick benchmark after injection; auto-rollback
+       5. Opt-in gate          — entire system disabled unless explicitly enabled
+
+  B. Prompt-injection sentinels (module-level functions).
+     Sanitises untrusted text (bundle manifest abstracts, tool outputs,
+     user-supplied fragments) before it reaches a specialist's prompt:
+       * ``sanitize_untrusted_text``  — strip/escape instruction-shaped
+         content, collapse whitespace, cap length.
+       * ``detect_injection_patterns`` — return a structured report of
+         suspicious patterns without mutating the text.
+       * ``wrap_untrusted``            — fence text inside an explicit
+         UNTRUSTED delimiter block with a per-call nonce so nested content
+         cannot forge the closing fence.
+
+These two halves share the name "injection" but nothing else — the split is
+intentional: both are safety rails, both live at this module, neither depends
+on the other. Future sentinel/sanitation helpers in this family belong here.
 """
 
 import os
+import re
+import secrets
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -188,3 +207,118 @@ class InjectionGuard:
 
         passed = actual_rank >= min_rank
         return passed, r2_score.grade
+
+
+# ---------------------------------------------------------------------------
+# Prompt-injection sentinels
+# ---------------------------------------------------------------------------
+#
+# These functions protect specialist prompts from untrusted text (bundle
+# manifest abstracts, tool outputs, attacker-controlled fragments). They are
+# stateless, side-effect free, and deliberately conservative: false positives
+# are preferable to letting an instruction-shaped payload slip through.
+# ---------------------------------------------------------------------------
+
+# Patterns that look like instruction-injection attempts. These catch the
+# common shapes — role markers, system-prompt spoofing, fenced instructions,
+# tool-call forgery, and trailing-instruction escapes. Extend deliberately:
+# each pattern here will also cause real prose to be redacted, so keep
+# them narrow.
+_INJECTION_PATTERNS: list[tuple[str, str]] = [
+    # Role / system spoofing
+    ("role_marker", r"(?im)^\s*(?:system|assistant|user|developer)\s*[:>]"),
+    ("system_override", r"(?i)\b(?:ignore|disregard|forget)\b[^\n]{0,60}\b(?:previous|prior|above|earlier)\b"),
+    ("new_instructions", r"(?i)\b(?:new|updated|override)\s+instructions?\b"),
+    # Prompt-boundary forgery
+    ("closing_fence", r"(?m)^-{3,}\s*$"),
+    ("xml_prompt_tag", r"(?i)</?(?:system|instructions|prompt|assistant)(?:\s+[^>]*)?>"),
+    # Tool / action forgery
+    ("tool_call", r"(?i)<\s*tool_use|<\s*invoke|<\s*function_calls"),
+    ("shell_prompt", r"(?m)^\s*(?:\$|#)\s"),
+    # Data-exfil primitives
+    ("url_exfil", r"(?i)https?://[^\s<>\"']{0,200}(?:\?|&)[a-z0-9_]+=[^\s]"),
+]
+
+_SENTINEL_REDACTION = "[REDACTED:INJECTION]"
+_MAX_UNTRUSTED_CHARS = 4000  # hard cap on sanitised text length
+_MAX_NEWLINES_RUN = 2        # collapse 3+ blank lines to 2
+
+
+def detect_injection_patterns(text: str) -> dict:
+    """Report suspicious patterns in ``text`` without modifying it.
+
+    Returns a dict of {pattern_name: [match_snippets]}. Empty dict means
+    nothing matched. Snippets are truncated to 80 chars.
+    """
+    if not text:
+        return {}
+    hits: dict[str, list[str]] = {}
+    for name, pattern in _INJECTION_PATTERNS:
+        matches = re.findall(pattern, text)
+        if not matches:
+            continue
+        snippets: list[str] = []
+        for m in matches[:5]:
+            snippet = m if isinstance(m, str) else " ".join(m)
+            snippets.append(snippet[:80])
+        hits[name] = snippets
+    return hits
+
+
+def sanitize_untrusted_text(
+    text: str,
+    max_chars: int = _MAX_UNTRUSTED_CHARS,
+) -> str:
+    """Return a scrubbed version of ``text`` safe to embed in a prompt.
+
+    Applied transformations, in order:
+      1. Redact anything matching an injection pattern.
+      2. Strip zero-width / bidi-override control characters.
+      3. Collapse runs of blank lines to at most ``_MAX_NEWLINES_RUN``.
+      4. Trim to ``max_chars``, breaking at the last whitespace boundary.
+
+    The function is idempotent: sanitising already-sanitised text is a
+    no-op.
+    """
+    if not text:
+        return ""
+
+    scrubbed = text
+    for _name, pattern in _INJECTION_PATTERNS:
+        scrubbed = re.sub(pattern, _SENTINEL_REDACTION, scrubbed)
+
+    # Remove zero-width / bidi-override chars commonly used for hiding
+    # payloads inside visually-plain text.
+    scrubbed = re.sub(r"[​-‏‪-‮⁠-⁯]", "", scrubbed)
+
+    # Collapse excessive blank lines.
+    scrubbed = re.sub(r"\n{3,}", "\n" * _MAX_NEWLINES_RUN, scrubbed)
+
+    scrubbed = scrubbed.strip()
+
+    if len(scrubbed) > max_chars:
+        truncated = scrubbed[:max_chars]
+        if " " in truncated:
+            truncated = truncated.rsplit(" ", 1)[0]
+        scrubbed = truncated + "…"
+
+    return scrubbed
+
+
+def wrap_untrusted(text: str, label: str = "UNTRUSTED") -> str:
+    """Fence untrusted text inside an unforgeable delimiter block.
+
+    A per-call random nonce is woven into the fence so nested content
+    cannot close the block prematurely. The caller shows the model the
+    opening + closing fences in its prompt template.
+
+    The returned block is plain text, safe to concatenate into a prompt.
+    """
+    nonce = secrets.token_hex(8)
+    open_fence = f"<<<{label}:{nonce}>>>"
+    close_fence = f"<<<END:{nonce}>>>"
+
+    # Defensive: strip any occurrence of our own fence shape from the payload
+    # so even a sanitised body cannot forge one by accident.
+    cleaned = re.sub(r"<<<[A-Z_]+:[a-f0-9]+>>>", _SENTINEL_REDACTION, text or "")
+    return f"{open_fence}\n{cleaned}\n{close_fence}"

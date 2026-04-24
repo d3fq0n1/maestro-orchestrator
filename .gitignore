@@ -40,6 +40,10 @@ data/improvements/*.json
 data/runtime_config.json
 maestro_session.json
 
+# Regeneratable caches
+data/bundles/manifests/
+benchmarks/results/
+
 # OS-specific files
 .DS_Store
 desktop.ini
