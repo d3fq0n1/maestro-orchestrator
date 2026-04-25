@@ -141,6 +141,64 @@ class Librarian:
         # TODO
         raise NotImplementedError
 
+    # ---- enumeration / graph-layer support ----
+
+    def iter_manifests(self):
+        """Iterate every signed Manifest in the live store.
+
+        Used by graph-layer code (``maestro/router/graph.py``) to build
+        the known-tag set at construction.
+        """
+        # TODO
+        raise NotImplementedError
+
+    def get_by_slug(self, slug: str):
+        """Return the Manifest for a ``CART:<id>@<version>`` slug.
+
+        None if the slug doesn't resolve in this instance.
+        """
+        # TODO: parse "CART:<id>@<version>" then resolve via
+        # by-id/<id>/versions/<version>
+        raise NotImplementedError
+
+    def cartridges_with_tag(self, tag: str):
+        """Iterate CartridgeRefs whose ``domain_tags`` contain ``tag``.
+
+        Exact match only. Longest-prefix matching is the graph
+        layer's responsibility.
+        """
+        # TODO
+        raise NotImplementedError
+
+    def supersedes_slugs(self, slug: str) -> list:
+        """Return slugs of Cartridges that ``slug`` supersedes.
+
+        Translates the manifest's ``supersedes`` manifest_hash list
+        into slugs of the form ``CART:<id>@<version>``. Phantom hashes
+        (target Cartridge missing locally) are silently omitted; the
+        graph drops the edge.
+        """
+        # TODO
+        raise NotImplementedError
+
+    def revokes_slugs(self, slug: str) -> list:
+        """Return slugs of Cartridges that ``slug`` revokes.
+
+        Translation rules same as ``supersedes_slugs``.
+        """
+        # TODO
+        raise NotImplementedError
+
+    def known_tags(self) -> set:
+        """Set of every ``domain_tag`` declared by any current Manifest.
+
+        Used by ``CompositeGraphView`` for longest-prefix anchor
+        lookup. Implementations may maintain this as a cached index
+        that invalidates on commit.
+        """
+        # TODO
+        raise NotImplementedError
+
 
 class PolicyError(Exception):
     """Raised when a Librarian operation violates ``Policy`` thresholds."""

@@ -132,3 +132,45 @@ class Whirlpool:
     def stats(self) -> VortexStats:
         """Current vortex stats — used by MAGI for domain-monoculture detection."""
         return self._vortex.stats()
+
+    # ---- enumeration / graph-layer support ----
+
+    def known_tags(self) -> set:
+        """Set of every ``domain_tag`` declared by any current vortex item.
+
+        Used by ``CompositeGraphView`` for longest-prefix anchor
+        lookup.
+        """
+        # TODO
+        raise NotImplementedError
+
+    def iter_items(self):
+        """Iterate every VortexItem currently resident in the vortex."""
+        # TODO
+        raise NotImplementedError
+
+    def get_by_slug(self, short_item_slug: str):
+        """Fetch a VortexItem by its short-form slug (first 8 hex chars).
+
+        ``short_item_slug`` is the part after ``WP:<whirlpool_id>:``.
+        Collisions inside one Whirlpool are vanishingly rare; if one
+        occurs, returns the most recently inserted item.
+        """
+        # TODO
+        raise NotImplementedError
+
+    def items_with_tag(self, tag: str):
+        """Iterate VortexItems whose ``domain_tags`` contain ``tag``.
+
+        Exact match only.
+        """
+        # TODO
+        raise NotImplementedError
+
+    def items_with_source(self, source_id: str):
+        """Iterate VortexItems whose ``provenance`` includes ``source_id``.
+
+        Used to materialize ``SHARED_CORROBORATOR`` edges.
+        """
+        # TODO
+        raise NotImplementedError
