@@ -22,6 +22,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
+from maestro.router.graph import GraphView, NullGraphView
+
 
 class Tier(str, Enum):
     CARTRIDGE = "cartridge"
@@ -82,11 +84,33 @@ class DistanceMetric:
     def __init__(
         self,
         weights: Optional[DistanceWeights] = None,
+        graph_view: Optional[GraphView] = None,
         graph_stub_value: float = 0.5,
         causal_stub_value: float = 0.5,
         counter_stub_value: float = 0.5,
     ):
+        """
+        Parameters
+        ----------
+        weights:
+            Composite distance weights. Defaults to ``DistanceWeights()``.
+        graph_view:
+            The graph the BFS in :meth:`d_graph` walks. When ``None``
+            (default), a :class:`NullGraphView` is bound so callers
+            constructed without a graph still work. Under
+            ``NullGraphView`` the ``d_graph`` method returns
+            ``graph_stub_value`` directly without invoking the BFS —
+            today's behavior is preserved (option R from the step 3
+            design discussion). When a real ``GraphView`` is wired
+            (e.g. ``CompositeGraphView``), the BFS runs and the
+            constant is ignored.
+        graph_stub_value, causal_stub_value, counter_stub_value:
+            Configurable constants returned by the corresponding
+            stub components. ``graph_stub_value`` is also the
+            fallback when ``graph_view`` is ``NullGraphView``.
+        """
         self._weights = weights or DistanceWeights()
+        self._graph: GraphView = graph_view if graph_view is not None else NullGraphView()
         self._graph_stub = graph_stub_value
         self._causal_stub = causal_stub_value
         self._counter_stub = counter_stub_value
@@ -101,10 +125,24 @@ class DistanceMetric:
     # ---- stubbed components (configurable constants) ----
 
     def d_graph(self, query_tags: list, claim_tags: list, claim_manifest_hash: Optional[str]) -> float:
-        """STUB: returns configurable constant. See module docstring."""
-        # TODO: once the Librarian graph view is available, traverse
-        # supersedes / revokes / shared-tag edges and return the shortest
-        # normalized distance.
+        """Graph distance from the query to the claim.
+
+        Under ``NullGraphView`` (the default when no graph is wired),
+        returns ``graph_stub_value`` directly — preserves today's
+        behavior for callers that haven't been updated to inject a
+        real graph view (option R from the step 3 design).
+
+        Under a real ``GraphView`` (e.g. ``CompositeGraphView``), the
+        BFS will run and normalize via ``1 - exp(-hops/k)``. That
+        body lands in step 4; until then the second branch falls
+        through to the stub so the dispatch is in place but the
+        traversal is not yet exercised.
+        """
+        if isinstance(self._graph, NullGraphView):
+            return self._graph_stub
+        # TODO step 4: BFS over self._graph from anchors_for_tags(query_tags)
+        # to the claim node, normalize via 1 - exp(-hops/k), return 1.0 on
+        # no path.
         return self._graph_stub
 
     def d_causal(self, query_text: str, claim_text: str) -> float:
