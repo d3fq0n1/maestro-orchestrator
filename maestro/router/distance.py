@@ -20,6 +20,7 @@ documenting the spec it will implement.
 
 from dataclasses import dataclass, field
 from enum import Enum
+import math
 from typing import Optional
 
 from maestro.router.graph import GraphView, NullGraphView
@@ -88,6 +89,8 @@ class DistanceMetric:
         graph_stub_value: float = 0.5,
         causal_stub_value: float = 0.5,
         counter_stub_value: float = 0.5,
+        max_hops: int = 6,
+        normalization_k: float = 3.0,
     ):
         """
         Parameters
@@ -108,12 +111,23 @@ class DistanceMetric:
             Configurable constants returned by the corresponding
             stub components. ``graph_stub_value`` is also the
             fallback when ``graph_view`` is ``NullGraphView``.
+        max_hops:
+            BFS depth cap. Beyond ``max_hops`` the walk gives up and
+            ``d_graph`` returns 1.0 (max distance). Default 6, which
+            saturates the normalization at ``1 - exp(-2) ≈ 0.865``.
+        normalization_k:
+            Curve constant for ``1 - exp(-hops/k)``. Default 3.0:
+            hops 0/1/2/3/4/5/6 → 0.00 / 0.28 / 0.49 / 0.63 / 0.74 /
+            0.81 / 0.86. Lower k makes nearby hops more distant
+            faster; higher k flattens.
         """
         self._weights = weights or DistanceWeights()
         self._graph: GraphView = graph_view if graph_view is not None else NullGraphView()
         self._graph_stub = graph_stub_value
         self._causal_stub = causal_stub_value
         self._counter_stub = counter_stub_value
+        self._max_hops = max_hops
+        self._k = normalization_k
 
     # ---- live component ----
 
@@ -124,26 +138,64 @@ class DistanceMetric:
 
     # ---- stubbed components (configurable constants) ----
 
-    def d_graph(self, query_tags: list, claim_tags: list, claim_manifest_hash: Optional[str]) -> float:
-        """Graph distance from the query to the claim.
+    def d_graph(self, query_tags: list, claim_node_id: str) -> float:
+        """Graph distance from the query tag-set to a claim node.
 
-        Under ``NullGraphView`` (the default when no graph is wired),
-        returns ``graph_stub_value`` directly — preserves today's
-        behavior for callers that haven't been updated to inject a
-        real graph view (option R from the step 3 design).
+        Multi-source BFS over ``self._graph``: seeded simultaneously
+        from every anchor returned by
+        ``self._graph.anchors_for_tags(query_tags)``, expanded
+        breadth-first up to ``self._max_hops``, normalized via
+        ``1 - exp(-hops/k)``.
 
-        Under a real ``GraphView`` (e.g. ``CompositeGraphView``), the
-        BFS will run and normalize via ``1 - exp(-hops/k)``. That
-        body lands in step 4; until then the second branch falls
-        through to the stub so the dispatch is in place but the
-        traversal is not yet exercised.
+        Returns
+        -------
+        float in [0.0, 1.0]
+            * 0.0 when ``claim_node_id`` is itself one of the
+              query's anchors (zero hops).
+            * ``1 - exp(-hops/k)`` when reached at ``hops``
+              (1 ≤ hops ≤ max_hops).
+            * 1.0 when no anchors resolve, when the BFS exhausts
+              reachable nodes without finding the claim, or when
+              the claim is past ``max_hops``.
+
+        Behavior under ``NullGraphView`` is unchanged from step 3:
+        the stub constant is returned without invoking the BFS. This
+        preserves today's behavior for callers that haven't been
+        updated to inject a real graph view (option R from the step
+        3 design).
         """
         if isinstance(self._graph, NullGraphView):
             return self._graph_stub
-        # TODO step 4: BFS over self._graph from anchors_for_tags(query_tags)
-        # to the claim node, normalize via 1 - exp(-hops/k), return 1.0 on
-        # no path.
-        return self._graph_stub
+
+        anchors = list(self._graph.anchors_for_tags(query_tags))
+        if not anchors:
+            return 1.0
+
+        anchor_set = set(anchors)
+        if claim_node_id in anchor_set:
+            return 0.0  # 1 - exp(0) = 0
+
+        visited: set = set(anchor_set)
+        frontier: set = set(anchor_set)
+
+        for hops in range(1, self._max_hops + 1):
+            next_frontier: set = set()
+            for node in frontier:
+                for edge in self._graph.neighbors(node):
+                    # Undirected traversal: advance to whichever
+                    # endpoint isn't the node we arrived from.
+                    other = edge.dst if edge.src == node else edge.src
+                    if other in visited:
+                        continue
+                    next_frontier.add(other)
+            if not next_frontier:
+                return 1.0
+            if claim_node_id in next_frontier:
+                return 1.0 - math.exp(-hops / self._k)
+            visited.update(next_frontier)
+            frontier = next_frontier
+
+        return 1.0  # claim not reached within max_hops
 
     def d_causal(self, query_text: str, claim_text: str) -> float:
         """STUB: returns configurable constant."""
