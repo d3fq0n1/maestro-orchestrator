@@ -61,9 +61,21 @@ class DistanceComponents:
     d_counter: float
 
     def composite(self, weights: DistanceWeights) -> float:
-        """Linear combination of components under the given weights."""
-        # TODO: dot product; clamp to [0, 1]
-        raise NotImplementedError
+        """Linear combination of components, clamped to ``[0, 1]``.
+
+        Weights are expected to sum to 1.0 per
+        ``router-distance.md`` §Composite distance metric; the
+        clamp is defensive against weight configurations that
+        drift from that invariant or against component values that
+        themselves stray slightly out of range.
+        """
+        total = (
+            weights.w_embed * self.d_embed
+            + weights.w_graph * self.d_graph
+            + weights.w_causal * self.d_causal
+            + weights.w_counter * self.d_counter
+        )
+        return max(0.0, min(1.0, total))
 
 
 class DistanceMetric:
@@ -132,9 +144,46 @@ class DistanceMetric:
     # ---- live component ----
 
     def d_embed(self, query_embedding: list, claim_embedding: list) -> float:
-        """Cosine distance 1 - cos(theta). Returns value in [0, 1]."""
-        # TODO: share the embedder used by dissent / ncg.drift
-        raise NotImplementedError
+        """Cosine distance ``1 - cos(θ)`` between the two vectors,
+        clamped to ``[0, 1]``.
+
+        The method takes pre-computed embedding vectors. Producing
+        the embeddings is the caller's responsibility; the embedder
+        used by ``maestro/dissent.py`` and ``maestro/ncg/drift.py``
+        is the natural source. No new embedding client is introduced
+        here.
+
+        Edge cases:
+
+        * Empty vector on either side → 1.0 (max distance).
+        * Zero-norm vector on either side → 1.0 (undefined cosine,
+          treated as max distance).
+        * Dimension mismatch → ``ValueError``.
+        * Cosine is clamped to ``[-1, 1]`` before forming
+          ``1 - cos``; the result is then clamped to ``[0, 1]`` to
+          honor the spec's "all values in [0, 1]" requirement.
+          Anti-correlated vectors (cos < 0) therefore saturate at
+          1.0 rather than producing the raw value of 2.
+        """
+        if not query_embedding or not claim_embedding:
+            return 1.0
+        if len(query_embedding) != len(claim_embedding):
+            raise ValueError(
+                f"embedding dimension mismatch: "
+                f"query={len(query_embedding)} claim={len(claim_embedding)}"
+            )
+        dot = 0.0
+        qsq = 0.0
+        csq = 0.0
+        for q, c in zip(query_embedding, claim_embedding):
+            dot += q * c
+            qsq += q * q
+            csq += c * c
+        if qsq == 0.0 or csq == 0.0:
+            return 1.0
+        cosine = dot / math.sqrt(qsq * csq)
+        cosine = max(-1.0, min(1.0, cosine))
+        return max(0.0, min(1.0, 1.0 - cosine))
 
     # ---- stubbed components (configurable constants) ----
 
@@ -216,14 +265,29 @@ class DistanceMetric:
         query_embedding: list,
         claim_embedding: list,
         query_tags: list,
-        claim_tags: list,
         query_text: str,
         claim_text: str,
-        claim_manifest_hash: Optional[str] = None,
+        claim_node_id: str,
     ) -> DistanceComponents:
-        """Compute all four components for one (Q, C) pair."""
-        # TODO
-        raise NotImplementedError
+        """Compute all four components for one (Q, C) pair.
+
+        The placeholder ``claim_tags`` / ``claim_manifest_hash``
+        parameters from step 4's pre-BFS shape are dropped: the
+        graph encodes claim→tag edges already, and the caller has
+        the candidate object in hand to produce ``claim_node_id``.
+
+        ``query_text`` and ``claim_text`` are kept even though the
+        d_causal and d_counter implementations are configurable-
+        constant stubs day 1. Their eventual live implementations
+        will read text, so the input shape is fixed now to avoid a
+        future signature churn.
+        """
+        return DistanceComponents(
+            d_embed=self.d_embed(query_embedding, claim_embedding),
+            d_graph=self.d_graph(query_tags, claim_node_id),
+            d_causal=self.d_causal(query_text, claim_text),
+            d_counter=self.d_counter(query_text, claim_text),
+        )
 
 
 # --- Admission function ---

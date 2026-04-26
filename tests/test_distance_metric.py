@@ -14,7 +14,13 @@ BFS only runs when a real GraphView is wired.
 import math
 from typing import Iterable
 
-from maestro.router.distance import DistanceMetric, DistanceWeights
+import pytest
+
+from maestro.router.distance import (
+    DistanceComponents,
+    DistanceMetric,
+    DistanceWeights,
+)
 from maestro.router.graph import (
     EdgeType,
     GraphEdge,
@@ -235,6 +241,170 @@ def test_bfs_visits_each_node_once():
     dm = DistanceMetric(graph_view=g)
     got = dm.d_graph(query_tags=["t"], claim_node_id="CLAIM")
     assert math.isclose(got, _normalized(2), rel_tol=1e-9)
+
+
+# ---- step 5: d_embed (cosine distance) ----
+
+
+def test_d_embed_identical_vectors_zero():
+    dm = DistanceMetric()
+    assert dm.d_embed([1.0, 2.0, 3.0], [1.0, 2.0, 3.0]) == 0.0
+
+
+def test_d_embed_orthogonal_vectors_one():
+    dm = DistanceMetric()
+    got = dm.d_embed([1.0, 0.0], [0.0, 1.0])
+    assert math.isclose(got, 1.0, rel_tol=1e-9)
+
+
+def test_d_embed_anti_correlated_clamped_to_one():
+    """cos(θ) = -1 produces 1 - (-1) = 2 raw; the clamp brings
+    it back to 1.0.
+    """
+    dm = DistanceMetric()
+    assert dm.d_embed([1.0, 0.0], [-1.0, 0.0]) == 1.0
+
+
+def test_d_embed_known_intermediate_value():
+    """[1, 1] vs [1, 0] => cos = 1/sqrt(2), distance = 1 - 1/sqrt(2)."""
+    dm = DistanceMetric()
+    got = dm.d_embed([1.0, 1.0], [1.0, 0.0])
+    expected = 1.0 - 1.0 / math.sqrt(2.0)
+    assert math.isclose(got, expected, rel_tol=1e-9)
+
+
+def test_d_embed_empty_vectors_max_distance():
+    dm = DistanceMetric()
+    assert dm.d_embed([], [1.0, 2.0]) == 1.0
+    assert dm.d_embed([1.0, 2.0], []) == 1.0
+    assert dm.d_embed([], []) == 1.0
+
+
+def test_d_embed_zero_norm_max_distance():
+    """A zero vector has undefined direction; treated as max distance."""
+    dm = DistanceMetric()
+    assert dm.d_embed([0.0, 0.0, 0.0], [1.0, 2.0, 3.0]) == 1.0
+    assert dm.d_embed([1.0, 2.0, 3.0], [0.0, 0.0, 0.0]) == 1.0
+
+
+def test_d_embed_dimension_mismatch_raises():
+    dm = DistanceMetric()
+    with pytest.raises(ValueError):
+        dm.d_embed([1.0, 2.0], [1.0, 2.0, 3.0])
+
+
+# ---- step 5: DistanceComponents.composite ----
+
+
+def test_composite_zero_components_zero_distance():
+    c = DistanceComponents(d_embed=0.0, d_graph=0.0, d_causal=0.0, d_counter=0.0)
+    assert c.composite(DistanceWeights()) == 0.0
+
+
+def test_composite_max_components_max_distance():
+    """All components 1.0 with default weights summing to 1.0
+    yields composite 1.0.
+    """
+    c = DistanceComponents(d_embed=1.0, d_graph=1.0, d_causal=1.0, d_counter=1.0)
+    assert math.isclose(c.composite(DistanceWeights()), 1.0, rel_tol=1e-9)
+
+
+def test_composite_default_weighted_sum():
+    """Defaults: w_embed=0.7, w_graph=0.15, w_causal=0.1, w_counter=0.05."""
+    c = DistanceComponents(d_embed=0.5, d_graph=0.4, d_causal=0.3, d_counter=0.2)
+    expected = 0.7 * 0.5 + 0.15 * 0.4 + 0.1 * 0.3 + 0.05 * 0.2
+    assert math.isclose(c.composite(DistanceWeights()), expected, rel_tol=1e-9)
+
+
+def test_composite_custom_weights():
+    c = DistanceComponents(d_embed=1.0, d_graph=0.0, d_causal=0.0, d_counter=0.0)
+    w = DistanceWeights(w_embed=1.0, w_graph=0.0, w_causal=0.0, w_counter=0.0)
+    assert c.composite(w) == 1.0
+
+
+def test_composite_clamps_overshoot():
+    """Defensive: misconfigured weights summing to > 1.0 with
+    components at 1.0 would give > 1.0 raw; the clamp prevents
+    that from leaking out.
+    """
+    c = DistanceComponents(d_embed=1.0, d_graph=1.0, d_causal=1.0, d_counter=1.0)
+    w = DistanceWeights(w_embed=1.0, w_graph=1.0, w_causal=1.0, w_counter=1.0)
+    assert c.composite(w) == 1.0
+
+
+# ---- step 5: DistanceMetric.components ----
+
+
+def test_components_returns_distance_components_under_null_graph():
+    """Under NullGraphView the d_graph slot reflects the stub
+    constant; the other slots reflect their respective live or
+    stub implementations.
+    """
+    dm = DistanceMetric(
+        graph_stub_value=0.55,
+        causal_stub_value=0.31,
+        counter_stub_value=0.27,
+    )
+    out = dm.components(
+        query_embedding=[1.0, 0.0],
+        claim_embedding=[0.0, 1.0],   # orthogonal -> d_embed = 1.0
+        query_tags=["irrelevant"],
+        query_text="q",
+        claim_text="c",
+        claim_node_id="CART:doesnt-matter@1",
+    )
+    assert isinstance(out, DistanceComponents)
+    assert out.d_embed == 1.0
+    assert out.d_graph == 0.55
+    assert out.d_causal == 0.31
+    assert out.d_counter == 0.27
+
+
+def test_components_uses_bfs_under_real_graph_view():
+    g = FakeGraph()
+    g.add_anchor("law.us", "TAG:law.us")
+    g.add_edge("TAG:law.us", "CART:fed@1")
+    dm = DistanceMetric(graph_view=g, causal_stub_value=0.0, counter_stub_value=0.0)
+    out = dm.components(
+        query_embedding=[1.0, 1.0],
+        claim_embedding=[1.0, 1.0],   # identical -> d_embed = 0.0
+        query_tags=["law.us"],
+        query_text="q",
+        claim_text="c",
+        claim_node_id="CART:fed@1",   # one hop away
+    )
+    assert out.d_embed == 0.0
+    assert math.isclose(out.d_graph, _normalized(1), rel_tol=1e-9)
+    assert out.d_causal == 0.0
+    assert out.d_counter == 0.0
+
+
+def test_components_into_composite_end_to_end():
+    """Round-trip: build components from inputs, ask the resulting
+    DistanceComponents to collapse into a composite under the
+    metric's own weights.
+    """
+    g = FakeGraph()
+    g.add_anchor("t", "TAG:t")
+    g.add_edge("TAG:t", "CLAIM")
+    dm = DistanceMetric(
+        graph_view=g,
+        graph_stub_value=0.0,
+        causal_stub_value=0.0,
+        counter_stub_value=0.0,
+    )
+    out = dm.components(
+        query_embedding=[1.0, 0.0],
+        claim_embedding=[1.0, 0.0],   # identical -> d_embed = 0.0
+        query_tags=["t"],
+        query_text="q",
+        claim_text="c",
+        claim_node_id="CLAIM",        # one hop away
+    )
+    composite = out.composite(DistanceWeights())
+    # only d_graph contributes; expected = 0.15 * (1 - exp(-1/3))
+    expected = 0.15 * _normalized(1)
+    assert math.isclose(composite, expected, rel_tol=1e-9)
 
 
 def test_distance_weights_default_unchanged():
