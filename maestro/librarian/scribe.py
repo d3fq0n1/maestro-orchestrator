@@ -19,16 +19,27 @@ is a separate concern and must not be imported here.
 import base64
 import os
 import stat
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from maestro.librarian.addressing import (
+    compute_content_hash,
+    compute_manifest_hash,
+)
 from maestro.librarian.crypto import (
     generate_keypair as _generate_keypair,
     key_id_from_public_pem as _key_id_from_public_pem,
     sign as _sign_bytes,
 )
-from maestro.librarian.types import Manifest, Signature, Policy
+from maestro.librarian.types import (
+    CanonicalForm,
+    CartridgeKind,
+    Manifest,
+    Policy,
+    Signature,
+)
 
 
 _DEFAULT_KEYS_DIR = (
@@ -244,32 +255,142 @@ class Scribe:
         pending_body: bytes,
         signing_key_ids: list,
     ) -> Manifest:
-        """Sign and return a finalized Manifest.
+        """Append this Scribe's signatures to a pending manifest.
 
-        Steps (see librarian.md §Scribe anchoring):
-          1. Validate canonical_form is in policy.canonical_form_registry.
-          2. Validate kind's min_signatures_by_kind ≤ len(signing_key_ids).
-          3. canonicalize_body + compute_content_hash.
-          4. Bind content_hash into the manifest.
-          5. compute_manifest_hash (excluding manifest_hash + signatures).
-          6. Sign manifest_hash with each requested key.
-          7. Return finalized Manifest ready for store.commit().
+        Multi-Scribe accumulation flow (option Q from the design
+        discussion): each call signs once with the keys this Scribe
+        was asked for, returning an updated manifest. Multiple
+        Scribes can call ``anchor`` in succession on the same
+        logical manifest; the signatures list accumulates.
+        Threshold enforcement happens at ``Librarian.commit`` time,
+        not here. Canonical-form policy enforcement also happens at
+        commit time (option C2): this method computes hashes for
+        whatever ``canonical_form`` the manifest declares and
+        propagates ``NotImplementedError`` from
+        ``addressing.canonicalize_body`` for forms not yet
+        implemented.
 
-        Raises:
-          PolicyError if thresholds not met.
-          ValueError  if canonical_form validation fails.
+        Two branches by signature presence on the incoming manifest:
+
+        * **First call** (``signatures == []``): compute
+          ``content_hash`` from the body, bind it; compute
+          ``manifest_hash`` from the post-bind manifest, bind it;
+          sign with each requested key; return.
+        * **Subsequent call** (``signatures != []``): recompute
+          ``content_hash`` and ``manifest_hash`` and verify they
+          still match the values on the incoming manifest. If
+          either differs (the body or some other field changed
+          between Scribes), raise ``ValueError`` — earlier
+          signatures attest to those exact hashes and silently
+          updating them would invalidate them.
+
+        Same-key double-signing (option D1): a ``key_id`` already
+        present in the manifest's ``signatures`` list raises
+        ``ValueError``. Repeated signing by the same key is an
+        operator mistake we surface early rather than silently
+        dedupe or duplicate.
+
+        Empty ``signing_key_ids``: raises ``ValueError`` (calling
+        anchor with no keys to sign is meaningless).
+
+        Returns:
+          A new ``Manifest`` (immutable) with the requested
+          signatures appended.
         """
-        # TODO
-        raise NotImplementedError
+        if not signing_key_ids:
+            raise ValueError("signing_key_ids is empty; nothing to sign")
+
+        if not pending_manifest.signatures:
+            # First-call branch: bind hashes from scratch.
+            content_hash = compute_content_hash(
+                pending_body, pending_manifest.canonical_form,
+            )
+            sealed = replace(
+                pending_manifest,
+                content_hash=content_hash,
+                manifest_hash="",   # placeholder; recomputed next
+            )
+            manifest_hash = compute_manifest_hash(sealed)
+            sealed = replace(sealed, manifest_hash=manifest_hash)
+        else:
+            # Subsequent-call branch: verify hashes still match.
+            actual_content_hash = compute_content_hash(
+                pending_body, pending_manifest.canonical_form,
+            )
+            if pending_manifest.content_hash != actual_content_hash:
+                raise ValueError(
+                    f"content_hash mismatch: incoming "
+                    f"{pending_manifest.content_hash!r} != computed "
+                    f"{actual_content_hash!r} (body changed since prior "
+                    f"signing?)"
+                )
+            actual_manifest_hash = compute_manifest_hash(pending_manifest)
+            if pending_manifest.manifest_hash != actual_manifest_hash:
+                raise ValueError(
+                    f"manifest_hash mismatch: incoming "
+                    f"{pending_manifest.manifest_hash!r} != computed "
+                    f"{actual_manifest_hash!r} (manifest fields changed "
+                    f"since prior signing?)"
+                )
+            sealed = pending_manifest
+
+        # D1: refuse double-signing with the same key_id, including
+        # duplicates within the request list itself.
+        seen: set = {s.key_id for s in sealed.signatures}
+        new_signatures = list(sealed.signatures)
+        for kid in signing_key_ids:
+            if kid in seen:
+                raise ValueError(
+                    f"key_id {kid!r} has already signed this manifest"
+                )
+            seen.add(kid)
+            new_signatures.append(self._keys.sign(kid, sealed.manifest_hash))
+
+        return replace(sealed, signatures=new_signatures)
 
     def anchor_revocation(
         self,
         revokes: list,
         signing_key_ids: list,
+        cartridge_id: Optional[str] = None,
+        version: Optional[str] = None,
+        domain_tags: Optional[list] = None,
     ) -> Manifest:
-        """Produce a kind=REVOCATION Manifest with empty body.
+        """Produce a ``kind=REVOCATION`` Manifest with empty body.
 
-        See librarian.md §Revocation.
+        Builds a fresh revocation manifest naming the hashes in
+        ``revokes`` and runs it through ``anchor`` to bind hashes
+        and append signatures. Subsequent Scribes can attach
+        further signatures via ``anchor`` (the resulting manifest
+        is just another signed manifest as far as accumulation
+        is concerned).
+
+        See librarian.md §Revocation. Body is empty and
+        canonical_form is BYTES_RAW; the empty bytes hash is
+        deterministic and shared across all revocations of any
+        ``cartridge_id`` / ``version``.
         """
-        # TODO
-        raise NotImplementedError
+        if not revokes:
+            raise ValueError("revokes list is empty; nothing to revoke")
+
+        now = datetime.now(timezone.utc)
+        cid = cartridge_id or f"revocation-{now.strftime('%Y%m%d%H%M%S%f')}"
+        ver = version or "1"
+
+        fresh = Manifest(
+            cartridge_id=cid,
+            version=ver,
+            kind=CartridgeKind.REVOCATION,
+            content_hash="",
+            manifest_hash="",
+            canonical_form=CanonicalForm.BYTES_RAW,
+            supersedes=[],
+            revokes=list(revokes),
+            domain_tags=list(domain_tags or []),
+            issued_at=now.isoformat(),
+            not_before=None,
+            not_after=None,
+            signatures=[],
+            metadata={},
+        )
+        return self.anchor(fresh, b"", signing_key_ids)
