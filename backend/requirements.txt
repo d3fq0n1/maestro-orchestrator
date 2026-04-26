@@ -12,3 +12,4 @@ huggingface_hub>=0.20.0
 textual>=0.85.0
 rich>=13.0.0
 redis>=5.0.0
+cryptography>=41.0.0
