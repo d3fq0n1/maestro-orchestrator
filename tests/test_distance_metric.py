@@ -407,6 +407,228 @@ def test_components_into_composite_end_to_end():
     assert math.isclose(composite, expected, rel_tol=1e-9)
 
 
+# ---- track A: d_counter live (perturbed-query counterfactual) ----
+
+
+def _hash_embedder(dim: int = 16):
+    """Deterministic test embedder. Same text -> same vector;
+    different text -> different vector. Not semantic but lets
+    d_counter's math be tested end-to-end without a real
+    embedding service.
+    """
+    import hashlib
+
+    def embed(text: str):
+        digest = hashlib.sha256(text.encode("utf-8")).digest()
+        return [b / 255.0 for b in digest[:dim]]
+
+    return embed
+
+
+def test_d_counter_returns_stub_when_no_embedder():
+    dm = DistanceMetric(counter_stub_value=0.42)
+    assert dm.d_counter("any query text here", "claim text") == 0.42
+
+
+def test_d_counter_returns_stub_for_too_short_query():
+    """A query of < 3 words can't be meaningfully word-dropped;
+    fall back to the stub.
+    """
+    dm = DistanceMetric(
+        embedder=_hash_embedder(),
+        counter_stub_value=0.13,
+    )
+    assert dm.d_counter("short", "claim") == 0.13
+    assert dm.d_counter("two words", "claim") == 0.13
+    # Three words is the threshold; should NOT return stub
+    assert dm.d_counter("three words now", "claim") != 0.13
+
+
+def test_d_counter_in_unit_interval():
+    dm = DistanceMetric(embedder=_hash_embedder())
+    out = dm.d_counter("a query with reasonable length here", "the claim")
+    assert 0.0 <= out <= 1.0
+
+
+def test_d_counter_deterministic_for_fixed_seed():
+    """Same seed + same query + same claim + same embedder
+    produces the same result.
+    """
+    dm1 = DistanceMetric(embedder=_hash_embedder(), perturbation_seed=42)
+    dm2 = DistanceMetric(embedder=_hash_embedder(), perturbation_seed=42)
+    a = dm1.d_counter("a query with several content words", "the claim text")
+    b = dm2.d_counter("a query with several content words", "the claim text")
+    assert a == b
+
+
+def test_d_counter_changes_with_seed():
+    """Different perturbation_seed picks different word-drop
+    indices, which generally produces different shifts.
+    """
+    q = "a longer query with many distinct content words to perturb"
+    c = "claim text under examination"
+    dm0 = DistanceMetric(embedder=_hash_embedder(), perturbation_seed=0)
+    dm1 = DistanceMetric(embedder=_hash_embedder(), perturbation_seed=1)
+    a = dm0.d_counter(q, c)
+    b = dm1.d_counter(q, c)
+    assert a != b
+
+
+def test_d_counter_nonzero_for_typical_query():
+    """With a hash-based embedder, perturbations land in totally
+    different vector space than the original query, so the
+    average shift is reliably non-zero.
+    """
+    dm = DistanceMetric(embedder=_hash_embedder())
+    out = dm.d_counter("a query with several distinct words", "claim text")
+    assert out > 0.0
+
+
+def test_d_counter_perturbation_count_zero_falls_back_to_stub():
+    """perturbation_count=0 means no perturbations; fall back
+    to the stub.
+    """
+    dm = DistanceMetric(
+        embedder=_hash_embedder(),
+        perturbation_count=0,
+        counter_stub_value=0.5,
+    )
+    out = dm.d_counter("a query with content", "claim")
+    # The list comprehension produces zero items; shifts is empty;
+    # we hit the empty-shifts fallback that returns the stub.
+    assert out == 0.5
+
+
+def test_d_counter_embedder_failure_falls_back_to_stub():
+    def crashing_embedder(text):
+        raise RuntimeError("embedder is offline")
+
+    dm = DistanceMetric(embedder=crashing_embedder, counter_stub_value=0.7)
+    assert dm.d_counter("a longer query here", "claim") == 0.7
+
+
+def test_d_counter_partial_embedder_failure_drops_those_perturbations():
+    """If the embedder fails for SOME perturbations but succeeds
+    for others, the failed perturbations are skipped and the
+    average uses only the successful ones.
+    """
+    base_emb = _hash_embedder()
+    call_count = {"n": 0}
+
+    def flaky_embedder(text):
+        call_count["n"] += 1
+        # Fail on every third embedder call (after the original query
+        # and claim succeed)
+        if call_count["n"] >= 3 and call_count["n"] % 2 == 1:
+            raise RuntimeError("transient")
+        return base_emb(text)
+
+    dm = DistanceMetric(embedder=flaky_embedder, perturbation_count=5)
+    out = dm.d_counter("a longer query with several content words", "claim")
+    # Result is in [0, 1]; the exact value depends on which
+    # perturbations made it through but the call must not raise
+    assert 0.0 <= out <= 1.0
+
+
+def test_d_counter_total_embedder_failure_via_partial_falls_back():
+    """If every per-perturbation embedder call fails (but the
+    initial query/claim embeds succeeded), shifts is empty and
+    we fall back to the stub.
+    """
+    base_emb = _hash_embedder()
+    call_count = {"n": 0}
+
+    def per_perturbation_failing_embedder(text):
+        call_count["n"] += 1
+        # Allow the first two calls (query + claim) to succeed,
+        # then fail on every subsequent call (the perturbations)
+        if call_count["n"] <= 2:
+            return base_emb(text)
+        raise RuntimeError("perturbation embedder offline")
+
+    dm = DistanceMetric(
+        embedder=per_perturbation_failing_embedder,
+        counter_stub_value=0.99,
+    )
+    assert dm.d_counter("a longer query with several content words", "claim") == 0.99
+
+
+def test_d_counter_perturb_query_helper_drops_correct_count():
+    """Validate the word-dropout helper directly: at 25% drop, a
+    12-word query produces perturbations of length 9.
+    """
+    dm = DistanceMetric(embedder=_hash_embedder(), perturbation_drop_fraction=0.25)
+    perturbations = dm._perturb_query(
+        "the quick brown fox jumps over the lazy dog and then leaves"
+    )
+    assert len(perturbations) == 5  # default perturbation_count
+    for p in perturbations:
+        words = p.split()
+        # 12 words * 0.25 = 3 dropped -> 9 remaining
+        assert len(words) == 9
+
+
+def test_d_counter_perturb_query_helper_returns_empty_for_short_query():
+    dm = DistanceMetric(embedder=_hash_embedder())
+    assert dm._perturb_query("two words") == []
+    assert dm._perturb_query("one") == []
+    assert dm._perturb_query("") == []
+
+
+def test_d_counter_perturb_query_caps_drop_count():
+    """Even with drop_fraction=1.0, the helper must always leave
+    at least one word so the perturbation isn't an empty string.
+    """
+    dm = DistanceMetric(
+        embedder=_hash_embedder(),
+        perturbation_drop_fraction=1.0,
+        perturbation_count=3,
+    )
+    perturbations = dm._perturb_query("five words in this query")
+    assert len(perturbations) == 3
+    for p in perturbations:
+        assert len(p.split()) == 1   # always 1 word remains
+
+
+def test_components_uses_live_d_counter_when_embedder_is_set():
+    """End-to-end: components() invokes the live d_counter and
+    the result is non-stub.
+    """
+    dm = DistanceMetric(
+        embedder=_hash_embedder(),
+        counter_stub_value=0.5,   # so we can tell stub from live
+    )
+    out = dm.components(
+        query_embedding=[1.0, 0.0],
+        claim_embedding=[0.0, 1.0],
+        query_tags=["t"],
+        query_text="a query with several content words",
+        claim_text="the claim text under examination",
+        claim_node_id="CART:irrelevant@1",
+    )
+    # d_counter result is the live value, not the stub.
+    # (Vanishingly unlikely to coincidentally equal 0.5 with a
+    # hash-based embedder.)
+    assert out.d_counter != 0.5
+    assert 0.0 <= out.d_counter <= 1.0
+
+
+def test_components_uses_stub_d_counter_when_no_embedder():
+    """Inverse of the above: with embedder=None (the default),
+    components() reflects the stub on d_counter.
+    """
+    dm = DistanceMetric(counter_stub_value=0.37)
+    out = dm.components(
+        query_embedding=[1.0, 0.0],
+        claim_embedding=[0.0, 1.0],
+        query_tags=["t"],
+        query_text="any query text",
+        claim_text="any claim text",
+        claim_node_id="CART:x@1",
+    )
+    assert out.d_counter == 0.37
+
+
 def test_distance_weights_default_unchanged():
     """Sanity: step 3 must not perturb the weight defaults that the
     composite formula depends on.

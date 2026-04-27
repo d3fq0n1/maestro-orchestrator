@@ -21,7 +21,8 @@ documenting the spec it will implement.
 from dataclasses import dataclass, field
 from enum import Enum
 import math
-from typing import Optional
+import random
+from typing import Callable, Optional
 
 from maestro.router.graph import GraphView, NullGraphView
 
@@ -103,6 +104,10 @@ class DistanceMetric:
         counter_stub_value: float = 0.5,
         max_hops: int = 6,
         normalization_k: float = 3.0,
+        embedder: Optional[Callable[[str], list]] = None,
+        perturbation_count: int = 5,
+        perturbation_drop_fraction: float = 0.25,
+        perturbation_seed: int = 0,
     ):
         """
         Parameters
@@ -122,7 +127,9 @@ class DistanceMetric:
         graph_stub_value, causal_stub_value, counter_stub_value:
             Configurable constants returned by the corresponding
             stub components. ``graph_stub_value`` is also the
-            fallback when ``graph_view`` is ``NullGraphView``.
+            fallback when ``graph_view`` is ``NullGraphView``;
+            ``counter_stub_value`` is the fallback when ``embedder``
+            is None or perturbation cannot proceed.
         max_hops:
             BFS depth cap. Beyond ``max_hops`` the walk gives up and
             ``d_graph`` returns 1.0 (max distance). Default 6, which
@@ -132,6 +139,27 @@ class DistanceMetric:
             hops 0/1/2/3/4/5/6 → 0.00 / 0.28 / 0.49 / 0.63 / 0.74 /
             0.81 / 0.86. Lower k makes nearby hops more distant
             faster; higher k flattens.
+        embedder:
+            Optional callable ``str -> list[float]`` that produces
+            an embedding vector for a text. Used by
+            :meth:`d_counter` to embed perturbed queries. When
+            ``None``, ``d_counter`` falls back to
+            ``counter_stub_value``. The same embedder convention
+            is used by ``maestro/dissent.py`` and
+            ``maestro/ncg/drift.py``; this parameter exists so
+            callers can inject the project's existing embedder
+            without ``DistanceMetric`` introducing a new client.
+        perturbation_count:
+            Number of word-dropout perturbations
+            :meth:`d_counter` generates per query. Default 5.
+        perturbation_drop_fraction:
+            Fraction of words each perturbation drops. Default
+            0.25 (drop ~25% of words). Always at least one word
+            dropped, never the entire query.
+        perturbation_seed:
+            RNG seed for deterministic perturbation. Same seed +
+            same query produces the same set of perturbations,
+            which makes ``d_counter`` results reproducible.
         """
         self._weights = weights or DistanceWeights()
         self._graph: GraphView = graph_view if graph_view is not None else NullGraphView()
@@ -140,6 +168,10 @@ class DistanceMetric:
         self._counter_stub = counter_stub_value
         self._max_hops = max_hops
         self._k = normalization_k
+        self._embedder = embedder
+        self._perturbation_count = perturbation_count
+        self._perturbation_drop_fraction = perturbation_drop_fraction
+        self._perturbation_seed = perturbation_seed
 
     # ---- live component ----
 
@@ -253,10 +285,92 @@ class DistanceMetric:
         return self._causal_stub
 
     def d_counter(self, query_text: str, claim_text: str) -> float:
-        """STUB: returns configurable constant."""
-        # TODO: perturb the query, recompute relevance, return the
-        # magnitude of relevance shift.
-        return self._counter_stub
+        """Counterfactual distance: average magnitude of relevance
+        shift when the query is perturbed.
+
+        Implementation (option Q-A1=a, Q-A2=a, Q-A3=a):
+
+          1. Generate ``perturbation_count`` word-dropout
+             perturbations of the query (deterministic per
+             ``perturbation_seed``). Each perturbation drops
+             ``perturbation_drop_fraction`` of the words.
+          2. Embed the original query and the claim, plus each
+             perturbation, via the injected ``embedder``.
+          3. Measure ``d_embed`` between the embedded claim and
+             each perturbed query; the absolute shift from the
+             original query's ``d_embed`` is the per-perturbation
+             counterfactual.
+          4. Return the mean shift across all perturbations,
+             clamped to ``[0, 1]`` defensively.
+
+        Falls back to ``counter_stub_value`` when:
+
+          * No embedder is injected (``embedder=None``).
+          * The query is too short to perturb meaningfully
+            (fewer than 3 words).
+          * The embedder raises while embedding the original
+            query or the claim.
+
+        Per-perturbation embedder failures are tolerated: that
+        perturbation is dropped from the average. Only when no
+        successful perturbation remains does the method fall
+        back to the stub.
+        """
+        if self._embedder is None:
+            return self._counter_stub
+
+        perturbations = self._perturb_query(query_text)
+        if not perturbations:
+            return self._counter_stub
+
+        try:
+            base_q_emb = self._embedder(query_text)
+            c_emb = self._embedder(claim_text)
+        except Exception:
+            return self._counter_stub
+
+        base_distance = self.d_embed(base_q_emb, c_emb)
+
+        shifts = []
+        for perturbed_text in perturbations:
+            try:
+                p_emb = self._embedder(perturbed_text)
+            except Exception:
+                continue
+            perturbed_distance = self.d_embed(p_emb, c_emb)
+            shifts.append(abs(base_distance - perturbed_distance))
+
+        if not shifts:
+            return self._counter_stub
+
+        avg_shift = sum(shifts) / len(shifts)
+        return max(0.0, min(1.0, avg_shift))
+
+    def _perturb_query(self, query_text: str) -> list:
+        """Generate ``perturbation_count`` word-dropout
+        perturbations of ``query_text``.
+
+        Deterministic per ``(query_text, perturbation_seed)``.
+        Returns an empty list if the query has fewer than 3
+        words — too short to drop meaningfully.
+
+        Each perturbation drops ``perturbation_drop_fraction``
+        of the words (rounded down, minimum 1, capped so at
+        least one word remains).
+        """
+        words = query_text.split()
+        if len(words) < 3:
+            return []
+        rng = random.Random(self._perturbation_seed)
+        drop_count = max(1, int(len(words) * self._perturbation_drop_fraction))
+        drop_count = min(drop_count, len(words) - 1)
+        perturbations = []
+        for _ in range(self._perturbation_count):
+            kept_indices = sorted(
+                rng.sample(range(len(words)), len(words) - drop_count)
+            )
+            perturbations.append(" ".join(words[i] for i in kept_indices))
+        return perturbations
 
     # ---- composite ----
 
