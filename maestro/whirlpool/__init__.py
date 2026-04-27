@@ -20,6 +20,10 @@ from maestro.whirlpool.adapter import (
     IngestFailureReason,
     NullIngestAdapter,
 )
+from maestro.whirlpool.ingest import (
+    HttpRssAdapter,
+    HttpRssAdapterConfig,
+)
 from maestro.whirlpool.types import (
     IngestPolicy,
     DecayProfile,
@@ -31,6 +35,8 @@ from maestro.whirlpool.types import (
 __all__ = [
     "CycleStats",
     "DecayProfile",
+    "HttpRssAdapter",
+    "HttpRssAdapterConfig",
     "IngestAdapter",
     "IngestFailure",
     "IngestFailureReason",
