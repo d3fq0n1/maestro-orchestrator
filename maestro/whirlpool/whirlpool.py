@@ -11,13 +11,23 @@ core ships one reference Whirlpool; additional Whirlpools are
 sibling subclasses or separate instances with different
 ``IngestPolicy`` configs.
 
+Step I-4 of the ingest-adapter pluggability track wires the
+adapter-list contract: ``Whirlpool`` accepts ``adapters: list[
+IngestAdapter]``, defaulting to ``factory.build_adapters(policy)``.
+``run_ingest_cycle`` async-iterates each adapter's items and
+aggregates ``cycle_stats()`` snapshots. Vortex insertion, tag
+filtering, and dedup wiring stay stubbed — those land in a
+follow-up track.
+
 See docs/architecture/whirlpool.md.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
-from maestro.whirlpool.ingest import FeedFetcher, TagFilter, Dedup
+from maestro.whirlpool.adapter import CycleStats, IngestAdapter
+from maestro.whirlpool.factory import build_adapters
+from maestro.whirlpool.ingest import Dedup, TagFilter
 from maestro.whirlpool.types import (
     DecayProfile,
     IngestPolicy,
@@ -43,22 +53,56 @@ class PromotionNomination:
     time_in_core_seconds: int
 
 
+@dataclass
+class IngestCycleSummary:
+    """Outcome of one ``Whirlpool.run_ingest_cycle`` call.
+
+    Aggregates per-adapter ``CycleStats`` snapshots and produces
+    cross-adapter counts. The ``items`` list carries the raw
+    items pulled from adapters during the cycle — useful for the
+    integration test in step I-5 and (later) for the vortex
+    insertion path.
+
+    Step I-4 leaves vortex insertion / tag-filter / dedup wiring
+    as TODOs. ``items`` is the temporary observation hook; future
+    steps consume the items into the vortex and may drop the
+    field.
+    """
+
+    adapter_stats: list = field(default_factory=list)   # list[CycleStats]
+    total_items: int = 0
+    total_failures: int = 0
+    items: list = field(default_factory=list)           # list[VortexItem]
+
+
 class Whirlpool:
     """Domain-scoped live-ingesting context agent.
 
     Owns its Vortex, its ingest pipeline, and its query-answer loop.
     Does NOT own cross-Whirlpool coordination — that is the Router's
     responsibility.
+
+    Adapters are pluggable via the I-1/I-2 IngestAdapter ABC. Pass
+    them at construction or let the constructor build them from the
+    policy's typed slots via ``factory.build_adapters``.
     """
 
     def __init__(
         self,
         policy: IngestPolicy,
         decay: DecayProfile,
+        adapters: Optional[list] = None,
     ):
         self._policy = policy
         self._vortex = Vortex(policy.whirlpool_id, decay)
-        self._fetcher = FeedFetcher(policy)
+        # adapters is None  -> derive from the policy's typed slots.
+        # adapters is []    -> the Whirlpool has zero adapters and
+        #                      run_ingest_cycle does nothing.
+        # adapters is non-empty list -> use as-is, ignore policy
+        #                      slots (caller has already chosen).
+        self._adapters: list = (
+            list(adapters) if adapters is not None else build_adapters(policy)
+        )
         self._tag_filter = TagFilter(policy)
         self._dedup = Dedup()
 
@@ -73,15 +117,44 @@ class Whirlpool:
         """Authoritative namespaces. Used by the Router for selection."""
         return list(self._policy.domain_tags)
 
+    @property
+    def adapters(self) -> list:
+        """Read-only view of the configured adapters."""
+        return list(self._adapters)
+
     # ---- ingest loop ----
 
-    async def run_ingest_cycle(self) -> dict:
-        """Fetch → filter → dedup → insert. Returns a summary dict.
+    async def run_ingest_cycle(self) -> IngestCycleSummary:
+        """Fetch from every adapter; aggregate stats.
 
-        Called on a background timer per ``policy.poll_interval_seconds``.
+        For each adapter in order:
+          1. Async-iterate ``adapter.items()`` to completion.
+          2. Snapshot ``adapter.cycle_stats()``.
+          3. Aggregate items_yielded and failures into the cycle
+             summary.
+
+        Step I-4 collects items into ``IngestCycleSummary.items``
+        but does NOT route them through TagFilter / Dedup / Vortex.
+        Those stages stay stubbed in this step — wiring lands in a
+        future track once the vortex's insert path is implemented.
+
+        A failure inside one adapter (recorded in its CycleStats)
+        does not abort the cycle; the next adapter still runs.
         """
-        # TODO
-        raise NotImplementedError
+        summary = IngestCycleSummary()
+
+        for adapter in self._adapters:
+            async for item in adapter.items():
+                summary.total_items += 1
+                summary.items.append(item)
+                # TODO: TagFilter.filter, Dedup.observe, Vortex.insert
+                # land in a follow-up track once those stages exit
+                # NotImplementedError stub status.
+            stats = adapter.cycle_stats()
+            summary.adapter_stats.append(stats)
+            summary.total_failures += len(stats.failures)
+
+        return summary
 
     async def run(self) -> None:
         """Background loop: alternate ingest and tick.
