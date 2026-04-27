@@ -20,6 +20,7 @@ from maestro.whirlpool.adapter import (
     IngestFailureReason,
     NullIngestAdapter,
 )
+from maestro.whirlpool.factory import build_adapters
 from maestro.whirlpool.ingest import (
     HttpRssAdapter,
     HttpRssAdapterConfig,
@@ -45,4 +46,5 @@ __all__ = [
     "QueryResult",
     "RingId",
     "VortexItem",
+    "build_adapters",
 ]

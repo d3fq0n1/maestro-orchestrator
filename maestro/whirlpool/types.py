@@ -4,9 +4,18 @@ Whirlpool type definitions.
 See docs/architecture/whirlpool.md for the vortex data model.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    # Imported only for type-checker visibility; at runtime
+    # IngestPolicy holds plain lists and the factory module
+    # interprets them. This avoids a circular import (ingest.py
+    # already imports from this module).
+    from maestro.whirlpool.ingest import HttpRssAdapterConfig
 
 
 class RingId(IntEnum):
@@ -50,19 +59,38 @@ class DecayProfile:
 class IngestPolicy:
     """Per-Whirlpool ingest configuration.
 
-    Day 1 supports HTTP/RSS polling only. A future pluggable
-    IngestAdapter interface is out of scope (Q8 = a).
+    Adapter-agnostic fields live here. Adapter-specific
+    configuration (HTTP feed URLs, signature requirements, etc.)
+    lives on per-adapter dataclasses such as
+    ``HttpRssAdapterConfig`` and travels via the typed slots
+    below (Q-I2 = c). The ``factory.build_adapters(policy)``
+    helper walks these slots and instantiates the configured
+    adapters with ``whirlpool_id`` from this policy.
+
+    Adding a new adapter type means adding a new typed slot here
+    and registering the slot-to-class mapping in
+    ``maestro/whirlpool/factory.py``. No churn for existing
+    callers; new fields default to empty.
     """
 
     whirlpool_id: str
     domain_tags: list = field(default_factory=list)    # authoritative namespaces
-    feed_urls: list = field(default_factory=list)      # HTTPS RSS/Atom only
     poll_interval_seconds: int = 900                   # 15 minutes
     max_items_per_cycle: int = 200
-    require_feed_signature: bool = False               # elevate signed publishers
     # per-source cap on items contributing to the rejected partition
     # (see vortex-threat-model.md §T-6)
     per_source_partition_cap: float = 0.05
+
+    # ---- typed adapter slots ----
+    # Each slot carries zero or more adapter configs (Q-I11 = b:
+    # multiple HttpRssAdapter instances under one Whirlpool is
+    # legitimate — different feeds, different rate limits).
+    #
+    # Runtime type is plain `list` to keep this module's imports
+    # adapter-free; the typing annotation is deferred via
+    # ``from __future__ import annotations`` so type checkers
+    # still see the precise element type.
+    http_rss: list[HttpRssAdapterConfig] = field(default_factory=list)
 
 
 @dataclass
