@@ -13,6 +13,13 @@ This package is a scaffold. Nothing in it is wired into the
 orchestration runtime.
 """
 
+from maestro.whirlpool.adapter import (
+    CycleStats,
+    IngestAdapter,
+    IngestFailure,
+    IngestFailureReason,
+    NullIngestAdapter,
+)
 from maestro.whirlpool.types import (
     IngestPolicy,
     DecayProfile,
@@ -22,9 +29,14 @@ from maestro.whirlpool.types import (
 )
 
 __all__ = [
-    "IngestPolicy",
+    "CycleStats",
     "DecayProfile",
-    "VortexItem",
-    "RingId",
+    "IngestAdapter",
+    "IngestFailure",
+    "IngestFailureReason",
+    "IngestPolicy",
+    "NullIngestAdapter",
     "QueryResult",
+    "RingId",
+    "VortexItem",
 ]
