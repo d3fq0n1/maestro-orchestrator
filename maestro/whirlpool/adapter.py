@@ -167,3 +167,106 @@ class NullIngestAdapter(IngestAdapter):
 
     def cycle_stats(self) -> CycleStats:
         return CycleStats()
+
+
+def _now_iso() -> str:
+    """ISO 8601 UTC timestamp. Inlined to keep adapter.py
+    dependency-free; ``ingest.py`` has its own copy.
+    """
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat()
+
+
+class InMemoryIngestAdapter(IngestAdapter):
+    """In-memory adapter for tests and scripted ingestion.
+
+    Reference second adapter (alongside ``NullIngestAdapter``) so
+    pluggability is demonstrably real — not all adapters need to
+    speak HTTP. Co-located with ``NullIngestAdapter`` because both
+    are dependency-free reference adapters; the HTTP/RSS
+    implementation brings httpx + xml.etree and lives in
+    ``ingest.py``.
+
+    Queue model (option I-13=c): the caller seeds items via
+    ``feed_items(...)`` and failures via ``record_failure(...)``.
+    Each ``items()`` call drains the queue at the start of the
+    cycle and yields the captured items in order. Subsequent
+    cycles see only what was fed *between* cycles (the queue is
+    drained per-cycle, not lifetime).
+
+    Empty cycles (no queued items) yield nothing but produce a
+    valid CycleStats with ``started_at`` / ``completed_at`` set
+    and ``items_yielded == 0``.
+    """
+
+    def __init__(self, source_id: str = "in-memory"):
+        self._source_id = source_id
+        self._pending_items: list = []
+        self._pending_failures: list = []
+        self._reset_cycle_state()
+
+    def _reset_cycle_state(self):
+        self._started_at = ""
+        self._completed_at: Optional[str] = None
+        self._items_yielded = 0
+        self._per_source_counts: dict = {self._source_id: 0}
+        self._failures: list = []
+
+    # ---- queue management ----
+
+    def feed_items(self, items) -> None:
+        """Queue items to be yielded by the next ``items()`` call.
+
+        Items are not validated here; the caller is responsible
+        for shape correctness. The queue persists across multiple
+        ``feed_items`` calls and drains all-at-once on the next
+        cycle.
+        """
+        self._pending_items.extend(items)
+
+    def record_failure(self, failure: IngestFailure) -> None:
+        """Queue a failure to be reported in the next cycle's stats.
+
+        Failures appear in ``cycle_stats().failures`` after the
+        cycle completes. Multiple failures across multiple
+        ``record_failure`` calls all surface in the next cycle.
+        """
+        self._pending_failures.append(failure)
+
+    def pending_item_count(self) -> int:
+        """Return how many items are queued for the next cycle.
+
+        Test convenience; not used by the Whirlpool runtime.
+        """
+        return len(self._pending_items)
+
+    # ---- IngestAdapter implementation ----
+
+    async def items(self) -> AsyncIterator[VortexItem]:
+        self._reset_cycle_state()
+        self._started_at = _now_iso()
+        try:
+            # Snapshot + drain at start so feed_items() calls during
+            # iteration land in the *next* cycle, not this one.
+            queued_items = self._pending_items
+            queued_failures = self._pending_failures
+            self._pending_items = []
+            self._pending_failures = []
+
+            for item in queued_items:
+                self._items_yielded += 1
+                self._per_source_counts[self._source_id] += 1
+                yield item
+
+            self._failures.extend(queued_failures)
+        finally:
+            self._completed_at = _now_iso()
+
+    def cycle_stats(self) -> CycleStats:
+        return CycleStats(
+            started_at=self._started_at,
+            completed_at=self._completed_at,
+            items_yielded=self._items_yielded,
+            per_source_counts=dict(self._per_source_counts),
+            failures=list(self._failures),
+        )

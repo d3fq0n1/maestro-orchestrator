@@ -15,6 +15,7 @@ orchestration runtime.
 
 from maestro.whirlpool.adapter import (
     CycleStats,
+    InMemoryIngestAdapter,
     IngestAdapter,
     IngestFailure,
     IngestFailureReason,
@@ -38,6 +39,7 @@ __all__ = [
     "DecayProfile",
     "HttpRssAdapter",
     "HttpRssAdapterConfig",
+    "InMemoryIngestAdapter",
     "IngestAdapter",
     "IngestFailure",
     "IngestFailureReason",
