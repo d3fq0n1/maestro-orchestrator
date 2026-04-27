@@ -12,6 +12,12 @@ orchestrator prepends to the prompt string before ``agent.fetch()``.
 This package is a scaffold. Nothing is wired into the runtime.
 """
 
+from maestro.router.conformity import (
+    ConformitySession,
+    ConformityWindow,
+    conformity_score,
+    select_dissenter,
+)
 from maestro.router.distance import (
     AdmissionCriterion,
     AdmittedClaim,
@@ -27,9 +33,13 @@ __all__ = [
     "AdmissionCriterion",
     "AdmittedClaim",
     "BundleRequest",
+    "ConformitySession",
+    "ConformityWindow",
     "ContextBundle",
     "ContextRouter",
     "DistanceMetric",
     "DistanceWeights",
     "Tier",
+    "conformity_score",
+    "select_dissenter",
 ]
