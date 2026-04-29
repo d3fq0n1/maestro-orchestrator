@@ -23,6 +23,7 @@ from maestro.router.benchmark import (
     RankingMetrics,
     TierMetrics,
 )
+from maestro.router.benchmark_runner import BenchmarkRunner
 from maestro.router.conformity import (
     ConformitySession,
     ConformityWindow,
@@ -48,6 +49,7 @@ __all__ = [
     "BenchmarkExample",
     "BenchmarkQuery",
     "BenchmarkResult",
+    "BenchmarkRunner",
     "BundleRequest",
     "CandidateOutcome",
     "ConformitySession",
