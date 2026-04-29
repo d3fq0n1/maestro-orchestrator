@@ -1,0 +1,273 @@
+{
+  "name": "admission-seed-v1",
+  "description": "Hand-crafted seed dataset for Router admission quality. Twelve examples in the data-feasible cluster (topic match, tag prefix, distance variation, trust variation, threshold sensitivity, cross-tier collisions). Cases requiring infrastructure that is still scaffolded (revocation, supersession, phantom hashes, domain-tag squatting, adversarial provenance, corroboration flooding) are deferred to a future integrated-runner track.",
+  "examples": [
+    {
+      "example_id": "topic-match-cartridge",
+      "notes": "Topic match: query and cartridge share content + tags; high-trust cartridge should admit.",
+      "query": {
+        "text": "tax law about deductions",
+        "tags": ["law.us"]
+      },
+      "candidates": [
+        {
+          "id": "CART:tax-code@2024",
+          "text": "tax law about jurisdiction",
+          "tier": "cartridge",
+          "expected_admit": true,
+          "trust": 0.95,
+          "tags": ["law.us.federal"]
+        },
+        {
+          "id": "CART:cooking@2024",
+          "text": "cooking recipes for garlic",
+          "tier": "cartridge",
+          "expected_admit": false,
+          "trust": 0.95,
+          "tags": ["food.recipe"]
+        }
+      ],
+      "ranked_admit": ["CART:tax-code@2024"]
+    },
+    {
+      "example_id": "tag-prefix-match",
+      "notes": "Dotted tag prefix: candidate tagged law.us.federal should match query tagged law.us.federal.tax.",
+      "query": {
+        "text": "tax law about deductions",
+        "tags": ["law.us.federal.tax"]
+      },
+      "candidates": [
+        {
+          "id": "CART:tax-prefix@1",
+          "text": "tax law jurisdiction",
+          "tier": "cartridge",
+          "expected_admit": true,
+          "trust": 0.9,
+          "tags": ["law.us.federal"]
+        },
+        {
+          "id": "CART:state-rule@1",
+          "text": "tax law jurisdiction",
+          "tier": "cartridge",
+          "expected_admit": false,
+          "trust": 0.9,
+          "tags": ["law.ca.state"]
+        }
+      ]
+    },
+    {
+      "example_id": "trust-determines-cartridge-admission",
+      "notes": "Same on-topic content, two cartridges; high-trust admits, low-trust below tau rejects.",
+      "query": {
+        "text": "constitutional law about speech",
+        "tags": ["law.us"]
+      },
+      "candidates": [
+        {
+          "id": "CART:trusted@1",
+          "text": "constitutional law about expression",
+          "tier": "cartridge",
+          "expected_admit": true,
+          "trust": 0.95,
+          "tags": ["law.us"]
+        },
+        {
+          "id": "CART:lowtrust@1",
+          "text": "constitutional law about expression",
+          "tier": "cartridge",
+          "expected_admit": false,
+          "trust": 0.20,
+          "tags": ["law.us"]
+        }
+      ]
+    },
+    {
+      "example_id": "cross-tier-cartridge-vs-whirlpool",
+      "notes": "Same topic; cartridge admits at high trust, whirlpool admits at moderate trust under lower tau.",
+      "query": {
+        "text": "law tax breaking",
+        "tags": ["law.us"]
+      },
+      "candidates": [
+        {
+          "id": "CART:law-spec@1",
+          "text": "law tax statute",
+          "tier": "cartridge",
+          "expected_admit": true,
+          "trust": 0.9,
+          "tags": ["law.us"]
+        },
+        {
+          "id": "WP:law-feed:abcd1234",
+          "text": "law tax breaking news",
+          "tier": "whirlpool",
+          "expected_admit": true,
+          "trust": 0.55,
+          "tags": ["law.us"]
+        }
+      ],
+      "ranked_admit": ["CART:law-spec@1", "WP:law-feed:abcd1234"]
+    },
+    {
+      "example_id": "off-topic-whirlpool-rejected",
+      "notes": "Whirlpool item with high local trust but completely off-topic relative to query.",
+      "query": {
+        "text": "law tax",
+        "tags": ["law.us"]
+      },
+      "candidates": [
+        {
+          "id": "WP:cooking-feed:11112222",
+          "text": "cooking ramen",
+          "tier": "whirlpool",
+          "expected_admit": false,
+          "trust": 0.7,
+          "tags": ["food.recipe"]
+        }
+      ]
+    },
+    {
+      "example_id": "weight-prior-default-trust",
+      "notes": "Weight-prior tier carries baseline 0.5 trust; admits when topic and tag both match strongly.",
+      "query": {
+        "text": "law about contracts",
+        "tags": ["law.us"]
+      },
+      "candidates": [
+        {
+          "id": "tag:law.us",
+          "text": "law about contracts",
+          "tier": "weight_prior",
+          "expected_admit": true,
+          "trust": 0.5,
+          "tags": ["law.us"]
+        }
+      ]
+    },
+    {
+      "example_id": "weight-prior-rejected-when-mismatched",
+      "notes": "Weight-prior tier with low default trust loses to a strong-but-irrelevant signal.",
+      "query": {
+        "text": "law tax",
+        "tags": ["law.us"]
+      },
+      "candidates": [
+        {
+          "id": "tag:medicine",
+          "text": "medicine treatment",
+          "tier": "weight_prior",
+          "expected_admit": false,
+          "trust": 0.5,
+          "tags": ["medicine"]
+        }
+      ]
+    },
+    {
+      "example_id": "borderline-distance",
+      "notes": "Candidate is mildly on-topic but trust is moderate; exercises the threshold boundary.",
+      "query": {
+        "text": "trade compact regulations",
+        "tags": ["law.us.federal"]
+      },
+      "candidates": [
+        {
+          "id": "CART:trade@1",
+          "text": "trade compact regulations between states",
+          "tier": "cartridge",
+          "expected_admit": true,
+          "trust": 0.9,
+          "tags": ["law.us.federal"]
+        }
+      ]
+    },
+    {
+      "example_id": "tag-only-relevance",
+      "notes": "Candidate text is irrelevant but tags match query exactly; relevance leans on tag match.",
+      "query": {
+        "text": "tax",
+        "tags": ["law.us.federal"]
+      },
+      "candidates": [
+        {
+          "id": "CART:tagged@1",
+          "text": "completely unrelated text content",
+          "tier": "cartridge",
+          "expected_admit": false,
+          "trust": 0.5,
+          "tags": ["law.us.federal"]
+        }
+      ]
+    },
+    {
+      "example_id": "embedding-only-relevance",
+      "notes": "Candidate text matches query closely but tags do not; relevance through embedding only is below cartridge threshold.",
+      "query": {
+        "text": "tax",
+        "tags": ["law.us.federal"]
+      },
+      "candidates": [
+        {
+          "id": "CART:notagged@1",
+          "text": "tax related content here",
+          "tier": "cartridge",
+          "expected_admit": false,
+          "trust": 0.5,
+          "tags": ["unrelated.namespace"]
+        }
+      ]
+    },
+    {
+      "example_id": "multiple-cartridges-rank",
+      "notes": "Several admit-worthy cartridges with different on-topic strength; runner should rank the closest first.",
+      "query": {
+        "text": "patent law about software",
+        "tags": ["law.us.federal"]
+      },
+      "candidates": [
+        {
+          "id": "CART:patent-spec@1",
+          "text": "patent law about software claims",
+          "tier": "cartridge",
+          "expected_admit": true,
+          "trust": 0.95,
+          "tags": ["law.us.federal"]
+        },
+        {
+          "id": "CART:trademark-spec@1",
+          "text": "trademark law about brands",
+          "tier": "cartridge",
+          "expected_admit": false,
+          "trust": 0.95,
+          "tags": ["law.us.federal"]
+        },
+        {
+          "id": "CART:patent-broader@1",
+          "text": "patent law about hardware",
+          "tier": "cartridge",
+          "expected_admit": true,
+          "trust": 0.85,
+          "tags": ["law.us.federal"]
+        }
+      ],
+      "ranked_admit": ["CART:patent-spec@1", "CART:patent-broader@1"]
+    },
+    {
+      "example_id": "low-trust-cartridge-still-rejects-on-relevance",
+      "notes": "Low-trust cartridge with weakly matched content rejects because trust gate cannot be cleared even at high relevance.",
+      "query": {
+        "text": "criminal law sentencing",
+        "tags": ["law.us"]
+      },
+      "candidates": [
+        {
+          "id": "CART:weak-trust@1",
+          "text": "criminal law sentencing guidelines",
+          "tier": "cartridge",
+          "expected_admit": false,
+          "trust": 0.10,
+          "tags": ["law.us"]
+        }
+      ]
+    }
+  ]
+}

@@ -26,7 +26,9 @@ in ``benchmark_runner.py`` (Track C step 2).
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 from maestro.router.distance import Tier
@@ -218,3 +220,79 @@ class BenchmarkResult:
     tier_metrics: dict = field(default_factory=dict)
     ranking_metrics: Optional[RankingMetrics] = None
     per_example_outcomes: tuple = ()
+
+
+# ---- on-disk format ----
+
+
+def load_dataset(path) -> BenchmarkDataset:
+    """Load a BenchmarkDataset from a JSON file.
+
+    Format::
+
+        {
+          "name": "...",
+          "description": "...",
+          "examples": [
+            {
+              "example_id": "...",
+              "notes": "...",
+              "query": {"text": "...", "tags": [...]},
+              "candidates": [
+                {"id": "...", "text": "...", "tier": "...",
+                 "expected_admit": bool, "trust": float,
+                 "tags": [...], "notes": "..."},
+                ...
+              ],
+              "ranked_admit": [...],
+              "ranked_reject": [...]
+            },
+            ...
+          ]
+        }
+
+    ``tier`` is the lowercase string form of ``Tier``
+    (``"cartridge"``, ``"whirlpool"``, ``"weight_prior"``).
+    Missing optional fields fall back to dataclass defaults.
+    """
+    raw = json.loads(Path(path).read_text())
+    return _parse_dataset(raw)
+
+
+def _parse_dataset(raw: dict) -> BenchmarkDataset:
+    examples = tuple(
+        _parse_example(e) for e in raw.get("examples", [])
+    )
+    return BenchmarkDataset(
+        name=raw.get("name", ""),
+        examples=examples,
+        description=raw.get("description", ""),
+    )
+
+
+def _parse_example(raw: dict) -> BenchmarkExample:
+    return BenchmarkExample(
+        example_id=raw["example_id"],
+        query=BenchmarkQuery(
+            text=raw["query"]["text"],
+            tags=tuple(raw["query"].get("tags", [])),
+        ),
+        candidates=tuple(
+            _parse_candidate(c) for c in raw.get("candidates", [])
+        ),
+        ranked_admit=tuple(raw.get("ranked_admit", [])),
+        ranked_reject=tuple(raw.get("ranked_reject", [])),
+        notes=raw.get("notes", ""),
+    )
+
+
+def _parse_candidate(raw: dict) -> BenchmarkCandidate:
+    return BenchmarkCandidate(
+        id=raw["id"],
+        text=raw["text"],
+        tier=Tier(raw["tier"]),
+        expected_admit=bool(raw["expected_admit"]),
+        trust=float(raw.get("trust", 0.5)),
+        tags=tuple(raw.get("tags", [])),
+        notes=raw.get("notes", ""),
+    )
