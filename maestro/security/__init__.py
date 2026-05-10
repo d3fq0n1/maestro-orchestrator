@@ -20,11 +20,13 @@ from maestro.security.cert_pinning import (
     save_pin_store,
     verify_pin,
 )
+from maestro.security.pinned_transport import PinnedTransport
 
 __all__ = [
     "Pin",
     "PinStore",
     "PinVerificationError",
+    "PinnedTransport",
     "compute_spki_sha256",
     "load_pin_store",
     "save_pin_store",
