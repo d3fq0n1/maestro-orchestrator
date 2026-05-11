@@ -82,28 +82,41 @@ from the R2 post-hoc ledger (`data/r2/`):
 
 ```
 conformity(agent) =
-    mean over last N sessions {
+    weighted mean over last N sessions {
         1.0  if agent's response was in the majority cluster
         0.0  otherwise
     }
+    weight(i) = exp(-i / lambda_decay)
+    i = 0 is the most recent session
 ```
 
 Majority-cluster membership per session is already recorded in
 `R2LedgerEntry.dissent_summary.outlier_agents`
 (`maestro/r2.py:365–370`): an agent is in the majority cluster for
-that session iff it is not listed as an outlier. Default `N = 20`.
-Agents with fewer than `N_min = 5` sessions of history default to
-`conformity = 0.5` (neutral); forced rotation does not apply to them.
+that session iff it is not listed as an outlier. Defaults: `N = 20`,
+`lambda_decay = 5.0` (Track B of items 4-6 raised the spec from a
+flat mean to exponential decay so recent sessions count more).
+Agents with fewer than `N_min = 5` sessions of history return
+``None`` from ``conformity_score``; forced rotation does not apply
+to them.
 
 The dissenter for the current session is `argmax(conformity)`. Ties
-are broken by the agent whose last forced-rotation session is
-oldest (to maintain rotation); further ties broken by name sort.
+are broken by name sort (ascending) for determinism. The spec also
+calls for an "oldest forced-rotation session" tiebreak, which
+requires a separate rotation log not yet implemented; deferred.
 Only one dissenter per session.
 
 If the highest conformity is below a floor (default `0.6`), no
 dissenter is selected — the council already has adequate natural
 dissent, and forced rotation would add noise. This floor is tunable
-via `data/runtime_config.json`.
+via `ConformityWindow.floor` (which can be carried by
+`data/runtime_config.json`).
+
+The implementation lives at `maestro/router/conformity.py` with
+``conformity_score`` and ``select_dissenter`` as the two entry
+points; tests at `tests/test_router_conformity.py` pin the math
+(flat-mean limit as ``lambda_decay → ∞``, recent-outlier-dominates
+limit as ``lambda_decay → 0``, etc.).
 
 The R2 lookup is cached per orchestrator process and recomputed every
 5 sessions to bound ledger read cost.
@@ -322,10 +335,12 @@ the conformity floor, or the session window `N`.
 
 ## Open Questions (deferred)
 
-- **Conformity score with weighted history.** The flat mean is a
-  starting point. Exponential decay over session age (recent sessions
-  weighted higher) is a plausible MAGI-driven tuning target once
-  pre-admit data accumulates.
+- **Conformity decay-constant tuning.** The exponential-decay
+  weighting landed (Track B of items 4-6) with a default
+  ``lambda_decay = 5.0``. Tuning that constant against real R2
+  data remains data-blocked — operators can override it via
+  ``ConformityWindow.lambda_decay`` until MAGI trend analysis
+  produces evidence for a better default.
 - **Multi-dissenter sessions.** The current policy selects exactly
   one dissenter. If future MAGI data suggests two dissenters reveal
   more silent collapses than one, the scheme extends cleanly; until
