@@ -22,12 +22,19 @@ is in [`vortex-threat-model.md`](./vortex-threat-model.md)). No code.
 
 Three decisions were resolved before drafting.
 
-1. **Ingest source scope.** The initial implementation supports only
-   HTTP/RSS polling. A pluggable `IngestAdapter` interface is
-   explicitly deferred; Slack, GitHub webhooks, agent-driven external
-   queries, and operator-push endpoints are out of scope until HTTP/
-   RSS shakes out. This constrains the threat model and keeps the
-   reference Whirlpool narrow.
+1. **Ingest source scope.** Originally constrained to HTTP/RSS
+   polling only (the spec called it Q8 = a, "for now"). The
+   ingest-adapter pluggability track has since lifted that
+   constraint: the source layer is now a pluggable
+   ``IngestAdapter`` ABC (`maestro/whirlpool/adapter.py`) with
+   ``HttpRssAdapter`` as the reference HTTP/RSS implementation
+   (`maestro/whirlpool/ingest.py`) and ``InMemoryIngestAdapter``
+   as the scriptable test / cold-start adapter. ``Whirlpool``
+   accepts ``adapters: list[IngestAdapter]`` at construction;
+   ``factory.build_adapters(policy)`` constructs them
+   declaratively from ``IngestPolicy`` typed slots. Slack /
+   GitHub webhooks / agent-driven external queries are now
+   adapter-shaped follow-ups, no longer architectural blockers.
 
 2. **Module placement.** A Whirlpool is a first-class module at
    `maestro/whirlpool/` (analogous to `maestro/ncg/`). It is *not* a
@@ -86,7 +93,8 @@ IngestPolicy {
 
 IngestSource {
   source_id: str                   // stable slug (e.g. "federal-register-rss")
-  kind: "http" | "rss"             // initial scope; see Q8 decision
+  kind: "http" | "rss"             // current reference HttpRssAdapter scope;
+                                   // pluggable via the IngestAdapter ABC
   url: str
   poll_interval_seconds: int | null   // overrides whirlpool default
   etag_cache_enabled: bool         // default true for rss/http
@@ -452,8 +460,10 @@ reference approach.
 
 ## Open Questions (deferred)
 
-- Pluggable `IngestAdapter` interface and source-kind registry
-  (deferred; current scope is HTTP/RSS only).
+- Additional IngestAdapter implementations (Slack webhook,
+  GitHub events, LLM-driven external query). The ABC is live
+  (`maestro/whirlpool/adapter.py`); these are concrete classes
+  to add, no architectural changes required.
 - Cross-deployment Whirlpool federation — currently each deployment
   runs its own Whirlpools; a future extension could gossip items
   between peers analogously to the Librarian's federation.

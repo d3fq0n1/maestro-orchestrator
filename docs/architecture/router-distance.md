@@ -23,17 +23,21 @@ input. Each is a structural choice that should be reviewed before
 the skeleton-code step (Task 8). Reversing any of them after
 implementation will be more expensive.
 
-1. **Distance-metric scope day 1.** The task brief names four
-   components (embedding, graph, causal, counterfactual). Only
-   **embedding distance** is computed from live data day 1. The
-   other three are **interface stubs returning configurable
-   constants** that MAGI can tune from pre-admit ledger trends.
-   Rationale: causal and counterfactual proxies are a research
-   project and cannot be speed-shipped without substituting
-   plausibility for rigor. The stubs preserve the composite shape
-   so later components slot in without reshaping the Router. This
-   default can be overridden by replacing the stubs with
-   data-driven implementations; no API change is required.
+1. **Distance-metric scope.** The task brief names four
+   components (embedding, graph, causal, counterfactual). Day 1
+   committed to shipping only **embedding distance** live, with
+   the other three as interface stubs returning configurable
+   constants tunable from pre-admit ledger trends. Subsequent
+   tracks raised the live set: ``d_graph`` is now live (multi-
+   source BFS over a ``GraphView`` with exponential
+   normalization; see ``router/graph.py`` and the BFS in
+   ``d_graph``) and ``d_counter`` is now live (perturbed-query
+   counterfactual via an injected embedder; see Track A in this
+   document's history). ``d_causal`` remains stubbed — its
+   "co-occurrence-with-flip over the R2 ledger" formulation
+   genuinely requires historical R2 data that does not yet
+   exist. The composite shape is preserved so a future live
+   ``d_causal`` slots in without reshaping the Router.
 
 2. **Per-agent τ resolution.** The admission threshold `τ` has a
    **global default per tier** plus optional **per-agent overrides**
@@ -85,38 +89,70 @@ introduce a new embedding client.
 
 This is the only component computed from live data day 1.
 
-### `d_graph(Q, C)` — Graph distance (stubbed day 1)
+### `d_graph(Q, C)` — Graph distance (live)
 
 Structural distance over a graph that connects:
 
 - Cartridges by `supersedes` / `revokes` edges (from
   [`librarian.md`](./librarian.md) §Manifest Schema)
 - Cartridges to vortex items by shared canonical claim hashes
+  (deferred — see ``maestro/router/graph.py`` ``SHARED_CLAIM`` enum entry)
 - Items to items by shared corroborator sources
 - Anything to anything by shared `domain_tags` (flat and dotted)
 
-Day 1 interface returns a configurable constant (default 0.5).
-Replacement with a live graph traversal is an additive change; no
-caller is affected.
+Implementation: multi-source BFS over an injected ``GraphView``
+(see ``maestro/router/graph.py``). The graph is undirected at
+traversal time; the BFS expands frontier-by-frontier from every
+anchor returned by ``GraphView.anchors_for_tags(query_tags)``
+and finds the minimum hop count to the candidate node. Hop
+count is normalized via ``1 - exp(-hops/k)`` with ``k = 3``
+(curve: 0/1/2/3/4/5/6 hops → 0.00 / 0.28 / 0.49 / 0.63 / 0.74 /
+0.81 / 0.86). Beyond ``max_hops = 6`` the result saturates at
+1.0. When no ``GraphView`` is wired, ``d_graph`` falls back to
+``graph_stub_value`` (default 0.5) for backward compatibility
+(option R).
 
-### `d_causal(Q, C)` — Causal proxy distance (stubbed day 1)
+Node id convention (the slugs the BFS walks) is human-glanceable:
+``CART:<cartridge_id>@<version>``, ``WP:<whirlpool_id>:<short-item-slug>``,
+``TAG:<tag>``. See ``maestro/router/graph.py`` for the full
+contract.
+
+### `d_causal(Q, C)` — Causal proxy distance (stubbed; data-blocked)
 
 An operational proxy for "how far would I have to intervene on
-variables in `C` to change `Q`'s answer." In full form this would
-rest on a structural causal model over the Weights' working domain,
-which Maestro does not have. The day 1 interface returns a configurable
-constant (default 0.5).
+variables in `C` to change `Q`'s answer." In full form this
+would rest on a structural causal model over the Weights'
+working domain, which Maestro does not have. The current
+interface returns a configurable constant (default 0.5).
 
-The interface is preserved so a later implementation (for example,
-co-occurrence-with-flip-sentiment over the R2 ledger) can slot in
-without Router refactoring.
+This component is genuinely data-blocked: the proposed
+implementation ("co-occurrence-with-flip over historical R2
+sessions") requires an R2 ledger of nontrivial size, which only
+exists after the system has been deployed. Live implementation
+is deferred until that data accumulates.
 
-### `d_counter(Q, C)` — Counterfactual proxy distance (stubbed day 1)
+### `d_counter(Q, C)` — Counterfactual proxy distance (live)
 
 An operational proxy for "how similar is `C` to a counterfactual
-version of `Q`." In full form this would sample perturbed queries and
-measure how much `C`'s relevance shifts. Day 1 interface returns a
-configurable constant (default 0.5).
+version of `Q`." Implementation perturbs the query via
+word-dropout (deterministic per ``perturbation_seed``), embeds
+each perturbation through the injected ``embedder``, and returns
+the mean absolute shift in ``d_embed(perturbed_q, C)``
+relative to ``d_embed(Q, C)``. Defaults:
+``perturbation_count = 5``, ``perturbation_drop_fraction = 0.25``,
+clamped to ``[0, 1]``.
+
+Falls back to ``counter_stub_value`` (default 0.5) when:
+
+- No embedder is injected on the ``DistanceMetric``.
+- The query has fewer than 3 words (cannot meaningfully drop).
+- The embedder raises while embedding the original query or
+  the claim.
+- Every per-perturbation embedder call fails.
+
+See ``maestro/router/distance.py`` ``d_counter`` for the full
+implementation and ``tests/test_distance_metric.py`` for the
+behavior contract.
 
 ### MAGI-tunable component weights
 

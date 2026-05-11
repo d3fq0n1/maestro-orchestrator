@@ -37,11 +37,22 @@ recorded here so the architecture is legible to future readers.
    rate-limit / audit primitives already proven in `InjectionGuard`.
    Neither existing module is renamed or refactored.
 
-3. **Naming.** The task brief says "WeightNode" throughout; the code
-   uses `WeightHost` (`maestro/shard_registry.py:37`, with a
-   backward-compatible `StorageNode` alias). All three-tier documents
-   and code use `WeightHost`. Cartridge-awareness and Whirlpool-domain
-   fields are added to `WeightHost`.
+3. **Naming.** The codebase uses `WeightHost` as the dataclass
+   (`maestro/shard_registry.py:37`, with a backward-compatible
+   `StorageNode` alias). Maestro's broader docs (`ARCHITECTURE.md`,
+   `ROADMAP.md`, `docs/maestro-whitepaper.md`) treat
+   ``WeightHost`` and ``WeightNode`` as a paired conceptual term:
+   ``WeightHost`` emphasizes the registered persistent substrate
+   (the dataclass in the registry); ``WeightNode`` emphasizes the
+   operational inference-endpoint role of that same entity in a
+   pipeline. There is no separate ``WeightNode`` class — the term
+   refers to the same underlying ``WeightHost`` when described in
+   its inference-active role. All three-tier documents use
+   ``WeightHost`` as the canonical class reference and use
+   ``WeightNode`` only when the operational framing is explicit
+   (see the federation whiteboard at `docs/architecture/weighthost-federation.md`).
+   Cartridge-awareness and Whirlpool-domain fields are added to
+   ``WeightHost``.
 
 4. **Per-agent pre-fetch hook.** The Router admits context per agent,
    because trust and distance can differ per Weight. Rather than
